@@ -29,7 +29,7 @@ let tgBotToken = localStorage.getItem('tg_bot_token') || "";
 let tgChatId = localStorage.getItem('tg_chat_id') || "";
 
 let subjectPins = JSON.parse(localStorage.getItem('quiz_subject_pins')) || {
-    "Ona tili": "", "Matematika": "", "Fizika": "", "Kimyo": "", 
+    "Ona tili": "", "Matematika": "", "Fizika": "", "Kimyo": "",
     "Biologiya": "", "Tarix": "", "Huquq": "", "Informatika": ""
 };
 let geminiApiKey = localStorage.getItem('gemini_api_key') || "";
@@ -48,7 +48,7 @@ function saveSettings(duration, token, chatId) {
     localStorage.setItem('quiz_duration', quizDuration.toString());
     localStorage.setItem('tg_bot_token', tgBotToken);
     localStorage.setItem('tg_chat_id', tgChatId);
-    
+
     // Save PINs
     const pinIds = ['pin-onatili', 'pin-matematika', 'pin-fizika', 'pin-kimyo', 'pin-biologiya', 'pin-tarix', 'pin-huquq', 'pin-informatika'];
     const subjs = ["Ona tili", "Matematika", "Fizika", "Kimyo", "Biologiya", "Tarix", "Huquq", "Informatika"];
@@ -192,7 +192,7 @@ function init() {
     testDurationInput.value = quizDuration;
     tgBotTokenInput.value = tgBotToken;
     tgChatIdInput.value = tgChatId;
-    
+
     // Load PINs and Gemini Key to inputs
     const pinIds = ['pin-onatili', 'pin-matematika', 'pin-fizika', 'pin-kimyo', 'pin-biologiya', 'pin-tarix', 'pin-huquq', 'pin-informatika'];
     const subjs = ["Ona tili", "Matematika", "Fizika", "Kimyo", "Biologiya", "Tarix", "Huquq", "Informatika"];
@@ -204,7 +204,7 @@ function init() {
     });
     const gKeyEl = document.getElementById('gemini-api-key');
     if (gKeyEl) gKeyEl.value = geminiApiKey;
-    
+
     renderQuestionsList();
     renderResultsTable();
     populateClassFilters();
@@ -222,7 +222,7 @@ function setupAntiCheat() {
 
     document.addEventListener('keydown', (e) => {
         if (
-            e.key === 'F12' || 
+            e.key === 'F12' ||
             (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j')) ||
             (e.ctrlKey && (e.key === 'U' || e.key === 'u'))
         ) {
@@ -312,12 +312,12 @@ startBtn.addEventListener('click', () => {
     const classGroup = studentClassInput.value.trim();
     const subject = studentSubjectInput.value;
     const pin = quizPinInput.value.trim();
-    
+
     if (name.length < 3 || classGroup.length < 1 || !subject) {
         alert(t('alertDetails'));
         return;
     }
-    
+
     // Verify PIN for the subject
     const correctPin = subjectPins[subject];
     if (correctPin && pin !== correctPin) {
@@ -330,7 +330,7 @@ startBtn.addEventListener('click', () => {
         alert(t('alertNoQuestions'));
         return;
     }
-    
+
     studentName = name;
     studentClass = classGroup;
     studentSubject = subject;
@@ -399,7 +399,7 @@ tabQrcodeBtn.addEventListener('click', () => {
 function setTabActive(activeBtn, activeTab) {
     [tabQuestionsBtn, tabResultsBtn, tabSettingsBtn, tabQrcodeBtn].forEach(b => b.classList.remove('active'));
     [tabQuestions, tabResults, tabSettings, tabQrcode].forEach(t => t.classList.add('hidden'));
-    
+
     activeBtn.classList.add('active');
     activeTab.classList.remove('hidden');
 }
@@ -450,17 +450,17 @@ wordUploadBtn.addEventListener('click', () => {
     }
 
     const reader = new FileReader();
-    reader.onload = function(event) {
+    reader.onload = function (event) {
         const arrayBuffer = event.target.result;
-        
+
         // Mammoth.js reader
         mammoth.extractRawText({ arrayBuffer: arrayBuffer })
-            .then(function(result) {
+            .then(function (result) {
                 const text = result.value;
                 const subj = wordQSubject.value;
                 parseQuestionsFromText(text, subj);
             })
-            .catch(function(err) {
+            .catch(function (err) {
                 console.error(err);
                 alert(t('alertReadError'));
             });
@@ -542,7 +542,7 @@ downloadQrBtn.addEventListener('click', () => {
 function parseQuestionsFromText(rawText, subj) {
     // Normalise text spacing and split by lines
     const lines = rawText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-    
+
     let importedQuestions = [];
     let currentQ = null;
 
@@ -627,7 +627,7 @@ function renderQuestionsList() {
     });
 }
 
-window.deleteQuestion = function(index) {
+window.deleteQuestion = function (index) {
     if (confirm(t('alertConfirmDelete'))) {
         questions.splice(index, 1);
         saveQuestions();
@@ -648,7 +648,7 @@ function populateClassFilters() {
 
 function renderResultsTable(classFilter = 'all', quarterFilter = 'all') {
     resultsTableBody.innerHTML = '';
-    
+
     let list = results;
     if (classFilter !== 'all') {
         list = list.filter(r => r.classGroup === classFilter);
@@ -685,7 +685,7 @@ function renderResultsTable(classFilter = 'all', quarterFilter = 'all') {
 // Pedagogical Analytics Logic
 function generateClassReport(list) {
     statsPanel.classList.remove('hidden');
-    
+
     const total = list.length;
     const avgScore = list.reduce((sum, r) => sum + parseFloat(r.percentage), 0) / total;
     const qualityCount = list.filter(r => parseFloat(r.percentage) >= 70).length;
@@ -706,7 +706,7 @@ function generateClassReport(list) {
 analyzeBtn.addEventListener('click', () => {
     const cls = filterClass.value;
     if (cls === 'all') return;
-    
+
     const q1Val = compQ1.value;
     const q2Val = compQ2.value;
 
@@ -722,7 +722,7 @@ analyzeBtn.addEventListener('click', () => {
 
     const avgQ1 = q1List.reduce((sum, r) => sum + parseFloat(r.percentage), 0) / q1List.length;
     const avgQ2 = q2List.reduce((sum, r) => sum + parseFloat(r.percentage), 0) / q2List.length;
-    
+
     const diff = avgQ2 - avgQ1;
     let diffStr = "";
     let conclusion = "";
@@ -777,7 +777,7 @@ function exportResultsToCSV() {
 // --- Leaderboard ---
 function renderLeaderboard() {
     leaderboardBody.innerHTML = "";
-    
+
     // Sort Results: Percentage DESC, Time spent ASC, Blocks ASC
     const sorted = [...results].sort((a, b) => {
         if (b.percentage !== a.percentage) return b.percentage - a.percentage;
@@ -829,12 +829,12 @@ function startQuiz() {
     currentQuestionIndex = 0;
     totalUserPoints = 0;
     studentAnswers = [];
-    
+
     requestFullscreen();
-    
+
     testTimeLimitSeconds = quizDuration * 60;
     timeElapsedSeconds = 0;
-    
+
     startTimer();
     loadQuestion();
     setupProctoring();
@@ -845,7 +845,7 @@ function loadQuestion() {
     questionText.textContent = q.question;
     optionsContainer.innerHTML = '';
     nextBtn.classList.add('hidden');
-    
+
     const progress = (currentQuestionIndex / currentQuizQuestions.length) * 100;
     progressBar.style.width = `${progress}%`;
     currentQuestionNum.textContent = currentQuestionIndex + 1;
@@ -866,7 +866,7 @@ function selectOption(index, element) {
     element.classList.add('selected');
     nextBtn.classList.remove('hidden');
     element.dataset.correct = (index === currentQuizQuestions[currentQuestionIndex].correct);
-    
+
     // Temporarily store selection index
     element.dataset.index = index;
 }
@@ -886,7 +886,7 @@ nextBtn.onclick = () => {
     } else {
         playSound('incorrect');
     }
-    
+
     currentQuestionIndex++;
     if (currentQuestionIndex < currentQuizQuestions.length) {
         loadQuestion();
@@ -904,7 +904,7 @@ function startTimer() {
         if (remainingSeconds <= 0) {
             timerDisplay.textContent = "00:00";
             alert(t('alertTimeout'));
-            
+
             // Check current selected question
             const selected = optionsContainer.querySelector('.option.selected');
             if (selected) {
@@ -953,7 +953,7 @@ function finishQuiz() {
     exitFullscreen();
     quizScreen.classList.add('hidden');
     resultScreen.classList.remove('hidden');
-    
+
     let maxPossiblePoints = 0;
     currentQuizQuestions.forEach(q => {
         maxPossiblePoints += parseFloat(q.points) || 1.0;
@@ -962,7 +962,7 @@ function finishQuiz() {
     const percentage = maxPossiblePoints > 0 ? Math.round((totalUserPoints / maxPossiblePoints) * 100) : 0;
     const timeSpentString = formatTimeElapsed();
     let analysis = "";
-    
+
     if (percentage >= 90) analysis = t('analysisEx');
     else if (percentage >= 70) analysis = t('analysisGood');
     else if (percentage >= 50) analysis = t('analysisSat');
@@ -995,7 +995,7 @@ function finishQuiz() {
 
     results.push(studentResult);
     saveResults();
-    
+
     // Error Review logic
     renderErrorReview();
 
@@ -1025,7 +1025,7 @@ function renderErrorReview() {
             errorsCount++;
             const item = document.createElement('div');
             item.className = 'review-item';
-            
+
             const userAnsText = userChoice === -1 || userChoice === undefined ? t('notAnswered') : q.options[userChoice];
             const correctAnsText = q.options[q.correct];
 
@@ -1061,7 +1061,7 @@ function sendTelegramNotification(res) {
     `;
 
     const url = `https://api.telegram.org/bot${tgBotToken}/sendMessage`;
-    
+
     fetch(url, {
         method: 'POST',
         headers: {
@@ -1073,14 +1073,14 @@ function sendTelegramNotification(res) {
             parse_mode: 'Markdown'
         })
     })
-    .then(response => {
-        if (!response.ok) {
-            console.error("Telegram bot API error");
-        }
-    })
-    .catch(err => {
-        console.error("Telegram connection error: ", err);
-    });
+        .then(response => {
+            if (!response.ok) {
+                console.error("Telegram bot API error");
+            }
+        })
+        .catch(err => {
+            console.error("Telegram connection error: ", err);
+        });
 }
 
 
@@ -1100,7 +1100,7 @@ function generateCertificateCanvas(percentage) {
     ctx.strokeStyle = '#f59e0b';
     ctx.lineWidth = 10;
     ctx.strokeRect(20, 20, 760, 560);
-    
+
     ctx.strokeStyle = '#d97706';
     ctx.lineWidth = 2;
     ctx.strokeRect(30, 30, 740, 540);
@@ -1149,7 +1149,7 @@ function generateCertificateCanvas(percentage) {
     ctx.fillStyle = '#94a3b8';
     ctx.font = '16px Outfit';
     ctx.fillText(`${t('dateLabel')} ${new Date().toLocaleDateString('uz-UZ')}`, 200, 520);
-    
+
     ctx.fillStyle = '#f59e0b';
     ctx.font = 'bold 16px Outfit';
     ctx.fillText(t('portalAdmin'), 600, 520);
@@ -1233,7 +1233,7 @@ function requestFullscreen() {
 
 function exitFullscreen() {
     if (document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
+        document.exitFullscreen().catch(() => { });
     }
 }
 
@@ -1285,7 +1285,7 @@ async function analyzeResultsWithGemini() {
 
         const data = await response.json();
         const aiText = data.candidates[0].content.parts[0].text;
-        
+
         geminiAnalysisOutput.innerHTML = parseMarkdownToHtml(aiText);
     } catch (err) {
         console.error(err);

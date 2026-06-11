@@ -892,8 +892,8 @@ select:focus {
     height: 180px;
     object-fit: contain;
     margin-bottom: 15px;
-    filter: brightness(0) invert(1) drop-shadow(0px 0px 12px rgba(255, 255, 255, 0.4));
-    mix-blend-mode: lighten;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 .stats-grid {
