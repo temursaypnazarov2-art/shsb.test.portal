@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="uz">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +7,6 @@
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
-
 <body>
     <div id="app">
         <!-- Landing Screen -->
@@ -20,6 +18,95 @@
                     <input type="text" id="student-name" placeholder="F.I.SH." autocomplete="off">
                 </div>
                 <button id="start-btn" class="primary-btn">Testni Boshlash</button>
+                <div class="admin-login-trigger">
+                    <button id="admin-login-btn" class="text-link-btn">Admin paneliga kirish</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Admin Login Modal -->
+        <div id="admin-auth-modal" class="modal-overlay hidden">
+            <div class="glass-card modal-card fade-in">
+                <h2>Admin Tizimiga Kirish</h2>
+                <div class="input-group">
+                    <input type="password" id="admin-portal-pass" placeholder="Admin parolini kiriting">
+                </div>
+                <div class="modal-actions">
+                    <button id="admin-auth-submit" class="primary-btn">Kirish</button>
+                    <button id="admin-auth-cancel" class="secondary-btn">Bekor qilish</button>
+                </div>
+                <p id="admin-auth-error" class="error-msg hidden">Noto'g'ri parol!</p>
+            </div>
+        </div>
+
+        <!-- Admin Panel Screen -->
+        <section id="admin-panel" class="screen hidden">
+            <div class="glass-card admin-card fade-in">
+                <div class="admin-header">
+                    <h2>Admin Boshqaruv Paneli</h2>
+                    <button id="admin-logout-btn" class="danger-btn">Panelni yopish</button>
+                </div>
+
+                <div class="admin-tabs">
+                    <button id="tab-questions-btn" class="tab-btn active">Savollar boshqaruvi</button>
+                    <button id="tab-results-btn" class="tab-btn">O'quvchilar natijalari</button>
+                </div>
+
+                <!-- Tab 1: Questions Management -->
+                <div id="tab-questions" class="tab-content">
+                    <div class="add-question-section">
+                        <h3>Yangi savol qo'shish</h3>
+                        <div class="form-group">
+                            <input type="text" id="new-q-text" placeholder="Savol matni">
+                        </div>
+                        <div class="options-inputs">
+                            <input type="text" id="new-q-opt0" placeholder="Variant A">
+                            <input type="text" id="new-q-opt1" placeholder="Variant B">
+                            <input type="text" id="new-q-opt2" placeholder="Variant C">
+                            <input type="text" id="new-q-opt3" placeholder="Variant D">
+                        </div>
+                        <div class="correct-selection">
+                            <label for="new-q-correct">To'g'ri javob:</label>
+                            <select id="new-q-correct">
+                                <option value="0">Variant A</option>
+                                <option value="1">Variant B</option>
+                                <option value="2">Variant C</option>
+                                <option value="3">Variant D</option>
+                            </select>
+                        </div>
+                        <button id="add-q-btn" class="primary-btn">Savolni saqlash</button>
+                    </div>
+
+                    <div class="questions-list-section">
+                        <h3>Mavjud savollar (<span id="admin-questions-count">0</span>)</h3>
+                        <div id="admin-questions-list" class="questions-list">
+                            <!-- Injected questions list -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Results -->
+                <div id="tab-results" class="tab-content hidden">
+                    <div class="results-actions">
+                        <h3>Natijalar jadvali</h3>
+                        <button id="clear-results-btn" class="danger-btn">Barcha natijalarni tozalash</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="results-table">
+                            <thead>
+                                <tr>
+                                    <th>F.I.SH.</th>
+                                    <th>Foiz</th>
+                                    <th>Sarflangan vaqt</th>
+                                    <th>Bloklar soni</th>
+                                </tr>
+                            </thead>
+                            <tbody id="results-table-body">
+                                <!-- Injected results -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -30,7 +117,7 @@
                 <div class="timer" id="timer">00:00</div>
                 <div id="student-display" class="student-info"></div>
             </header>
-
+            
             <main class="quiz-main card-container">
                 <div class="glass-card quiz-card">
                     <div class="progress-container">
@@ -57,7 +144,7 @@
                 <div id="result-content" class="result-details">
                     <!-- Results will be injected here -->
                 </div>
-                <button onclick="location.reload()" class="secondary-btn">Qayta urinish</button>
+                <button onclick="location.reload()" class="secondary-btn">Asosiy sahifaga qaytish</button>
             </div>
         </section>
 
@@ -66,8 +153,7 @@
             <div class="lock-card">
                 <div class="warning-icon">⚠️</div>
                 <h1 class="warning-text">SIZ BLOKLANDINGIZ!</h1>
-                <p>Tizimdan foydalanish qoidalari buzildi (ekran o'zgartirildi yoki to'liq ekran rejimidan chiqildi).
-                </p>
+                <p>Tizimdan foydalanish qoidalari buzildi (ekran o'zgartirildi yoki to'liq ekran rejimidan chiqildi).</p>
                 <p class="admin-note">Blokdan chiqarish uchun admin parolini kiriting:</p>
                 <div class="admin-zone">
                     <input type="password" id="admin-pass" placeholder="Admin paroli">
@@ -79,5 +165,4 @@
     </div>
     <script src="script.js"></script>
 </body>
-
 </html>
