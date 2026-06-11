@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>shsb.test.portal</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Landing Screen -->
+        <section id="auth-screen" class="screen">
+            <div class="glass-card fade-in">
+                <h1 class="portal-logo animate-glow">shsb.test.portal</h1>
+                <p>Xush kelibsiz! Testni boshlash uchun ismingizni kiriting.</p>
+                <div class="input-group">
+                    <input type="text" id="student-name" placeholder="F.I.SH." autocomplete="off">
+                </div>
+                <button id="start-btn" class="primary-btn">Testni Boshlash</button>
+            </div>
+        </section>
+
+        <!-- Quiz Screen -->
+        <section id="quiz-screen" class="screen hidden">
+            <header class="quiz-header">
+                <span class="portal-name">shsb.test.portal</span>
+                <div class="timer" id="timer">00:00</div>
+                <div id="student-display" class="student-info"></div>
+            </header>
+
+            <main class="quiz-main card-container">
+                <div class="glass-card quiz-card">
+                    <div class="progress-container">
+                        <div class="progress-bar" id="progress-bar"></div>
+                    </div>
+                    <div class="question-info">
+                        Savol <span id="current-question-num">1</span> / <span id="total-questions">0</span>
+                    </div>
+                    <h2 id="question-text">Savol yuklanmoqda...</h2>
+                    <div id="options-container" class="options-grid">
+                        <!-- Options will be injected here -->
+                    </div>
+                    <div class="quiz-controls">
+                        <button id="next-btn" class="primary-btn hidden">Keyingi savol</button>
+                    </div>
+                </div>
+            </main>
+        </section>
+
+        <!-- Result Screen -->
+        <section id="result-screen" class="screen hidden">
+            <div class="glass-card result-card fade-in">
+                <h1 class="animate-glow">Test Yakunlandi</h1>
+                <div id="result-content" class="result-details">
+                    <!-- Results will be injected here -->
+                </div>
+                <button onclick="location.reload()" class="secondary-btn">Qayta urinish</button>
+            </div>
+        </section>
+
+        <!-- Lock Screen / Proctoring Overlay -->
+        <div id="lock-screen" class="lock-overlay hidden">
+            <div class="lock-card">
+                <div class="warning-icon">⚠️</div>
+                <h1 class="warning-text">SIZ BLOKLANDINGIZ!</h1>
+                <p>Tizimdan foydalanish qoidalari buzildi (ekran o'zgartirildi yoki to'liq ekran rejimidan chiqildi).
+                </p>
+                <p class="admin-note">Blokdan chiqarish uchun admin parolini kiriting:</p>
+                <div class="admin-zone">
+                    <input type="password" id="admin-pass" placeholder="Admin paroli">
+                    <button id="unlock-btn" class="unlock-btn">Unlock</button>
+                </div>
+                <p id="unlock-error" class="error-msg hidden">Noto'g'ri parol!</p>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
