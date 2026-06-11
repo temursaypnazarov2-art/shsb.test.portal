@@ -64,6 +64,10 @@ let subjectDurations = JSON.parse(localStorage.getItem('quiz_subject_durations')
     "Ona tili": 20, "Matematika": 20, "Fizika": 20, "Kimyo": 20,
     "Biologiya": 20, "Tarix": 20, "Huquq": 20, "Informatika": 20
 };
+let subjectQuarters = JSON.parse(localStorage.getItem('quiz_subject_quarters')) || {
+    "Ona tili": "1", "Matematika": "1", "Fizika": "1", "Kimyo": "1",
+    "Biologiya": "1", "Tarix": "1", "Huquq": "1", "Informatika": "1"
+};
 let teacherTokens = JSON.parse(localStorage.getItem('quiz_teacher_tokens')) || [];
 let geminiApiKey = localStorage.getItem('gemini_api_key') || "";
 let showAnswersToStudent = localStorage.getItem('quiz_show_answers') === 'true';
@@ -176,6 +180,7 @@ const tabSecurity = document.getElementById('tab-security');
 const teacherPinSetter = document.getElementById('teacher-pin-setter');
 const teacherSubjectPin = document.getElementById('teacher-subject-pin');
 const teacherSubjectDuration = document.getElementById('teacher-subject-duration');
+const teacherSubjectQuarter = document.getElementById('teacher-subject-quarter');
 const saveTeacherPinBtn = document.getElementById('save-teacher-pin-btn');
 const teacherTimerBanner = document.getElementById('teacher-timer-banner');
 const teacherTimerText = document.getElementById('teacher-timer-text');
@@ -427,9 +432,10 @@ function openAdminPanelUI() {
         updateTeacherTimer();
         teacherTimerInterval = setInterval(updateTeacherTimer, 1000);
 
-        // Pre-fill Teacher PIN/Duration
+        // Pre-fill Teacher PIN/Duration/Quarter
         teacherSubjectPin.value = subjectPins[currentTeacherSession.subject] || "";
         teacherSubjectDuration.value = subjectDurations[currentTeacherSession.subject] || 20;
+        teacherSubjectQuarter.value = subjectQuarters[currentTeacherSession.subject] || "1";
 
         showToast(`Xush kelibsiz, ${currentTeacherSession.name}`);
     } else {
@@ -485,9 +491,11 @@ saveTeacherPinBtn.addEventListener('click', () => {
 
     subjectPins[subj] = pin;
     subjectDurations[subj] = dur;
+    subjectQuarters[subj] = teacherSubjectQuarter.value;
 
     localStorage.setItem('quiz_subject_pins', JSON.stringify(subjectPins));
     localStorage.setItem('quiz_subject_durations', JSON.stringify(subjectDurations));
+    localStorage.setItem('quiz_subject_quarters', JSON.stringify(subjectQuarters));
 
     alert(t('teacherPinSaved') || "Faningiz uchun sozlamalar muvaffaqiyatli saqlandi!");
 });
@@ -1106,10 +1114,10 @@ startBtn.addEventListener('click', () => {
     studentName = studentNameInput.value.trim();
     studentClass = studentClassInput.value;
     studentSubject = studentSubjectInput.value;
-    studentQuarter = studentQuarterInput ? studentQuarterInput.value : "";
+    studentQuarter = subjectQuarters[studentSubject] || "1";
     const pin = quizPinInput.value.trim();
 
-    if (!studentName || !studentClass || !studentSubject || !studentQuarter) {
+    if (!studentName || !studentClass || !studentSubject) {
         alert(t('alertDetails') || "Barcha ma'lumotlarni to'ldiring!");
         return;
     }
