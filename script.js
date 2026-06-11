@@ -28,6 +28,12 @@ let quizDuration = parseInt(localStorage.getItem('quiz_duration')) || 20; // Def
 let tgBotToken = localStorage.getItem('tg_bot_token') || "";
 let tgChatId = localStorage.getItem('tg_chat_id') || "";
 
+let subjectPins = JSON.parse(localStorage.getItem('quiz_subject_pins')) || {
+    "Ona tili": "", "Matematika": "", "Fizika": "", "Kimyo": "", 
+    "Biologiya": "", "Tarix": "", "Huquq": "", "Informatika": ""
+};
+let geminiApiKey = localStorage.getItem('gemini_api_key') || "";
+
 // Save Helpers
 function saveQuestions() {
     localStorage.setItem('quiz_questions', JSON.stringify(questions));
@@ -42,6 +48,22 @@ function saveSettings(duration, token, chatId) {
     localStorage.setItem('quiz_duration', quizDuration.toString());
     localStorage.setItem('tg_bot_token', tgBotToken);
     localStorage.setItem('tg_chat_id', tgChatId);
+    
+    // Save PINs
+    const pinIds = ['pin-onatili', 'pin-matematika', 'pin-fizika', 'pin-kimyo', 'pin-biologiya', 'pin-tarix', 'pin-huquq', 'pin-informatika'];
+    const subjs = ["Ona tili", "Matematika", "Fizika", "Kimyo", "Biologiya", "Tarix", "Huquq", "Informatika"];
+    pinIds.forEach((id, index) => {
+        const el = document.getElementById(id);
+        if (el) subjectPins[subjs[index]] = el.value.trim();
+    });
+    localStorage.setItem('quiz_subject_pins', JSON.stringify(subjectPins));
+
+    // Save Gemini Key
+    const gKeyEl = document.getElementById('gemini-api-key');
+    if (gKeyEl) {
+        geminiApiKey = gKeyEl.value.trim();
+        localStorage.setItem('gemini_api_key', geminiApiKey);
+    }
 }
 
 // App State
@@ -49,6 +71,8 @@ let currentQuestionIndex = 0;
 let totalUserPoints = 0;
 let studentName = "";
 let studentClass = "";
+let studentSubject = "";
+let currentQuizQuestions = [];
 let studentAnswers = []; // Tracks indexes of user choices
 let isLocked = false;
 let blockCount = 0;
@@ -73,6 +97,8 @@ const toastAlert = document.getElementById('toast');
 // Auth Screen Elements
 const studentNameInput = document.getElementById('student-name');
 const studentClassInput = document.getElementById('student-class');
+const studentSubjectInput = document.getElementById('student-subject');
+const quizPinInput = document.getElementById('quiz-pin');
 const startBtn = document.getElementById('start-btn');
 const adminLoginBtn = document.getElementById('admin-login-btn');
 const leaderboardBody = document.getElementById('leaderboard-body');
@@ -126,9 +152,13 @@ const newQOpt2 = document.getElementById('new-q-opt2');
 const newQOpt3 = document.getElementById('new-q-opt3');
 const newQCorrect = document.getElementById('new-q-correct');
 const newQPoints = document.getElementById('new-q-points');
+const newQSubject = document.getElementById('new-q-subject');
+const wordQSubject = document.getElementById('word-q-subject');
 const adminQuestionsCount = document.getElementById('admin-questions-count');
 const adminQuestionsList = document.getElementById('admin-questions-list');
 const resultsTableBody = document.getElementById('results-table-body');
+const geminiAnalyzeBtn = document.getElementById('gemini-analyze-btn');
+const geminiAnalysisOutput = document.getElementById('gemini-analysis-output');
 
 // Quiz Screen Elements
 const questionText = document.getElementById('question-text');
@@ -156,13 +186,24 @@ const unlockError = document.getElementById('unlock-error');
 const qrCanvas = document.getElementById('qr-canvas');
 const downloadQrBtn = document.getElementById('download-qr-btn');
 
-
 // --- Initial Setup ---
 function init() {
     totalQuestionsSpan.textContent = questions.length;
     testDurationInput.value = quizDuration;
     tgBotTokenInput.value = tgBotToken;
     tgChatIdInput.value = tgChatId;
+    
+    // Load PINs and Gemini Key to inputs
+    const pinIds = ['pin-onatili', 'pin-matematika', 'pin-fizika', 'pin-kimyo', 'pin-biologiya', 'pin-tarix', 'pin-huquq', 'pin-informatika'];
+    const subjs = ["Ona tili", "Matematika", "Fizika", "Kimyo", "Biologiya", "Tarix", "Huquq", "Informatika"];
+    pinIds.forEach((id, index) => {
+        const el = document.getElementById(id);
+        if (el && subjectPins[subjs[index]]) {
+            el.value = subjectPins[subjs[index]];
+        }
+    });
+    const gKeyEl = document.getElementById('gemini-api-key');
+    if (gKeyEl) gKeyEl.value = geminiApiKey;
     
     renderQuestionsList();
     renderResultsTable();
@@ -269,16 +310,30 @@ saveSettingsBtn.addEventListener('click', () => {
 startBtn.addEventListener('click', () => {
     const name = studentNameInput.value.trim();
     const classGroup = studentClassInput.value.trim();
-    if (name.length < 3 || classGroup.length < 1) {
+    const subject = studentSubjectInput.value;
+    const pin = quizPinInput.value.trim();
+    
+    if (name.length < 3 || classGroup.length < 1 || !subject) {
         alert(t('alertDetails'));
         return;
     }
-    if (questions.length === 0) {
+    
+    // Verify PIN for the subject
+    const correctPin = subjectPins[subject];
+    if (correctPin && pin !== correctPin) {
+        alert(t('alertWrongPin'));
+        return;
+    }
+
+    currentQuizQuestions = questions.filter(q => q.subject === subject);
+    if (currentQuizQuestions.length === 0) {
         alert(t('alertNoQuestions'));
         return;
     }
+    
     studentName = name;
     studentClass = classGroup;
+    studentSubject = subject;
     blockCount = 0;
     studentAnswers = [];
     startQuiz();
@@ -359,12 +414,15 @@ addQBtn.addEventListener('click', () => {
     const correctVal = parseInt(newQCorrect.value);
     const pts = parseFloat(newQPoints.value);
 
+    const subjectVal = newQSubject.value;
+
     if (!text || !o0 || !o1 || !o2 || !o3 || isNaN(pts) || pts <= 0) {
         alert(t('alertFields'));
         return;
     }
 
     questions.push({
+        subject: subjectVal,
         question: text,
         options: [o0, o1, o2, o3],
         correct: correctVal,
@@ -399,7 +457,8 @@ wordUploadBtn.addEventListener('click', () => {
         mammoth.extractRawText({ arrayBuffer: arrayBuffer })
             .then(function(result) {
                 const text = result.value;
-                parseQuestionsFromText(text);
+                const subj = wordQSubject.value;
+                parseQuestionsFromText(text, subj);
             })
             .catch(function(err) {
                 console.error(err);
@@ -480,7 +539,7 @@ downloadQrBtn.addEventListener('click', () => {
 
 
 // --- Word .docx Parsing Engine ---
-function parseQuestionsFromText(rawText) {
+function parseQuestionsFromText(rawText, subj) {
     // Normalise text spacing and split by lines
     const lines = rawText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
     
@@ -497,6 +556,7 @@ function parseQuestionsFromText(rawText) {
                 validateAndPushQuestion(currentQ, importedQuestions);
             }
             currentQ = {
+                subject: subj,
                 question: questionMatch[2],
                 options: [],
                 correct: -1,
@@ -558,7 +618,7 @@ function renderQuestionsList() {
         div.className = 'q-item';
         div.innerHTML = `
             <div class="q-info">
-                <div class="q-text">${index + 1}. ${q.question} <span style="color: var(--accent-color);">(${q.points || 1} ${t('quizInfoPoints')})</span></div>
+                <div class="q-text"><span style="background: rgba(139, 92, 246, 0.2); padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; margin-right: 5px;">${q.subject || 'Noma\'lum'}</span> ${index + 1}. ${q.question} <span style="color: var(--accent-color);">(${q.points || 1} ${t('quizInfoPoints')})</span></div>
                 <div class="q-answer-check">${t('lblCorrect')} ${q.options[q.correct]}</div>
             </div>
             <button class="danger-btn" onclick="deleteQuestion(${index})">${t('btnDelete')}</button>
@@ -612,6 +672,7 @@ function renderResultsTable(classFilter = 'all', quarterFilter = 'all') {
         tr.innerHTML = `
             <td><strong>${res.name}</strong></td>
             <td>${res.classGroup || t('unknown')}</td>
+            <td>${res.subject || '-'}</td>
             <td><strong>${res.score} / ${res.totalPossible}</strong></td>
             <td>${res.percentage}%</td>
             <td>${res.time}</td>
@@ -692,12 +753,13 @@ function exportResultsToCSV() {
     }
 
     let csvContent = "\uFEFF";
-    csvContent += `"${t('thName')}","${t('thClass')}","${t('thScore')}","Maksimal ball","${t('thPercent')}","${t('timeSpent')}","${t('thBlocks')}"\n`;
+    csvContent += `"${t('thName')}","${t('thClass')}","${t('thSubject')}","${t('thScore')}","Maksimal ball","${t('thPercent')}","${t('timeSpent')}","${t('thBlocks')}"\n`;
 
     results.forEach(res => {
         const cleanName = res.name.replace(/,/g, ' ');
         const cleanClass = (res.classGroup || '').replace(/,/g, ' ');
-        csvContent += `"${cleanName}","${cleanClass}",${res.score},${res.totalPossible},${res.percentage}%,${res.time},${res.blocks}\n`;
+        const cleanSubj = (res.subject || '').replace(/,/g, ' ');
+        csvContent += `"${cleanName}","${cleanClass}","${cleanSubj}",${res.score},${res.totalPossible},${res.percentage}%,${res.time},${res.blocks}\n`;
     });
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -762,8 +824,8 @@ function parseTimeToSeconds(timeStr) {
 function startQuiz() {
     authScreen.classList.add('hidden');
     quizScreen.classList.remove('hidden');
-    studentDisplay.textContent = `${studentName} (${studentClass})`;
-    totalQuestionsSpan.textContent = questions.length;
+    studentDisplay.textContent = `${studentName} (${studentClass}) - ${studentSubject}`;
+    totalQuestionsSpan.textContent = currentQuizQuestions.length;
     currentQuestionIndex = 0;
     totalUserPoints = 0;
     studentAnswers = [];
@@ -779,12 +841,12 @@ function startQuiz() {
 }
 
 function loadQuestion() {
-    const q = questions[currentQuestionIndex];
+    const q = currentQuizQuestions[currentQuestionIndex];
     questionText.textContent = q.question;
     optionsContainer.innerHTML = '';
     nextBtn.classList.add('hidden');
     
-    const progress = (currentQuestionIndex / questions.length) * 100;
+    const progress = (currentQuestionIndex / currentQuizQuestions.length) * 100;
     progressBar.style.width = `${progress}%`;
     currentQuestionNum.textContent = currentQuestionIndex + 1;
     questionPointsDisplay.textContent = q.points || 1;
@@ -803,7 +865,7 @@ function selectOption(index, element) {
     options.forEach(opt => opt.classList.remove('selected'));
     element.classList.add('selected');
     nextBtn.classList.remove('hidden');
-    element.dataset.correct = (index === questions[currentQuestionIndex].correct);
+    element.dataset.correct = (index === currentQuizQuestions[currentQuestionIndex].correct);
     
     // Temporarily store selection index
     element.dataset.index = index;
@@ -818,7 +880,7 @@ nextBtn.onclick = () => {
 
     // Audio confirmation feedback
     if (selected.dataset.correct === "true") {
-        const currentPoints = parseFloat(questions[currentQuestionIndex].points) || 1.0;
+        const currentPoints = parseFloat(currentQuizQuestions[currentQuestionIndex].points) || 1.0;
         totalUserPoints += currentPoints;
         playSound('correct');
     } else {
@@ -826,7 +888,7 @@ nextBtn.onclick = () => {
     }
     
     currentQuestionIndex++;
-    if (currentQuestionIndex < questions.length) {
+    if (currentQuestionIndex < currentQuizQuestions.length) {
         loadQuestion();
     } else {
         finishQuiz();
@@ -848,12 +910,12 @@ function startTimer() {
             if (selected) {
                 studentAnswers.push(parseInt(selected.dataset.index));
                 if (selected.dataset.correct === "true") {
-                    const currentPoints = parseFloat(questions[currentQuestionIndex].points) || 1.0;
+                    const currentPoints = parseFloat(currentQuizQuestions[currentQuestionIndex].points) || 1.0;
                     totalUserPoints += currentPoints;
                 }
-            } else if (studentAnswers.length < questions.length) {
+            } else if (studentAnswers.length < currentQuizQuestions.length) {
                 // Fill remaining unanswered as -1
-                while (studentAnswers.length < questions.length) {
+                while (studentAnswers.length < currentQuizQuestions.length) {
                     studentAnswers.push(-1);
                 }
             }
@@ -893,7 +955,7 @@ function finishQuiz() {
     resultScreen.classList.remove('hidden');
     
     let maxPossiblePoints = 0;
-    questions.forEach(q => {
+    currentQuizQuestions.forEach(q => {
         maxPossiblePoints += parseFloat(q.points) || 1.0;
     });
 
@@ -921,6 +983,7 @@ function finishQuiz() {
     const studentResult = {
         name: studentName,
         classGroup: studentClass,
+        subject: studentSubject,
         score: totalUserPoints.toFixed(1),
         totalPossible: maxPossiblePoints.toFixed(1),
         percentage: percentage,
@@ -956,7 +1019,7 @@ function renderErrorReview() {
     errorReviewList.innerHTML = "";
     let errorsCount = 0;
 
-    questions.forEach((q, index) => {
+    currentQuizQuestions.forEach((q, index) => {
         const userChoice = studentAnswers[index];
         if (userChoice !== q.correct) {
             errorsCount++;
@@ -990,6 +1053,7 @@ function sendTelegramNotification(res) {
 
 👤 *${t('studentLabel')}* ${res.name}
 🏫 *${t('thClass')}:* ${res.classGroup}
+📘 *${t('thSubject')}:* ${res.subject}
 🎯 *${t('thScore')}:* ${res.score} / ${res.totalPossible} (${res.percentage}%)
 ⏳ *${t('timeSpent')}* ${res.time}
 ⚠️ *${t('violations')}* ${res.blocks} ${t('times')}
@@ -1171,6 +1235,79 @@ function exitFullscreen() {
     if (document.exitFullscreen) {
         document.exitFullscreen().catch(() => {});
     }
+}
+
+// --- Gemini AI Pedagogical Analysis ---
+geminiAnalyzeBtn.addEventListener('click', analyzeResultsWithGemini);
+
+async function analyzeResultsWithGemini() {
+    if (!geminiApiKey) {
+        alert(t('alertGeminiNoKey'));
+        setTabActive(tabSettingsBtn, tabSettings);
+        document.getElementById('gemini-api-key').focus();
+        return;
+    }
+
+    if (results.length === 0) {
+        alert(t('noResults'));
+        return;
+    }
+
+    geminiAnalyzeBtn.disabled = true;
+    geminiAnalysisOutput.classList.remove('hidden');
+    geminiAnalysisOutput.innerHTML = `
+        <div style="text-align: center;">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px; color: #8b5cf6;">${t('geminiLoading')}</p>
+        </div>
+    `;
+
+    const compressedResults = results.map(r => ({
+        n: r.name,
+        c: r.classGroup,
+        s: r.subject,
+        p: r.percentage,
+        b: r.blocks
+    }));
+
+    const promptText = `Sen professional maktab psixologi va tajribali pedagogsan. Quyidagi test natijalarini tahlil qil. Qaysi sinf va fanlarda o'zlashtirish past yoki yuqori? Qaysi o'quvchilarda akademik pasayish xavfi bor? Taqiq buzilishi (ko'chirish) holatlari bo'yicha qanday choralar ko'rish kerak? O'qituvchilar va maktab rahbariyati uchun aniq punktma-punkt pedagogik tavsiyalar ber. Javobni Markdown formatida, chiroyli va o'qishga qulay qilib yozgin. Natijalar: ${JSON.stringify(compressedResults)}`;
+
+    try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: promptText }] }]
+            })
+        });
+
+        if (!response.ok) throw new Error('API Error: ' + response.status);
+
+        const data = await response.json();
+        const aiText = data.candidates[0].content.parts[0].text;
+        
+        geminiAnalysisOutput.innerHTML = parseMarkdownToHtml(aiText);
+    } catch (err) {
+        console.error(err);
+        geminiAnalysisOutput.innerHTML = `<p style="color: var(--error-color);">Xatolik yuz berdi: ${err.message}. API kalitingiz to'g'riligiga ishonch hosil qiling.</p>`;
+    } finally {
+        geminiAnalyzeBtn.disabled = false;
+    }
+}
+
+function parseMarkdownToHtml(md) {
+    let html = md;
+    html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+    html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+    html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+    html = html.replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>');
+    html = html.replace(/\*(.*)\*/gim, '<em>$1</em>');
+    html = html.replace(/^\* (.*$)/gim, '<ul><li>$1</li></ul>');
+    html = html.replace(/<\/ul>\n<ul>/gim, '\n');
+    html = html.replace(/^\d+\. (.*$)/gim, '<ol><li>$1</li></ol>');
+    html = html.replace(/<\/ol>\n<ol>/gim, '\n');
+    html = html.replace(/\n/g, '<br>');
+    return html;
 }
 
 // Launch app

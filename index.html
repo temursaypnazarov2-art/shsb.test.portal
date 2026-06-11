@@ -40,7 +40,40 @@
                         <input type="text" id="student-name" placeholder="F.I.SH." autocomplete="off" data-i18n-placeholder="namePlaceholder">
                     </div>
                     <div class="input-group">
-                        <input type="text" id="student-class" placeholder="Sinf / Guruh (Masalan: 9-A, 11-B)" autocomplete="off" data-i18n-placeholder="classPlaceholder">
+                        <select id="student-class">
+                            <option value="" disabled selected data-i18n="classPlaceholder">Sinfni tanlang</option>
+                            <option value="5-A">5-A</option>
+                            <option value="5-B">5-B</option>
+                            <option value="5-V">5-V</option>
+                            <option value="6-A">6-A</option>
+                            <option value="6-B">6-B</option>
+                            <option value="7-A">7-A</option>
+                            <option value="7-B">7-B</option>
+                            <option value="8-A">8-A</option>
+                            <option value="8-B">8-B</option>
+                            <option value="9-A">9-A</option>
+                            <option value="9-B">9-B</option>
+                            <option value="10-A">10-A</option>
+                            <option value="10-B">10-B</option>
+                            <option value="11-A">11-A</option>
+                            <option value="11-B">11-B</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <select id="student-subject">
+                            <option value="" disabled selected data-i18n="subjectPlaceholder">Fanni tanlang</option>
+                            <option value="Ona tili" data-i18n="subjOnaTili">Ona tili</option>
+                            <option value="Matematika" data-i18n="subjMatematika">Matematika</option>
+                            <option value="Fizika" data-i18n="subjFizika">Fizika</option>
+                            <option value="Kimyo" data-i18n="subjKimyo">Kimyo</option>
+                            <option value="Biologiya" data-i18n="subjBiologiya">Biologiya</option>
+                            <option value="Tarix" data-i18n="subjTarix">Tarix</option>
+                            <option value="Huquq" data-i18n="subjHuquq">Huquq</option>
+                            <option value="Informatika" data-i18n="subjInformatika">Informatika</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="quiz-pin" placeholder="O'qituvchi bergan maxsus kodni kiriting" autocomplete="off" data-i18n-placeholder="pinPlaceholder">
                     </div>
                     <button id="start-btn" class="primary-btn" data-i18n="startBtn">Testni Boshlash</button>
                     
@@ -108,6 +141,19 @@
                         <!-- Left: Manual Add Question -->
                         <div class="add-question-section">
                             <h3 data-i18n="manualAddTitle">Yangi savol qo'shish (Qo'lda)</h3>
+                            <div class="form-group" style="margin-bottom: 10px;">
+                                <label style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 5px; display: block;">Fanni tanlang:</label>
+                                <select id="new-q-subject">
+                                    <option value="Ona tili" data-i18n="subjOnaTili">Ona tili</option>
+                                    <option value="Matematika" data-i18n="subjMatematika">Matematika</option>
+                                    <option value="Fizika" data-i18n="subjFizika">Fizika</option>
+                                    <option value="Kimyo" data-i18n="subjKimyo">Kimyo</option>
+                                    <option value="Biologiya" data-i18n="subjBiologiya">Biologiya</option>
+                                    <option value="Tarix" data-i18n="subjTarix">Tarix</option>
+                                    <option value="Huquq" data-i18n="subjHuquq">Huquq</option>
+                                    <option value="Informatika" data-i18n="subjInformatika">Informatika</option>
+                                </select>
+                            </div>
                             <div class="form-group">
                                 <input type="text" id="new-q-text" placeholder="Savol matni" data-i18n-placeholder="qTextPlaceholder">
                             </div>
@@ -147,6 +193,19 @@ C) Variant 3
 D) Variant 4
 To'g'ri javob: B
                             </pre>
+                            <div class="form-group" style="margin-bottom: 15px;">
+                                <label style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 5px; display: block;">Savollar qaysi fanga tegishli?</label>
+                                <select id="word-q-subject">
+                                    <option value="Ona tili" data-i18n="subjOnaTili">Ona tili</option>
+                                    <option value="Matematika" data-i18n="subjMatematika">Matematika</option>
+                                    <option value="Fizika" data-i18n="subjFizika">Fizika</option>
+                                    <option value="Kimyo" data-i18n="subjKimyo">Kimyo</option>
+                                    <option value="Biologiya" data-i18n="subjBiologiya">Biologiya</option>
+                                    <option value="Tarix" data-i18n="subjTarix">Tarix</option>
+                                    <option value="Huquq" data-i18n="subjHuquq">Huquq</option>
+                                    <option value="Informatika" data-i18n="subjInformatika">Informatika</option>
+                                </select>
+                            </div>
                             <div class="file-input-wrapper">
                                 <input type="file" id="word-file-input" accept=".docx">
                                 <button id="word-upload-btn" class="success-btn" data-i18n="btnImport">Savollarni import qilish</button>
@@ -171,7 +230,21 @@ To'g'ri javob: B
                             <label for="filter-class" data-i18n="lblFilterClass">Sinf bo'yicha filter:</label>
                             <select id="filter-class">
                                 <option value="all" data-i18n="filterAll">Barchasi</option>
-                                <!-- Dynamically filled with unique classes -->
+                                <option value="5-A">5-A</option>
+                                <option value="5-B">5-B</option>
+                                <option value="5-V">5-V</option>
+                                <option value="6-A">6-A</option>
+                                <option value="6-B">6-B</option>
+                                <option value="7-A">7-A</option>
+                                <option value="7-B">7-B</option>
+                                <option value="8-A">8-A</option>
+                                <option value="8-B">8-B</option>
+                                <option value="9-A">9-A</option>
+                                <option value="9-B">9-B</option>
+                                <option value="10-A">10-A</option>
+                                <option value="10-B">10-B</option>
+                                <option value="11-A">11-A</option>
+                                <option value="11-B">11-B</option>
                             </select>
 
                             <label for="filter-quarter" data-i18n="lblFilterQuarter">Chorak:</label>
@@ -233,6 +306,7 @@ To'g'ri javob: B
                                 <tr>
                                     <th data-i18n="thName">F.I.SH.</th>
                                     <th data-i18n="thClass">Sinf</th>
+                                    <th data-i18n="thSubject">Fan</th>
                                     <th data-i18n="thScore">To'plangan ball</th>
                                     <th data-i18n="thPercent">Foiz</th>
                                     <th data-i18n="thTime">Sarflangan vaqt</th>
@@ -243,6 +317,16 @@ To'g'ri javob: B
                                 <!-- Injected results -->
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Gemini AI Integration -->
+                    <div class="gemini-section" style="margin-top: 20px;">
+                        <button id="gemini-analyze-btn" class="gemini-btn">
+                            <span style="font-size: 1.2rem;">✨</span> <span data-i18n="btnGeminiAnalyze">Gemini AI yordamida chuqur pedagogik tahlil</span>
+                        </button>
+                        <div id="gemini-analysis-output" class="gemini-output hidden">
+                            <!-- Output will be injected here -->
+                        </div>
                     </div>
                 </div>
 
@@ -267,6 +351,30 @@ To'g'ri javob: B
                         <div class="settings-group">
                             <label for="tg-chat-id" data-i18n="lblTgChatId">Telegram Chat ID (Guruh yoki shaxsiy ID):</label>
                             <input type="text" id="tg-chat-id" placeholder="Masalan: -10012345678 yoki 98765432" autocomplete="off">
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3 data-i18n="settingsPinsTitle">Fanlar va PIN-kodlar</h3>
+                        <p class="settings-hint" data-i18n="settingsPinsHint">O'quvchilar testni boshlashi uchun har bir fanga maxsus PIN-kod o'rnating.</p>
+                        <div class="subject-pin-settings">
+                            <div class="settings-group"><label>Ona tili:</label><input type="password" id="pin-onatili" placeholder="PIN-kod"></div>
+                            <div class="settings-group"><label>Matematika:</label><input type="password" id="pin-matematika" placeholder="PIN-kod"></div>
+                            <div class="settings-group"><label>Fizika:</label><input type="password" id="pin-fizika" placeholder="PIN-kod"></div>
+                            <div class="settings-group"><label>Kimyo:</label><input type="password" id="pin-kimyo" placeholder="PIN-kod"></div>
+                            <div class="settings-group"><label>Biologiya:</label><input type="password" id="pin-biologiya" placeholder="PIN-kod"></div>
+                            <div class="settings-group"><label>Tarix:</label><input type="password" id="pin-tarix" placeholder="PIN-kod"></div>
+                            <div class="settings-group"><label>Huquq:</label><input type="password" id="pin-huquq" placeholder="PIN-kod"></div>
+                            <div class="settings-group"><label>Informatika:</label><input type="password" id="pin-informatika" placeholder="PIN-kod"></div>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3 data-i18n="settingsGeminiTitle">Gemini AI Sozlamalari</h3>
+                        <p class="settings-hint" data-i18n="settingsGeminiHint">Pedagogik tahlil o'tkazish uchun Google Gemini API kalitini kiriting.</p>
+                        <div class="settings-group">
+                            <label for="gemini-api-key" data-i18n="lblGeminiKey">Gemini AI API Kaliti:</label>
+                            <input type="password" id="gemini-api-key" placeholder="AIzaSy..." autocomplete="off">
                         </div>
                     </div>
 
