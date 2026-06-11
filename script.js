@@ -60,6 +60,10 @@ let subjectPins = JSON.parse(localStorage.getItem('quiz_subject_pins')) || {
     "Ona tili": "", "Matematika": "", "Fizika": "", "Kimyo": "",
     "Biologiya": "", "Tarix": "", "Huquq": "", "Informatika": ""
 };
+let subjectDurations = JSON.parse(localStorage.getItem('quiz_subject_durations')) || {
+    "Ona tili": 20, "Matematika": 20, "Fizika": 20, "Kimyo": 20,
+    "Biologiya": 20, "Tarix": 20, "Huquq": 20, "Informatika": 20
+};
 let teacherTokens = JSON.parse(localStorage.getItem('quiz_teacher_tokens')) || [];
 let geminiApiKey = localStorage.getItem('gemini_api_key') || "";
 let showAnswersToStudent = localStorage.getItem('quiz_show_answers') === 'true';
@@ -80,14 +84,18 @@ function saveSettings(duration, token, chatId) {
     localStorage.setItem('tg_bot_token', tgBotToken);
     localStorage.setItem('tg_chat_id', tgChatId);
 
-    // Save PINs
+    // Save PINs & Durations
     const pinIds = ['pin-onatili', 'pin-matematika', 'pin-fizika', 'pin-kimyo', 'pin-biologiya', 'pin-tarix', 'pin-huquq', 'pin-informatika'];
+    const durIds = ['dur-onatili', 'dur-matematika', 'dur-fizika', 'dur-kimyo', 'dur-biologiya', 'dur-tarix', 'dur-huquq', 'dur-informatika'];
     const subjs = ["Ona tili", "Matematika", "Fizika", "Kimyo", "Biologiya", "Tarix", "Huquq", "Informatika"];
     pinIds.forEach((id, index) => {
         const el = document.getElementById(id);
+        const durEl = document.getElementById(durIds[index]);
         if (el) subjectPins[subjs[index]] = el.value.trim();
+        if (durEl) subjectDurations[subjs[index]] = parseInt(durEl.value) || 20;
     });
     localStorage.setItem('quiz_subject_pins', JSON.stringify(subjectPins));
+    localStorage.setItem('quiz_subject_durations', JSON.stringify(subjectDurations));
 
     // Save Gemini Key
     const gKeyEl = document.getElementById('gemini-api-key');
@@ -96,19 +104,14 @@ function saveSettings(duration, token, chatId) {
         localStorage.setItem('gemini_api_key', geminiApiKey);
     }
 
-    // Save showAnswers preference
-    const showAnsEl = document.getElementById('toggle-show-answers');
-    if (showAnsEl) {
-        showAnswersToStudent = showAnsEl.checked;
-        localStorage.setItem('quiz_show_answers', showAnswersToStudent);
-    }
+    showAnswersToStudent = document.getElementById('toggle-show-answers').checked;
+    localStorage.setItem('quiz_show_answers', showAnswersToStudent);
 }
-
 function saveTeacherTokens() {
     localStorage.setItem('quiz_teacher_tokens', JSON.stringify(teacherTokens));
 }
 
-// App State
+// State variables
 let currentQuestionIndex = 0;
 let totalUserPoints = 0;
 let studentName = "";
@@ -133,11 +136,14 @@ const authScreen = document.getElementById('auth-screen');
 const quizScreen = document.getElementById('quiz-screen');
 const resultScreen = document.getElementById('result-screen');
 const adminPanel = document.getElementById('admin-panel');
-const adminAuthModal = document.getElementById('admin-auth-modal');
 const lockScreen = document.getElementById('lock-screen');
 const toastAlert = document.getElementById('toast');
 
 // Auth Screen Elements
+const studentLoginSection = document.getElementById('student-login-section');
+const adminLoginSection = document.getElementById('admin-login-section');
+const backToStudentBtn = document.getElementById('back-to-student-btn');
+
 const studentNameInput = document.getElementById('student-name');
 const studentClassInput = document.getElementById('student-class');
 const studentSubjectInput = document.getElementById('student-subject');
@@ -146,10 +152,9 @@ const startBtn = document.getElementById('start-btn');
 const adminLoginBtn = document.getElementById('admin-login-btn');
 const leaderboardBody = document.getElementById('leaderboard-body');
 
-// Admin Auth Modal Elements
+// Admin Auth Elements
 const adminPortalPassInput = document.getElementById('admin-portal-pass');
 const adminAuthSubmit = document.getElementById('admin-auth-submit');
-const adminAuthCancel = document.getElementById('admin-auth-cancel');
 const adminAuthError = document.getElementById('admin-auth-error');
 
 // Admin Panel Elements
@@ -164,18 +169,27 @@ const tabResults = document.getElementById('tab-results');
 const tabSettings = document.getElementById('tab-settings');
 const tabQrcode = document.getElementById('tab-qrcode');
 const tabSecurity = document.getElementById('tab-security');
+
+// Teacher Specific UI
+const teacherPinSetter = document.getElementById('teacher-pin-setter');
+const teacherSubjectPin = document.getElementById('teacher-subject-pin');
+const teacherSubjectDuration = document.getElementById('teacher-subject-duration');
+const saveTeacherPinBtn = document.getElementById('save-teacher-pin-btn');
+const teacherTimerBanner = document.getElementById('teacher-timer-banner');
+const teacherTimerText = document.getElementById('teacher-timer-text');
+let teacherTimerInterval = null;
+
 const addQBtn = document.getElementById('add-q-btn');
+const saveSettingsBtn = document.getElementById('save-settings-btn');
+const saveApiBtn = document.getElementById('save-api-btn');
 const clearResultsBtn = document.getElementById('clear-results-btn');
 const exportExcelBtn = document.getElementById('export-excel-btn');
-const testDurationInput = document.getElementById('test-duration-input');
-const saveSettingsBtn = document.getElementById('save-settings-btn');
 const filterClass = document.getElementById('filter-class');
-const filterQuarter = document.getElementById('filter-quarter');
-const statsPanel = document.getElementById('stats-panel');
-const statValTotal = document.getElementById('stat-val-total');
-const statValAvg = document.getElementById('stat-val-avg');
-const statValQuality = document.getElementById('stat-val-quality');
-const comparisonPanel = document.getElementById('comparison-panel');
+
+// Settings Inputs
+const testDurationInput = document.getElementById('quiz-duration');
+
+// AI Analysis Elements
 const compQ1 = document.getElementById('comp-q1');
 const compQ2 = document.getElementById('comp-q2');
 const analyzeBtn = document.getElementById('analyze-btn');
@@ -247,13 +261,18 @@ function init() {
     tgBotTokenInput.value = tgBotToken;
     tgChatIdInput.value = tgChatId;
 
-    // Load PINs and Gemini Key to inputs
+    // Load PINs, Durations, and Gemini Key to inputs
     const pinIds = ['pin-onatili', 'pin-matematika', 'pin-fizika', 'pin-kimyo', 'pin-biologiya', 'pin-tarix', 'pin-huquq', 'pin-informatika'];
+    const durIds = ['dur-onatili', 'dur-matematika', 'dur-fizika', 'dur-kimyo', 'dur-biologiya', 'dur-tarix', 'dur-huquq', 'dur-informatika'];
     const subjs = ["Ona tili", "Matematika", "Fizika", "Kimyo", "Biologiya", "Tarix", "Huquq", "Informatika"];
     pinIds.forEach((id, index) => {
         const el = document.getElementById(id);
+        const durEl = document.getElementById(durIds[index]);
         if (el && subjectPins[subjs[index]]) {
             el.value = subjectPins[subjs[index]];
+        }
+        if (durEl && subjectDurations[subjs[index]]) {
+            durEl.value = subjectDurations[subjs[index]];
         }
     });
     const gKeyEl = document.getElementById('gemini-api-key');
@@ -269,27 +288,20 @@ function init() {
     setupAntiCheat();
 }
 
-
 // --- Anti-Cheat (Anti-Inspect & Key Blockers) ---
 function setupAntiCheat() {
-    document.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        triggerToast();
-    });
-
-    document.addEventListener('keydown', (e) => {
-        if (
-            e.key === 'F12' ||
-            (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j')) ||
-            (e.ctrlKey && (e.key === 'U' || e.key === 'u'))
-        ) {
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    document.addEventListener('keydown', e => {
+        if (e.key === 'F12' ||
+            (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+            (e.ctrlKey && e.key === 'U')) {
             e.preventDefault();
-            triggerToast();
         }
     });
 }
 
-function triggerToast() {
+function showToast(message) {
+    toastAlert.textContent = message;
     toastAlert.classList.remove('hidden');
     clearTimeout(toastTimeout);
     toastTimeout = setTimeout(() => {
@@ -297,196 +309,57 @@ function triggerToast() {
     }, 3000);
 }
 
-
-// --- Web Audio API Synthesizer ---
-function initAudio() {
-    if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-}
-
+// Generate sound safely
 function playSound(type) {
     try {
-        initAudio();
-        if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
-
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
         if (type === 'correct') {
-            // High double-beep
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-            osc.frequency.setValueAtTime(1000, audioCtx.currentTime + 0.1);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.25);
-        } else if (type === 'incorrect') {
-            // Low buzz
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(120, audioCtx.currentTime);
-            osc.frequency.linearRampToValueAtTime(80, audioCtx.currentTime + 0.35);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.35);
-        } else if (type === 'warning') {
-            // Fast alarm double-beep
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.15);
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+            oscillator.frequency.exponentialRampToValueAtTime(880.00, audioCtx.currentTime + 0.1); // A5
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.5);
+        } else if (type === 'wrong') {
+            oscillator.type = 'sawtooth';
+            oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.3);
+        } else if (type === 'start') {
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(440, audioCtx.currentTime); // A4
+            oscillator.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); // E5
+            gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.4);
         }
     } catch (e) {
-        console.warn("Audio Context error: ", e);
+        console.log('Audio error:', e);
     }
 }
 
-
-// --- Event Listeners ---
-
-// Save Settings
-saveSettingsBtn.addEventListener('click', () => {
-    const durationVal = parseInt(testDurationInput.value);
-    if (isNaN(durationVal) || durationVal < 1) {
-        alert(t('alertDuration'));
-        return;
-    }
-    saveSettings(durationVal, tgBotTokenInput.value.trim(), tgChatIdInput.value.trim());
-    alert(t('alertSaved'));
-});
-
-// Security Settings
-if (toggleShowAnswers) {
-    toggleShowAnswers.addEventListener('change', (e) => {
-        showAnswersToStudent = e.target.checked;
-        localStorage.setItem('quiz_show_answers', showAnswersToStudent);
-    });
-}
-
-// Teacher Token Generation
-if (generateTokenBtn) {
-    generateTokenBtn.addEventListener('click', () => {
-        const name = teacherNameInput.value.trim();
-        if (!name) {
-            alert("O'qituvchi ismini kiriting!");
-            return;
-        }
-        const subject = teacherSubjectSelect.value;
-        const expireType = teacherExpireSelect.value;
-
-        // Generate random 6 char token
-        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-        let token = "";
-        for (let i = 0; i < 6; i++) {
-            token += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-
-        let durationMs = 0;
-        if (expireType === '2h') durationMs = 2 * 60 * 60 * 1000;
-        else if (expireType === '1d') durationMs = 24 * 60 * 60 * 1000;
-        else if (expireType === '1w') durationMs = 7 * 24 * 60 * 60 * 1000;
-        else if (expireType === '1m') durationMs = 30 * 24 * 60 * 60 * 1000;
-
-        const expireAt = Date.now() + durationMs;
-
-        teacherTokens.push({ name, subject, token, expireAt });
-        saveTeacherTokens();
-        renderTeacherTokens();
-
-        teacherNameInput.value = "";
-    });
-}
-
-function renderTeacherTokens() {
-    if (!teacherTokensList) return;
-    teacherTokensList.innerHTML = "";
-
-    // Auto-remove expired tokens
-    const now = Date.now();
-    let updated = false;
-    teacherTokens = teacherTokens.filter(t => {
-        if (now > t.expireAt) {
-            updated = true;
-            return false;
-        }
-        return true;
-    });
-    if (updated) saveTeacherTokens();
-
-    teacherTokens.forEach(t => {
-        const tr = document.createElement('tr');
-        const expireDate = new Date(t.expireAt).toLocaleString('uz-UZ', { dateStyle: 'short', timeStyle: 'short' });
-
-        tr.innerHTML = `
-            <td>${t.name}</td>
-            <td><span class="subject-badge">${t.subject}</span></td>
-            <td><strong style="color: var(--accent-color); font-family: monospace; font-size: 1.1rem; letter-spacing: 2px;">${t.token}</strong></td>
-            <td style="color: var(--error-color);">${expireDate}</td>
-            <td><button class="danger-btn" onclick="deleteTeacherToken('${t.token}')" style="padding: 5px 10px; font-size: 0.8rem;">O'chirish</button></td>
-        `;
-        teacherTokensList.appendChild(tr);
-    });
-}
-
-window.deleteTeacherToken = function (token) {
-    if (confirm("Ushbu parolni o'chirishni tasdiqlaysizmi?")) {
-        teacherTokens = teacherTokens.filter(t => t.token !== token);
-        saveTeacherTokens();
-        renderTeacherTokens();
-    }
-}
-
-// Student Start Quiz
-startBtn.addEventListener('click', () => {
-    const name = studentNameInput.value.trim();
-    const classGroup = studentClassInput.value.trim();
-    const subject = studentSubjectInput.value;
-    const pin = quizPinInput.value.trim();
-
-    if (name.length < 3 || classGroup.length < 1 || !subject) {
-        alert(t('alertDetails'));
-        return;
-    }
-
-    // Verify PIN for the subject
-    const correctPin = subjectPins[subject];
-    if (correctPin && pin !== correctPin) {
-        alert(t('alertWrongPin'));
-        return;
-    }
-
-    currentQuizQuestions = questions.filter(q => q.subject === subject);
-    if (currentQuizQuestions.length === 0) {
-        alert(t('alertNoQuestions'));
-        return;
-    }
-
-    studentName = name;
-    studentClass = classGroup;
-    studentSubject = subject;
-    blockCount = 0;
-    studentAnswers = [];
-    startQuiz();
-});
-
-// Admin Panel Modal Actions
+// --- Auth Transitions ---
 adminLoginBtn.addEventListener('click', () => {
-    adminAuthModal.classList.remove('hidden');
+    studentLoginSection.classList.add('hidden');
+    adminLoginSection.classList.remove('hidden');
     adminPortalPassInput.value = "";
     adminAuthError.classList.add('hidden');
     adminPortalPassInput.focus();
 });
 
-adminAuthCancel.addEventListener('click', () => {
-    adminAuthModal.classList.add('hidden');
+backToStudentBtn.addEventListener('click', () => {
+    adminLoginSection.classList.add('hidden');
+    studentLoginSection.classList.remove('hidden');
 });
 
 adminAuthSubmit.addEventListener('click', handleAdminAuth);
@@ -494,1187 +367,1112 @@ adminPortalPassInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') handleAdminAuth();
 });
 
+// --- Admin / Teacher Authentication ---
 function handleAdminAuth() {
-    const enteredPass = adminPortalPassInput.value.trim();
-    const correctPassword = atob(HASHED_ADMIN_PASS);
+    const inputPass = adminPortalPassInput.value.trim();
+    if (!inputPass) return;
 
-    let isMasterAdmin = (enteredPass === correctPassword);
-    let teacherTokenData = teacherTokens.find(t => t.token === enteredPass);
-
-    if (isMasterAdmin) {
-        currentTeacherSession = null;
+    // Check if full admin
+    if (btoa(inputPass) === HASHED_ADMIN_PASS) {
+        currentTeacherSession = null; // Full Admin
         openAdminPanelUI();
-    } else if (teacherTokenData) {
-        if (Date.now() > teacherTokenData.expireAt) {
-            alert(t('alertTokenExpired') || "Ushbu parolning amal qilish muddati tugagan!");
-            return;
-        }
-        currentTeacherSession = teacherTokenData;
-        openAdminPanelUI();
-    } else {
-        adminAuthError.classList.remove('hidden');
-        adminPortalPassInput.value = "";
+        return;
     }
+
+    // Check if Teacher Token
+    const now = new Date().getTime();
+    const tokenObj = teacherTokens.find(t => t.token === inputPass && t.expireAt > now);
+    if (tokenObj) {
+        currentTeacherSession = tokenObj;
+        openAdminPanelUI();
+        return;
+    }
+
+    // Auth Failed
+    adminAuthError.classList.remove('hidden');
+    playSound('wrong');
 }
 
 function openAdminPanelUI() {
-    adminAuthModal.classList.add('hidden');
+    adminLoginSection.classList.add('hidden');
     authScreen.classList.add('hidden');
     adminPanel.classList.remove('hidden');
     testDurationInput.value = quizDuration;
-    tgBotTokenInput.value = tgBotToken;
-    tgChatIdInput.value = tgChatId;
 
-    // Apply Teacher Mode Restrictions
+    // Default open Questions tab
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+    tabQuestionsBtn.classList.add('active');
+    tabQuestions.classList.remove('hidden');
+
     if (currentTeacherSession) {
+        // Teacher Mode: Hide unauthorized sections
         tabSettingsBtn.classList.add('hidden');
-        tabSecurityBtn.classList.add('hidden');
         tabQrcodeBtn.classList.add('hidden');
+        tabSecurityBtn.classList.add('hidden');
+
+        // Hide specific elements inside visible tabs if needed
+        document.querySelector('.admin-header h2').textContent = `O'qituvchi Paneli: ${currentTeacherSession.subject}`;
+
+        // Show Teacher specific UI blocks
+        teacherTimerBanner.classList.remove('hidden');
+        teacherPinSetter.classList.remove('hidden');
         filterClass.value = 'all';
-        // Force the "New question" subject to be the teacher's subject and disable it
-        const newQSubject = document.getElementById('new-q-subject');
-        if (newQSubject) {
-            newQSubject.value = currentTeacherSession.subject;
-            newQSubject.disabled = true;
-        }
-        const wordQSubject = document.getElementById('word-q-subject');
-        if (wordQSubject) {
-            wordQSubject.value = currentTeacherSession.subject;
-            wordQSubject.disabled = true;
-        }
-        setTabActive(tabQuestionsBtn, tabQuestions);
+
+        // Start Teacher Timer
+        clearInterval(teacherTimerInterval);
+        updateTeacherTimer();
+        teacherTimerInterval = setInterval(updateTeacherTimer, 1000);
+
+        // Pre-fill Teacher PIN/Duration
+        teacherSubjectPin.value = subjectPins[currentTeacherSession.subject] || "";
+        teacherSubjectDuration.value = subjectDurations[currentTeacherSession.subject] || 20;
+
+        showToast(`Xush kelibsiz, ${currentTeacherSession.name}`);
     } else {
+        // Admin Mode: Ensure everything is visible
         tabSettingsBtn.classList.remove('hidden');
-        tabSecurityBtn.classList.remove('hidden');
         tabQrcodeBtn.classList.remove('hidden');
-        const newQSubject = document.getElementById('new-q-subject');
-        if (newQSubject) newQSubject.disabled = false;
-        const wordQSubject = document.getElementById('word-q-subject');
-        if (wordQSubject) wordQSubject.disabled = false;
+        tabSecurityBtn.classList.remove('hidden');
+        document.querySelector('.admin-header h2').textContent = "Boshqaruv Paneli (Admin)";
+
+        teacherTimerBanner.classList.add('hidden');
+        teacherPinSetter.classList.add('hidden');
+        clearInterval(teacherTimerInterval);
+
+        showToast("Admin paneliga kirdingiz!");
     }
 
     renderQuestionsList();
     renderResultsTable();
-    populateClassFilters();
+}
+
+function updateTeacherTimer() {
+    if (!currentTeacherSession) return;
+    const now = new Date().getTime();
+    const diff = currentTeacherSession.expireAt - now;
+
+    if (diff <= 0) {
+        clearInterval(teacherTimerInterval);
+        alert(t('timeUpAlert') || "Sizning vaqtinchalik ruxsatnomangiz o'z nihoyasiga yetdi!");
+        adminLogoutBtn.click();
+        return;
+    }
+
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    teacherTimerText.textContent = `${minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
 }
 
 adminLogoutBtn.addEventListener('click', () => {
     adminPanel.classList.add('hidden');
     authScreen.classList.remove('hidden');
+    adminLoginSection.classList.add('hidden');
+    studentLoginSection.classList.remove('hidden');
     currentTeacherSession = null;
+    clearInterval(teacherTimerInterval);
     renderLeaderboard();
 });
 
-// Admin Tab Switching
-tabQuestionsBtn.addEventListener('click', () => {
-    setTabActive(tabQuestionsBtn, tabQuestions);
-});
-tabResultsBtn.addEventListener('click', () => {
-    setTabActive(tabResultsBtn, tabResults);
-    renderResultsTable();
-});
-tabSettingsBtn.addEventListener('click', () => {
-    setTabActive(tabSettingsBtn, tabSettings);
-});
-tabQrcodeBtn.addEventListener('click', () => {
-    setTabActive(tabQrcodeBtn, tabQrcode);
-    generateQR();
-});
-tabSecurityBtn.addEventListener('click', () => {
-    setTabActive(tabSecurityBtn, tabSecurity);
+saveTeacherPinBtn.addEventListener('click', () => {
+    if (!currentTeacherSession) return;
+    const pin = teacherSubjectPin.value.trim();
+    const dur = parseInt(teacherSubjectDuration.value) || 20;
+    const subj = currentTeacherSession.subject;
+
+    subjectPins[subj] = pin;
+    subjectDurations[subj] = dur;
+
+    localStorage.setItem('quiz_subject_pins', JSON.stringify(subjectPins));
+    localStorage.setItem('quiz_subject_durations', JSON.stringify(subjectDurations));
+
+    alert(t('teacherPinSaved') || "Faningiz uchun sozlamalar muvaffaqiyatli saqlandi!");
 });
 
-function setTabActive(activeBtn, activeTab) {
-    [tabQuestionsBtn, tabResultsBtn, tabSettingsBtn, tabQrcodeBtn, tabSecurityBtn].forEach(b => b && b.classList.remove('active'));
-    [tabQuestions, tabResults, tabSettings, tabQrcode, tabSecurity].forEach(t => t && t.classList.add('hidden'));
+// --- Admin Tabs Logic ---
+const tabsMap = {
+    'tab-questions-btn': 'tab-questions',
+    'tab-results-btn': 'tab-results',
+    'tab-settings-btn': 'tab-settings',
+    'tab-qrcode-btn': 'tab-qrcode',
+    'tab-security-btn': 'tab-security'
+};
 
-    activeBtn.classList.add('active');
-    activeTab.classList.remove('hidden');
-}
-
-// Add Question Manually
-addQBtn.addEventListener('click', () => {
-    let subjectVal = newQSubject.value;
-    if (currentTeacherSession) subjectVal = currentTeacherSession.subject;
-
-    const text = newQText.value.trim();
-    const o0 = newQOpt0.value.trim();
-    const o1 = newQOpt1.value.trim();
-    const o2 = newQOpt2.value.trim();
-    const o3 = newQOpt3.value.trim();
-    const correct = parseInt(newQCorrect.value);
-    const pts = parseFloat(newQPoints.value);
-
-    if (!text || !o0 || !o1 || !o2 || !o3 || isNaN(pts) || pts <= 0) {
-        alert(t('alertFields'));
-        return;
-    }
-
-    questions.push({
-        subject: subjectVal,
-        question: text,
-        options: [o0, o1, o2, o3],
-        correct: correct,
-        points: pts
+Object.keys(tabsMap).forEach(btnId => {
+    document.getElementById(btnId).addEventListener('click', (e) => {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+        e.target.classList.add('active');
+        document.getElementById(tabsMap[btnId]).classList.remove('hidden');
+        if (btnId === 'tab-qrcode-btn') generateQR();
     });
-    saveQuestions();
-    renderQuestionsList();
-
-    // Reset Form
-    newQText.value = "";
-    newQOpt0.value = "";
-    newQOpt1.value = "";
-    newQOpt2.value = "";
-    newQOpt3.value = "";
-    newQPoints.value = "1.0";
-    alert(t('alertAdded'));
 });
 
-// Parse questions from Word .docx file
-wordUploadBtn.addEventListener('click', () => {
-    const file = wordFileInput.files[0];
-    if (!file) {
-        alert(t('alertSelectFile'));
+// --- Settings Form ---
+saveSettingsBtn.addEventListener('click', () => {
+    const dur = parseInt(testDurationInput.value);
+    const token = tgBotTokenInput.value.trim();
+    const chatId = tgChatIdInput.value.trim();
+
+    if (isNaN(dur) || dur < 1) {
+        alert(t('alertDuration'));
         return;
     }
 
-    const reader = new FileReader();
-    reader.onload = function (event) {
-        const arrayBuffer = event.target.result;
+    saveSettings(dur, token, chatId);
+    showToast(t('settingsSavedMsg'));
+});
 
-        // Mammoth.js reader
-        mammoth.extractRawText({ arrayBuffer: arrayBuffer })
-            .then(function (result) {
-                const text = result.value;
-                let subj = wordQSubject.value;
-                if (currentTeacherSession) subj = currentTeacherSession.subject;
-                parseQuestionsFromText(text, subj);
-            })
-            .catch(function (err) {
-                console.error(err);
-                alert(t('alertReadError'));
-            });
+saveApiBtn.addEventListener('click', () => {
+    saveSettings(quizDuration, tgBotToken, tgChatId);
+    showToast(t('settingsSavedMsg'));
+});
+
+// --- Teacher Tokens Management ---
+function generateRandomString(length) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
+generateTokenBtn.addEventListener('click', () => {
+    const tName = teacherNameInput.value.trim();
+    const tSubj = teacherSubjectSelect.value;
+    const tHours = parseInt(teacherExpireSelect.value);
+
+    if (!tName) {
+        showToast("Iltimos o'qituvchi ismini kiriting!");
+        return;
+    }
+
+    const expireTime = new Date().getTime() + (tHours * 60 * 60 * 1000);
+    const newToken = {
+        id: Date.now(),
+        name: tName,
+        subject: tSubj,
+        token: generateRandomString(6),
+        expireAt: expireTime
     };
-    reader.readAsArrayBuffer(file);
+
+    teacherTokens.push(newToken);
+    saveTeacherTokens();
+    renderTeacherTokens();
+
+    teacherNameInput.value = "";
+    showToast(`Token yaratildi: ${newToken.token}`);
 });
 
-// Filter Results
-filterClass.addEventListener('change', (e) => {
-    renderResultsTable(e.target.value, filterQuarter.value);
-});
+function renderTeacherTokens() {
+    teacherTokensList.innerHTML = "";
+    const now = new Date().getTime();
 
-filterQuarter.addEventListener('change', (e) => {
-    renderResultsTable(filterClass.value, e.target.value);
-});
-
-// Clear All Results
-clearResultsBtn.addEventListener('click', () => {
-    if (confirm(t('alertConfirmClear'))) {
-        results = [];
-        saveResults();
-        renderResultsTable();
-        populateClassFilters();
+    // Filter out expired ones globally on render
+    const validTokens = teacherTokens.filter(t => t.expireAt > now);
+    if (validTokens.length !== teacherTokens.length) {
+        teacherTokens = validTokens;
+        saveTeacherTokens();
     }
-});
 
-// Export CSV
-exportExcelBtn.addEventListener('click', exportResultsToExcel);
+    if (teacherTokens.length === 0) {
+        teacherTokensList.innerHTML = "<tr><td colspan='5' style='text-align:center;'>Faol tokenlar yo'q</td></tr>";
+        return;
+    }
 
-// Certificate Download
-downloadCertBtn.addEventListener('click', downloadCertificatePNG);
+    teacherTokens.forEach(t => {
+        const expDate = new Date(t.expireAt).toLocaleString();
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${t.name}</td>
+            <td><span class="subject-badge">${t.subject}</span></td>
+            <td><strong style="color:var(--accent-color); font-family:monospace;">${t.token}</strong></td>
+            <td>${expDate}</td>
+            <td><button class="danger-btn" onclick="deleteTeacherToken(${t.id})" style="padding: 5px 10px; font-size: 0.8rem;">O'chirish</button></td>
+        `;
+        teacherTokensList.appendChild(tr);
+    });
+}
 
-// Admin Lock Screen Unlock Trigger
-unlockBtn.addEventListener('click', handleProctorUnlock);
-adminPassInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') handleProctorUnlock();
-});
-
-function handleProctorUnlock() {
-    const correctPassword = atob(HASHED_ADMIN_PASS);
-    if (adminPassInput.value === correctPassword) {
-        unlockApp();
-    } else {
-        unlockError.classList.remove('hidden');
-        adminPassInput.value = "";
+function deleteTeacherToken(id) {
+    if (confirm("Ushbu tokenni o'chirmoqchimisiz?")) {
+        teacherTokens = teacherTokens.filter(t => t.id !== id);
+        saveTeacherTokens();
+        renderTeacherTokens();
+        showToast("Token o'chirildi");
     }
 }
 
-// --- QR Code Generator ---
-let qrInstance = null;
-function generateQR() {
-    const currentUrl = window.location.href;
-    if (!qrInstance) {
-        qrInstance = new QRious({
-            element: qrCanvas,
-            value: currentUrl,
-            size: 250,
-            background: 'white',
-            foreground: 'black'
-        });
-    } else {
-        qrInstance.value = currentUrl;
-    }
-}
-
-downloadQrBtn.addEventListener('click', () => {
-    if (!qrInstance) return;
-    const url = qrCanvas.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'shsb_quiz_qr.png';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-});
-
-
-// --- Word .docx Parsing Engine ---
-function parseQuestionsFromText(rawText, subj) {
-    // Normalise text spacing and split by lines
-    const lines = rawText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-
-    let importedQuestions = [];
-    let currentQ = null;
-
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-
-        // Match Question: (e.g. "1. O'zbekiston..." or "12) Matematika...")
-        const questionMatch = line.match(/^(\d+)[\.\)]\s*(.*)/);
-        if (questionMatch) {
-            if (currentQ) {
-                validateAndPushQuestion(currentQ, importedQuestions);
-            }
-            currentQ = {
-                subject: subj,
-                question: questionMatch[2],
-                options: [],
-                correct: -1,
-                points: 1.0
-            };
-            continue;
-        }
-
-        if (!currentQ) continue;
-
-        // Match Options: (A) B) C) D) or A. B. C. D.)
-        const optionMatch = line.match(/^([A-D])[A-D]?[\.\)]\s*(.*)/i);
-        if (optionMatch) {
-            currentQ.options.push(optionMatch[2]);
-            continue;
-        }
-
-        // Match Correct Option: "To'g'ri javob: B"
-        const correctMatch = line.match(/To'g'ri javob:\s*([A-D])/i);
-        if (correctMatch) {
-            const letter = correctMatch[1].toUpperCase();
-            currentQ.correct = letter.charCodeAt(0) - 65; // A->0, B->1...
-            continue;
-        }
-    }
-
-    // Push the last parsed question
-    if (currentQ) {
-        validateAndPushQuestion(currentQ, importedQuestions);
-    }
-
-    if (importedQuestions.length > 0) {
-        questions = questions.concat(importedQuestions);
-        saveQuestions();
-        renderQuestionsList();
-        wordFileInput.value = "";
-        alert(`${t('alertImportSuccess')} ${importedQuestions.length} ${t('alertImportSuccess2')}`);
-    } else {
-        alert(t('alertImportEmpty'));
-    }
-}
-
-function validateAndPushQuestion(q, list) {
-    // A valid question must have text, exactly 4 choices, and a correct key parsed
-    if (q.question && q.options.length === 4 && q.correct >= 0 && q.correct <= 3) {
-        list.push(q);
-    }
-}
-
-
-// --- Admin: Render Questions List ---
+// --- Questions Management ---
 function renderQuestionsList() {
     adminQuestionsList.innerHTML = '';
 
-    let listToRender = questions;
-    if (currentTeacherSession) {
-        listToRender = questions.filter(q => q.subject === currentTeacherSession.subject);
-    }
+    // Filter questions based on access
+    const displayQs = currentTeacherSession
+        ? questions.filter(q => q.subject === currentTeacherSession.subject)
+        : questions;
 
-    adminQuestionsCount.textContent = listToRender.length;
+    adminQuestionsCount.textContent = displayQs.length;
 
-    listToRender.forEach((q, index) => {
+    displayQs.forEach((q, i) => {
+        const realIndex = questions.indexOf(q);
         const div = document.createElement('div');
-        div.className = 'q-item';
+        div.className = 'q-item fade-in';
         div.innerHTML = `
             <div class="q-info">
-                <div class="q-text"><span style="background: rgba(139, 92, 246, 0.2); padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; margin-right: 5px;">${q.subject || 'Noma\'lum'}</span> ${index + 1}. ${q.question} <span style="color: var(--accent-color);">(${q.points || 1} ${t('quizInfoPoints')})</span></div>
-                <div class="q-answer-check">${t('lblCorrect')} ${q.options[q.correct]}</div>
+                <div class="q-text">${realIndex + 1}. ${q.question} <span class="subject-badge">${q.subject}</span></div>
+                <div class="q-answer-check">✅ To'g'ri: ${q.options[q.correct]} (${q.points} ball)</div>
             </div>
-            <button class="danger-btn" onclick="deleteQuestion(${index})">${t('btnDelete')}</button>
+            <button class="danger-btn" onclick="deleteQuestion(${realIndex})">${t('btnDelete') || "O'chirish"}</button>
         `;
         adminQuestionsList.appendChild(div);
     });
 }
 
-window.deleteQuestion = function (index) {
-    if (confirm(t('alertConfirmDelete'))) {
-        questions.splice(index, 1);
-        saveQuestions();
-        renderQuestionsList();
-    }
-};
+addQBtn.addEventListener('click', () => {
+    const text = newQText.value.trim();
+    const opt0 = newQOpt0.value.trim();
+    const opt1 = newQOpt1.value.trim();
+    const opt2 = newQOpt2.value.trim();
+    const opt3 = newQOpt3.value.trim();
+    const corr = parseInt(newQCorrect.value);
+    const pts = parseFloat(newQPoints.value);
+    let subj = newQSubject.value;
 
-function populateClassFilters() {
-    const uniqueClasses = [...new Set(results.map(r => r.classGroup))].filter(Boolean);
-    filterClass.innerHTML = `<option value="all">${t('filterAll')}</option>`;
-    uniqueClasses.forEach(cls => {
-        const opt = document.createElement('option');
-        opt.value = cls;
-        opt.textContent = cls;
-        filterClass.appendChild(opt);
-    });
-}
-
-function renderResultsTable(classFilter = 'all', quarterFilter = 'all') {
-    resultsTableBody.innerHTML = '';
-
-    let list = results;
-
-    // Teacher Mode restriction
     if (currentTeacherSession) {
-        list = list.filter(r => r.subject === currentTeacherSession.subject);
+        subj = currentTeacherSession.subject;
     }
 
-    if (classFilter !== 'all') {
-        list = list.filter(r => r.classGroup === classFilter);
-    }
-    if (quarterFilter !== 'all') {
-        list = list.filter(r => r.quarter === quarterFilter);
-    }
-
-    if (list.length === 0) {
-        resultsTableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">${t('noResults')}</td></tr>`;
-        statsPanel.classList.add('hidden');
-        comparisonPanel.classList.add('hidden');
+    if (!text || !opt0 || !opt1 || !opt2 || !opt3 || isNaN(pts)) {
+        showToast(t('alertFillFields'));
         return;
     }
 
-    // Generate class report stats
-    generateClassReport(list);
+    questions.push({
+        subject: subj,
+        question: text,
+        options: [opt0, opt1, opt2, opt3],
+        correct: corr,
+        points: pts
+    });
 
-    list.forEach(res => {
+    saveQuestions();
+    renderQuestionsList();
+
+    // Clear inputs
+    newQText.value = '';
+    newQOpt0.value = '';
+    newQOpt1.value = '';
+    newQOpt2.value = '';
+    newQOpt3.value = '';
+    newQPoints.value = '1';
+
+    showToast(t('msgQuestionAdded'));
+});
+
+window.deleteQuestion = (index) => {
+    if (confirm(t('confirmDeleteQ') || "Siz rostlama ushbu savolni o'chirmoqchimisiz?")) {
+        questions.splice(index, 1);
+        saveQuestions();
+        renderQuestionsList();
+        showToast(t('msgQuestionDeleted'));
+    }
+};
+
+// --- Word Document Upload & Parsing (mammoth.js) ---
+wordUploadBtn.addEventListener('click', () => {
+    const file = wordFileInput.files[0];
+    if (!file) {
+        showToast("Iltimos, faylni tanlang!");
+        return;
+    }
+
+    let targetSubject = wordQSubject.value;
+    if (currentTeacherSession) {
+        targetSubject = currentTeacherSession.subject;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function (event) {
+        const arrayBuffer = event.target.result;
+        mammoth.extractRawText({ arrayBuffer: arrayBuffer })
+            .then(function (result) {
+                const text = result.value;
+                parseWordText(text, targetSubject);
+            })
+            .catch(function (err) {
+                console.error(err);
+                showToast("Faylni o'qishda xatolik yuz berdi!");
+            });
+    };
+    reader.readAsArrayBuffer(file);
+});
+
+function parseWordText(text, subject) {
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    let newQCount = 0;
+
+    let currentQ = null;
+    let optionsTemp = [];
+    let correctIndex = 0;
+    let pointsVal = 1.0;
+
+    // Simple state machine parser
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+
+        // Match "1. Savol texti"
+        let qMatch = line.match(/^\d+[\.\)]\s*(.+)/);
+        if (qMatch) {
+            // Push previous question if complete
+            if (currentQ && optionsTemp.length >= 4) {
+                questions.push({
+                    subject: subject,
+                    question: currentQ,
+                    options: optionsTemp.slice(0, 4),
+                    correct: correctIndex,
+                    points: pointsVal
+                });
+                newQCount++;
+            }
+            // Reset state
+            currentQ = qMatch[1];
+            optionsTemp = [];
+            correctIndex = 0;
+            pointsVal = 1.0;
+            continue;
+        }
+
+        // Match Options: "A) Option text"
+        let optMatch = line.match(/^[A-D][\.\)]\s*(.+)/i);
+        if (optMatch && currentQ) {
+            optionsTemp.push(optMatch[1]);
+            continue;
+        }
+
+        // Match Answer: "Javob: A"
+        let ansMatch = line.match(/^Javob\s*:\s*([A-D])/i);
+        if (ansMatch && currentQ) {
+            const letter = ansMatch[1].toUpperCase();
+            correctIndex = ['A', 'B', 'C', 'D'].indexOf(letter);
+            if (correctIndex === -1) correctIndex = 0;
+            continue;
+        }
+
+        // Match Points: "Ball: 2.5"
+        let ptsMatch = line.match(/^Ball\s*:\s*([\d\.]+)/i);
+        if (ptsMatch && currentQ) {
+            pointsVal = parseFloat(ptsMatch[1]) || 1.0;
+            continue;
+        }
+    }
+
+    // Push the very last question
+    if (currentQ && optionsTemp.length >= 4) {
+        questions.push({
+            subject: subject,
+            question: currentQ,
+            options: optionsTemp.slice(0, 4),
+            correct: correctIndex,
+            points: pointsVal
+        });
+        newQCount++;
+    }
+
+    if (newQCount > 0) {
+        saveQuestions();
+        renderQuestionsList();
+        showToast(`${newQCount} ta savol bazaga muvaffaqiyatli qo'shildi!`);
+        wordFileInput.value = "";
+    } else {
+        showToast("Savollar formati noto'g'ri. Ko'rsatmaga qarang.");
+    }
+}
+
+// --- Results Management ---
+function populateClassFilters() {
+    const classes = new Set(results.map(r => r.class));
+    const oldVal = filterClass.value;
+    filterClass.innerHTML = `<option value="all">${t('filterAll')}</option>`;
+    classes.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        filterClass.appendChild(opt);
+    });
+    if (oldVal && classes.has(oldVal)) {
+        filterClass.value = oldVal;
+    }
+}
+
+function renderResultsTable() {
+    resultsTableBody.innerHTML = '';
+    const filter = filterClass.value;
+
+    let filteredResults = filter === 'all' ? results : results.filter(r => r.class === filter);
+
+    // Teacher specific filter
+    if (currentTeacherSession) {
+        filteredResults = filteredResults.filter(r => r.subject === currentTeacherSession.subject);
+    }
+
+    filteredResults.sort((a, b) => b.percentage - a.percentage);
+
+    filteredResults.forEach(r => {
         const tr = document.createElement('tr');
+        const date = new Date(r.timestamp).toLocaleString();
         tr.innerHTML = `
-            <td><strong>${res.name}</strong></td>
-            <td>${res.classGroup || t('unknown')}</td>
-            <td>${res.subject || '-'}</td>
-            <td><strong>${res.score} / ${res.totalPossible}</strong></td>
-            <td>${res.percentage}%</td>
-            <td>${res.time}</td>
-            <td style="color: ${res.blocks > 0 ? 'var(--error-color)' : 'var(--success-color)'}">${res.blocks} ${t('times')}</td>
+            <td>${r.name}</td>
+            <td>${r.class}</td>
+            <td><span class="subject-badge">${r.subject}</span></td>
+            <td style="color:var(--accent-color); font-weight:bold;">${r.score.toFixed(1)}</td>
+            <td style="color:${r.percentage >= 80 ? 'var(--success-color)' : (r.percentage >= 60 ? '#f59e0b' : 'var(--error-color)')};">${r.percentage}%</td>
+            <td>${date}</td>
         `;
         resultsTableBody.appendChild(tr);
     });
 }
 
-// Pedagogical Analytics Logic
-function generateClassReport(list) {
-    statsPanel.classList.remove('hidden');
+filterClass.addEventListener('change', renderResultsTable);
 
-    const total = list.length;
-    const avgScore = list.reduce((sum, r) => sum + parseFloat(r.percentage), 0) / total;
-    const qualityCount = list.filter(r => parseFloat(r.percentage) >= 70).length;
-    const qualityPercent = (qualityCount / total) * 100;
-
-    statValTotal.textContent = total;
-    statValAvg.textContent = avgScore.toFixed(1) + '%';
-    statValQuality.textContent = qualityPercent.toFixed(1) + '%';
-
-    if (filterClass.value !== 'all') {
-        comparisonPanel.classList.remove('hidden');
-        comparisonResult.classList.add('hidden');
-    } else {
-        comparisonPanel.classList.add('hidden');
+clearResultsBtn.addEventListener('click', () => {
+    if (confirm(t('confirmClearResults') || "Barcha natijalarni butunlay o'chirasizmi?")) {
+        // If teacher, only clear their subject
+        if (currentTeacherSession) {
+            results = results.filter(r => r.subject !== currentTeacherSession.subject);
+        } else {
+            const classVal = filterClass.value;
+            if (classVal !== 'all') {
+                results = results.filter(r => r.class !== classVal);
+            } else {
+                results = [];
+            }
+        }
+        saveResults();
+        renderResultsTable();
+        renderLeaderboard();
+        populateClassFilters();
+        showToast(t('msgResultsCleared'));
     }
-}
-
-analyzeBtn.addEventListener('click', () => {
-    const cls = filterClass.value;
-    if (cls === 'all') return;
-
-    const q1Val = compQ1.value;
-    const q2Val = compQ2.value;
-
-    const classResults = results.filter(r => r.classGroup === cls);
-    const q1List = classResults.filter(r => r.quarter === q1Val);
-    const q2List = classResults.filter(r => r.quarter === q2Val);
-
-    if (q1List.length === 0 || q2List.length === 0) {
-        comparisonResult.classList.remove('hidden');
-        comparisonResult.innerHTML = `<strong style="color: var(--error-color);">Ma'lumot yetarli emas!</strong> Tanlangan choraklardan birida natijalar yo'q.`;
-        return;
-    }
-
-    const avgQ1 = q1List.reduce((sum, r) => sum + parseFloat(r.percentage), 0) / q1List.length;
-    const avgQ2 = q2List.reduce((sum, r) => sum + parseFloat(r.percentage), 0) / q2List.length;
-
-    const diff = avgQ2 - avgQ1;
-    let diffStr = "";
-    let conclusion = "";
-
-    if (diff > 0) {
-        diffStr = `<span style="color: var(--success-color);">${diff.toFixed(1)}% ${t('compIncreased')}</span>`;
-        conclusion = t('compConclusionGood');
-    } else if (diff < 0) {
-        diffStr = `<span style="color: var(--error-color);">${Math.abs(diff).toFixed(1)}% ${t('compDecreased')}</span>`;
-        conclusion = t('compConclusionBad');
-    } else {
-        diffStr = `<span style="color: var(--text-secondary);">${t('compSame')}</span>`;
-        conclusion = t('compConclusionNeutral');
-    }
-
-    comparisonResult.classList.remove('hidden');
-    comparisonResult.innerHTML = `
-        <div style="margin-bottom: 10px;">${cls} - o'zlashtirish ko'rsatkichi ${q1Val}-chorak (<strong>${avgQ1.toFixed(1)}%</strong>) dan ${q2Val}-chorak (<strong>${avgQ2.toFixed(1)}%</strong>) ga <strong>${diffStr}</strong>.</div>
-        <div><strong>${t('compConclusion')}</strong> ${conclusion}</div>
-    `;
 });
 
-// Excel Export via SheetJS
-function exportResultsToExcel() {
-    let list = results;
-    if (currentTeacherSession) {
-        list = list.filter(r => r.subject === currentTeacherSession.subject);
-    }
-
-    let cls = filterClass ? filterClass.value : 'all';
-    let qtr = filterQuarter ? filterQuarter.value : 'all';
-
-    if (list.length === 0) {
-        alert(t('alertNoExport') || "Eksport qilish uchun ma'lumot topilmadi!");
+// --- EXPORT TO EXCEL (I-SHSB Format with SheetJS) ---
+exportExcelBtn.addEventListener('click', () => {
+    if (results.length === 0) {
+        showToast("Natijalar mavjud emas!");
         return;
     }
 
-    if (cls === 'all') {
-        const classCounts = {};
-        list.forEach(r => { if (r.classGroup) classCounts[r.classGroup] = (classCounts[r.classGroup] || 0) + 1; });
-        const keys = Object.keys(classCounts);
-        cls = keys.length > 0 ? keys.sort((a, b) => classCounts[b] - classCounts[a])[0] : 'Umumiy';
-    }
-    if (qtr === 'all') {
-        const qtrCounts = {};
-        list.forEach(r => { if (r.quarter) qtrCounts[r.quarter] = (qtrCounts[r.quarter] || 0) + 1; });
-        const keys = Object.keys(qtrCounts);
-        qtr = keys.length > 0 ? keys.sort((a, b) => qtrCounts[b] - qtrCounts[a])[0] : 'Umumiy';
+    let exportData = results;
+    let subjText = "Barcha fanlar";
+    let classText = filterClass.value === 'all' ? "Barcha sinflar" : filterClass.value;
+
+    if (currentTeacherSession) {
+        exportData = results.filter(r => r.subject === currentTeacherSession.subject);
+        subjText = currentTeacherSession.subject;
+    } else {
+        if (filterClass.value !== 'all') {
+            exportData = results.filter(r => r.class === filterClass.value);
+        }
     }
 
-    let maxQuestions = 0;
-    let referenceQMap = null;
-    list.forEach(r => {
-        if (r.earnedPoints && r.earnedPoints.length > maxQuestions) {
-            maxQuestions = r.earnedPoints.length;
-            referenceQMap = r.questionPointsMap;
+    if (exportData.length === 0) {
+        showToast("Ushbu filtr bo'yicha ma'lumot yo'q!");
+        return;
+    }
+
+    // Identify Max Questions Array Length for Columns
+    let maxQuestionsLength = 0;
+    let maxTotalPointsPossible = 0;
+
+    // We assume the first student's detail holds the correct metadata for this subset
+    exportData.forEach(r => {
+        if (r.details && r.details.length > maxQuestionsLength) {
+            maxQuestionsLength = r.details.length;
+            maxTotalPointsPossible = r.details.reduce((sum, d) => sum + (d.maxPoints || 0), 0);
         }
     });
 
-    if (maxQuestions === 0) {
-        let qs = currentTeacherSession ? questions.filter(q => q.subject === currentTeacherSession.subject) : questions;
-        maxQuestions = qs.length || 10;
-        referenceQMap = qs.map(q => parseFloat(q.points) || 1.0);
-        if (referenceQMap.length === 0) referenceQMap = Array(maxQuestions).fill(1);
+    const currentYear = new Date().getFullYear();
+    const currentDateStr = new Date().toLocaleDateString('uz-UZ');
+
+    // Prepare Sheet Data Array
+    let wsData = [];
+
+    // Rows 1-3: Headers (Merged later)
+    wsData.push([`Qaraqalpaqstan Respublikası Xojeyli rayonı qánigelestirilgen mektebiniń ${classText} klass, ${currentYear}-sherek`]);
+    wsData.push([`${subjText.toUpperCase()} páninen ótkerilgen I-SHSB NÁTIYJELERI`]);
+    wsData.push([""]); // Empty row 3
+
+    // Row 4: Statistics
+    let statRow = [""];
+    statRow[1] = `SHSB ótkerilgen sáne: ${currentDateStr} | Sorawlar sanı: ${maxQuestionsLength} | Max ball: ${maxTotalPointsPossible.toFixed(1)} | Oqıwshılar sanı: ${exportData.length}`;
+    wsData.push(statRow);
+
+    // Row 5: Table Headers
+    let headerRow = ["№", "Oqıwshınıń familiyası, atı"];
+
+    // Add question columns with their respective max points dynamically based on first student's details
+    let sampleStudentDetails = exportData.find(r => r.details && r.details.length === maxQuestionsLength)?.details || [];
+
+    for (let i = 0; i < maxQuestionsLength; i++) {
+        let maxP = sampleStudentDetails[i] ? sampleStudentDetails[i].maxPoints : 1;
+        headerRow.push(`${i + 1}-soraw (${maxP} b)`);
     }
-    if (!referenceQMap) referenceQMap = Array(maxQuestions).fill(1);
 
-    const overallMaxPoints = referenceQMap.reduce((a, b) => a + b, 0);
-    const subjectName = (currentTeacherSession ? currentTeacherSession.subject : (list[0].subject || "FAN")).toUpperCase();
-    const dateStr = new Date().toLocaleDateString('uz-UZ', { day: 'numeric', month: 'short', year: 'numeric' });
-    const studentsCount = list.length;
+    headerRow.push("JÁMI");
+    headerRow.push("%");
+    wsData.push(headerRow);
 
-    const row1 = [`Qaraqalpaqstan Respublikası Xojeyli rayonı qánigelestirilgen mektebiniń ${cls} klass, ${qtr}-sherek`];
-    const row2 = [`${subjectName} páninen ótkerilgen I-SHSB NÁTIYJELERI`];
-    const row3 = [];
-    const row4 = [`SHSB ótkerilgen sáne - ${dateStr}`, ``, `Sorawlar sanı: - ${maxQuestions}`, ``, `Max ball: - ${overallMaxPoints}`, ``, `Oqıwshılar sanı: - ${studentsCount}`];
+    // Rows 6+: Student Data
+    exportData.sort((a, b) => b.percentage - a.percentage);
 
-    const headerRow = ["№", "Oqıwshınıń familiyası, atı"];
-    for (let i = 0; i < maxQuestions; i++) {
-        const ptStr = referenceQMap[i] == Math.round(referenceQMap[i]) ? referenceQMap[i] : referenceQMap[i].toFixed(1);
-        headerRow.push(`${i + 1}-soraw\n(${ptStr} ball)`);
-    }
-    const maxPtStr = overallMaxPoints == Math.round(overallMaxPoints) ? overallMaxPoints : overallMaxPoints.toFixed(1);
-    headerRow.push(`JÁMI\n(${maxPtStr} ball)`);
-    headerRow.push(`%`);
+    exportData.forEach((student, index) => {
+        let row = [index + 1, student.name];
 
-    const dataRows = [];
-    const colCorrectCounts = Array(maxQuestions).fill(0);
-    const colAttemptedCounts = Array(maxQuestions).fill(0);
-
-    list.forEach((res, index) => {
-        const row = [index + 1, res.name];
-        let hasEarned = res.earnedPoints && res.earnedPoints.length > 0;
-
-        for (let i = 0; i < maxQuestions; i++) {
-            if (hasEarned && i < res.earnedPoints.length) {
-                const pt = parseFloat(res.earnedPoints[i]);
-                if (pt > 0) {
-                    row.push(pt == Math.round(pt) ? pt : pt.toFixed(1));
-                    colCorrectCounts[i]++;
-                } else {
-                    row.push("");
-                }
-                colAttemptedCounts[i]++;
+        let totalScore = 0;
+        for (let i = 0; i < maxQuestionsLength; i++) {
+            if (student.details && student.details[i]) {
+                const earned = student.details[i].earnedPoints || 0;
+                row.push(earned.toFixed(1));
+                totalScore += earned;
             } else {
-                row.push("");
+                row.push(0);
             }
         }
 
-        row.push(parseFloat(res.score));
-        const pVal = parseFloat(res.percentage);
-        row.push(pVal == Math.round(pVal) ? pVal : pVal.toFixed(1));
-        dataRows.push(row);
+        row.push(totalScore.toFixed(1));
+        row.push(`${student.percentage}%`);
+        wsData.push(row);
     });
 
-    const footerRow = ["", "JÁMI"];
-    for (let i = 0; i < maxQuestions; i++) {
-        if (colAttemptedCounts[i] > 0) {
-            const perc = (colCorrectCounts[i] / colAttemptedCounts[i]) * 100;
-            footerRow.push(`${perc.toFixed(1)}%`);
-        } else {
-            footerRow.push("");
-        }
-    }
+    // Create Workbook
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-    const avgScore = list.reduce((sum, r) => sum + parseFloat(r.score), 0) / list.length;
-    const avgPerc = list.reduce((sum, r) => sum + parseFloat(r.percentage), 0) / list.length;
-    footerRow.push(parseFloat(avgScore.toFixed(1)));
-    footerRow.push(parseFloat(avgPerc.toFixed(1)));
-
-    const ws_data = [row1, row2, row3, row4, headerRow, ...dataRows, footerRow];
-    const ws = XLSX.utils.aoa_to_sheet(ws_data);
-    const totalCols = headerRow.length;
+    // Styling & Merging
+    // A1 to max column merge
+    const maxColIndex = 1 + maxQuestionsLength + 2; // № + Name + N_Questions + JÁMI + %
 
     if (!ws['!merges']) ws['!merges'] = [];
-    ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } });
-    ws['!merges'].push({ s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } });
+    ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: maxColIndex } }); // Row 1
+    ws['!merges'].push({ s: { r: 1, c: 0 }, e: { r: 1, c: maxColIndex } }); // Row 2
+    ws['!merges'].push({ s: { r: 3, c: 1 }, e: { r: 3, c: maxColIndex } }); // Row 4 (stats)
 
-    ws['!merges'].push({ s: { r: 3, c: 0 }, e: { r: 3, c: 1 } });
-    ws['!merges'].push({ s: { r: 3, c: 2 }, e: { r: 3, c: 3 } });
-    ws['!merges'].push({ s: { r: 3, c: 4 }, e: { r: 3, c: 5 } });
-    ws['!merges'].push({ s: { r: 3, c: 6 }, e: { r: 3, c: totalCols > 6 ? 7 : 6 } });
-
-    const range = XLSX.utils.decode_range(ws['!ref']);
-    const borderStyle = {
-        top: { style: "thin", color: { rgb: "000000" } },
-        bottom: { style: "thin", color: { rgb: "000000" } },
-        left: { style: "thin", color: { rgb: "000000" } },
-        right: { style: "thin", color: { rgb: "000000" } }
-    };
-
-    for (let R = 0; R <= range.e.r; ++R) {
-        for (let C = 0; C <= range.e.c; ++C) {
-            const cell_address = { c: C, r: R };
-            const cell_ref = XLSX.utils.encode_cell(cell_address);
-            if (!ws[cell_ref]) ws[cell_ref] = { t: 's', v: '' };
-            if (!ws[cell_ref].s) ws[cell_ref].s = {};
-
-            if (R >= 4) {
-                ws[cell_ref].s.border = borderStyle;
-                ws[cell_ref].s.alignment = { horizontal: "center", vertical: "center", wrapText: true };
-                if (C === 1) ws[cell_ref].s.alignment.horizontal = "left";
-            }
-
-            if (R === 0 || R === 1) {
-                ws[cell_ref].s.font = { bold: true, sz: 14, name: "Times New Roman" };
-                ws[cell_ref].s.alignment = { horizontal: "center", vertical: "center" };
-            }
-
-            if (R === 3) {
-                ws[cell_ref].s.font = { bold: false, sz: 11, name: "Times New Roman" };
-                ws[cell_ref].s.alignment = { horizontal: "center" };
-            }
-
-            if (R === 4) {
-                ws[cell_ref].s.font = { bold: true, name: "Times New Roman" };
-                ws[cell_ref].s.fill = { fgColor: { rgb: "FFF2CC" } };
-                ws[cell_ref].s.alignment = { horizontal: "center", vertical: "center", wrapText: true };
-            }
-
-            if (R === range.e.r) {
-                ws[cell_ref].s.font = { bold: true, name: "Times New Roman" };
-                ws[cell_ref].s.fill = { fgColor: { rgb: "D9EAD3" } };
-                ws[cell_ref].s.alignment = { horizontal: "center", vertical: "center" };
-            }
-
-            if (R > 4 && R < range.e.r) {
-                ws[cell_ref].s.font = { name: "Times New Roman" };
+    // Apply bold to headers
+    for (let R = 0; R <= 4; R++) {
+        for (let C = 0; C <= maxColIndex; C++) {
+            const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+            if (ws[cellRef]) {
+                ws[cellRef].s = {
+                    font: { bold: true },
+                    alignment: { horizontal: "center", vertical: "center" }
+                };
             }
         }
     }
 
-    ws['!cols'] = [];
-    ws['!cols'][0] = { wch: 5 };
-    ws['!cols'][1] = { wch: 35 };
-    for (let i = 0; i < maxQuestions; i++) {
-        ws['!cols'][i + 2] = { wch: 8 };
-    }
-    ws['!cols'][maxQuestions + 2] = { wch: 10 };
-    ws['!cols'][maxQuestions + 3] = { wch: 8 };
+    // Row 1 and 2 specific sizing and styling
+    if (ws['A1']) ws['A1'].s = { font: { bold: true, sz: 14 }, alignment: { horizontal: "center", vertical: "center" } };
+    if (ws['A2']) ws['A2'].s = { font: { bold: true, sz: 14, color: { rgb: "0000FF" } }, alignment: { horizontal: "center", vertical: "center" } };
 
-    const wb = XLSX.utils.book_new();
+    // Set column widths
+    if (!ws['!cols']) ws['!cols'] = [];
+    ws['!cols'][0] = { wch: 5 };  // №
+    ws['!cols'][1] = { wch: 35 }; // Name
+    for (let i = 0; i < maxQuestionsLength; i++) {
+        ws['!cols'][i + 2] = { wch: 12 }; // Questions
+    }
+    ws['!cols'][maxQuestionsLength + 2] = { wch: 10 }; // JAMI
+    ws['!cols'][maxQuestionsLength + 3] = { wch: 10 }; // %
+
     XLSX.utils.book_append_sheet(wb, ws, "Natijalar");
 
-    const isoDate = new Date().toISOString().slice(0, 10);
-    XLSX.writeFile(wb, `shsb_test_natijalari_${isoDate}.xlsx`);
+    const fileName = `SHSB_${subjText.replace(/\s+/g, '_')}_${classText}_${currentDateStr}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    showToast(`Excel fayl yuklandi: ${fileName}`);
+});
+
+// --- Gemini API Call logic ---
+geminiAnalyzeBtn.addEventListener('click', async () => {
+    if (!geminiApiKey) {
+        alert(t('alertGeminiKey') || "API kilit sozlanmagan!");
+        return;
+    }
+
+    if (results.length === 0) {
+        alert("Natijalar mavjud emas!");
+        return;
+    }
+
+    geminiAnalyzeBtn.disabled = true;
+    geminiAnalyzeBtn.textContent = t('analyzingAI') || "Tahlil qilinmoqda...";
+    geminiAnalysisOutput.textContent = "";
+
+    try {
+        const statsStr = JSON.stringify(results.map(r => ({
+            name: r.name, class: r.class, subject: r.subject, score: r.score, percentage: r.percentage
+        })));
+
+        const prompt = `Men o'qituvchiman. Quyida mening o'quvchilarimning test natijalari ro'yxati berilgan. Iltimos, ushbu natijalarni tahlil qilib, o'quvchilarning umumiy o'zlashtirish darajasi, oqsiyotgan mavzular (yoki past ball olganlar) va ularga qanday pedagogik yondashish kerakligi haqida chuqur, kasbiy va ilhomlantiruvchi xulosa yozib bering. Xulosani Markdown formatida, chiroyli sarlavhalar va ro'yxatlar bilan O'zbek tilida tayyorlang.\nNatijalar:\n${statsStr}`;
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }]
+            })
+        });
+
+        const data = await response.json();
+        if (data.error) {
+            throw new Error(data.error.message);
+        }
+
+        const mdText = data.candidates[0].content.parts[0].text;
+        geminiAnalysisOutput.innerHTML = parseMarkdownToHtml(mdText);
+
+    } catch (error) {
+        geminiAnalysisOutput.textContent = "Xatolik yuz berdi: " + error.message;
+    } finally {
+        geminiAnalyzeBtn.disabled = false;
+        geminiAnalyzeBtn.textContent = t('btnAnalyzeAI') || "AI Xulosasini Olish";
+    }
+});
+
+// --- Quiz Start Logic ---
+startBtn.addEventListener('click', () => {
+    studentName = studentNameInput.value.trim();
+    studentClass = studentClassInput.value;
+    studentSubject = studentSubjectInput.value;
+    const pin = quizPinInput.value.trim();
+
+    if (!studentName || !studentClass || !studentSubject) {
+        alert(t('alertDetails'));
+        return;
+    }
+
+    // Verify PIN globally
+    const expectedPin = subjectPins[studentSubject];
+    if (expectedPin && expectedPin !== "" && pin !== expectedPin) {
+        alert(t('alertWrongPin') || "Maxsus kod noto'g'ri kiritildi!");
+        return;
+    }
+
+    currentQuizQuestions = questions.filter(q => q.subject === studentSubject);
+
+    if (currentQuizQuestions.length === 0) {
+        alert(t('alertNoQuestions'));
+        return;
+    }
+
+    // Fetch dynamic duration for this subject
+    let activeDuration = subjectDurations[studentSubject] || quizDuration;
+
+    // Shuffle
+    currentQuizQuestions.sort(() => Math.random() - 0.5);
+
+    // Initialize State
+    currentQuestionIndex = 0;
+    totalUserPoints = 0;
+    studentAnswers = new Array(currentQuizQuestions.length).fill(null);
+    earnedPoints = new Array(currentQuizQuestions.length).fill(0);
+    isLocked = false;
+    blockCount = 0;
+    timeElapsedSeconds = 0;
+    testTimeLimitSeconds = activeDuration * 60;
+
+    authScreen.classList.add('hidden');
+    quizScreen.classList.remove('hidden');
+
+    document.documentElement.requestFullscreen().catch(e => console.log('Fullscreen blocked', e));
+
+    playSound('start');
+    startTimer();
+    loadQuestion();
+
+    studentDisplay.innerHTML = `<strong>${studentName}</strong> (${studentClass}) - <span class="subject-badge">${studentSubject}</span>`;
+
+    // Anti-cheat Listeners specific to Quiz
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+});
+
+// --- Timer ---
+function startTimer() {
+    updateTimerDisplay();
+    timerInterval = setInterval(() => {
+        if (isLocked) return;
+        timeElapsedSeconds++;
+        updateTimerDisplay();
+
+        if (timeElapsedSeconds >= testTimeLimitSeconds) {
+            finishQuiz(true);
+        }
+    }, 1000);
 }
 
+function updateTimerDisplay() {
+    const remaining = testTimeLimitSeconds - timeElapsedSeconds;
+    const m = Math.floor(remaining / 60);
+    const s = remaining % 60;
+    timerDisplay.textContent = `${m < 10 ? '0' + m : m}:${s < 10 ? '0' + s : s}`;
+
+    if (remaining < 60) {
+        timerDisplay.style.color = 'var(--error-color)';
+        if (s % 2 === 0) timerDisplay.style.animation = 'pulse 1s infinite';
+    } else {
+        timerDisplay.style.color = 'inherit';
+        timerDisplay.style.animation = 'none';
+    }
+}
+
+// --- Question Loader ---
+function loadQuestion() {
+    if (currentQuestionIndex >= currentQuizQuestions.length) {
+        finishQuiz();
+        return;
+    }
+
+    const q = currentQuizQuestions[currentQuestionIndex];
+    currentQuestionNum.textContent = currentQuestionIndex + 1;
+    totalQuestionsSpan.textContent = currentQuizQuestions.length;
+    questionPointsDisplay.textContent = q.points;
+
+    progressBar.style.width = `${((currentQuestionIndex) / currentQuizQuestions.length) * 100}%`;
+
+    questionText.innerHTML = parseMarkdownToHtml(q.question);
+
+    optionsContainer.innerHTML = '';
+
+    q.options.forEach((opt, index) => {
+        const div = document.createElement('div');
+        div.className = 'option fade-in';
+        div.innerHTML = parseMarkdownToHtml(opt);
+        // Clean inner P tags if any from md
+        div.innerHTML = div.innerHTML.replace(/<p>/g, '').replace(/<\/p>/g, '');
+
+        if (studentAnswers[currentQuestionIndex] === index) {
+            div.classList.add('selected');
+        }
+
+        div.addEventListener('click', () => selectOption(index));
+        optionsContainer.appendChild(div);
+    });
+
+    if (currentQuestionIndex === currentQuizQuestions.length - 1) {
+        nextBtn.textContent = t('btnFinishQuiz') || "Yakunlash";
+        nextBtn.classList.replace('primary-btn', 'success-btn');
+    } else {
+        nextBtn.textContent = t('nextBtn') || "Keyingi savol";
+        nextBtn.classList.replace('success-btn', 'primary-btn');
+    }
+
+    if (studentAnswers[currentQuestionIndex] !== null) {
+        nextBtn.classList.remove('hidden');
+    } else {
+        nextBtn.classList.add('hidden');
+    }
+}
+
+function selectOption(index) {
+    if (isLocked) return;
+    studentAnswers[currentQuestionIndex] = index;
+
+    const allOptions = optionsContainer.children;
+    for (let opt of allOptions) {
+        opt.classList.remove('selected');
+    }
+    allOptions[index].classList.add('selected');
+
+    nextBtn.classList.remove('hidden');
+}
+
+nextBtn.addEventListener('click', () => {
+    if (isLocked || studentAnswers[currentQuestionIndex] === null) return;
+
+    const q = currentQuizQuestions[currentQuestionIndex];
+    if (studentAnswers[currentQuestionIndex] === q.correct) {
+        earnedPoints[currentQuestionIndex] = q.points;
+        playSound('correct');
+    } else {
+        earnedPoints[currentQuestionIndex] = 0;
+        playSound('wrong');
+    }
+
+    currentQuestionIndex++;
+    loadQuestion();
+});
+
+// --- Finishing Quiz ---
+function finishQuiz(timeOut = false) {
+    clearInterval(timerInterval);
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    document.removeEventListener('fullscreenchange', handleFullscreenChange);
+
+    if (document.fullscreenElement) {
+        document.exitFullscreen().catch(e => e);
+    }
+
+    quizScreen.classList.add('hidden');
+    resultScreen.classList.remove('hidden');
+
+    totalUserPoints = earnedPoints.reduce((a, b) => a + b, 0);
+    const maxPossiblePoints = currentQuizQuestions.reduce((a, b) => a + (b.points || 1.0), 0);
+
+    const percentage = maxPossiblePoints > 0 ? ((totalUserPoints / maxPossiblePoints) * 100).toFixed(1) : 0;
+
+    // Save Result with structured details for Export
+    let detailedAnswers = currentQuizQuestions.map((q, i) => ({
+        question: q.question,
+        maxPoints: q.points,
+        earnedPoints: earnedPoints[i],
+        userAnswerIndex: studentAnswers[i],
+        correctIndex: q.correct
+    }));
+
+    const resultObj = {
+        name: studentName,
+        class: studentClass,
+        subject: studentSubject,
+        score: totalUserPoints,
+        percentage: parseFloat(percentage),
+        timestamp: new Date().getTime(),
+        details: detailedAnswers
+    };
+
+    results.push(resultObj);
+    saveResults();
+    renderLeaderboard();
+
+    let resultHTML = `
+        <h3 style="color:var(--accent-color); margin-bottom: 15px;">${studentName}</h3>
+        <div class="stat-item"><span>${t('thSubject')}:</span> <strong>${studentSubject}</strong></div>
+        <div class="stat-item"><span>${t('thScore')}:</span> <strong>${totalUserPoints.toFixed(1)} / ${maxPossiblePoints.toFixed(1)}</strong></div>
+        <div class="stat-item"><span>${t('thPercentage')}:</span> <strong style="color:${percentage >= 80 ? 'var(--success-color)' : 'var(--error-color)'}">${percentage}%</strong></div>
+        <div class="stat-item"><span>${t('thDate')}:</span> <strong>${new Date().toLocaleString()}</strong></div>
+    `;
+
+    if (timeOut) {
+        resultHTML += `<div class="analysis-note" style="border-left-color: var(--error-color);">Vaqt tugadi. Test avtomatik tarzda yakunlandi!</div>`;
+    }
+
+    // AI-like quick feedback
+    if (percentage >= 86) {
+        resultHTML += `<div class="analysis-note">🏆 Ajoyib natija! Siz bu fandan juda yaxshi tayyorgarlik ko'rgansiz.</div>`;
+        certificateZone.classList.remove('hidden');
+    } else if (percentage >= 60) {
+        resultHTML += `<div class="analysis-note">👍 Yaxshi natija! Lekin ba'zi mavzularni yana takrorlashingiz kerak.</div>`;
+        certificateZone.classList.add('hidden');
+    } else {
+        resultHTML += `<div class="analysis-note" style="border-left-color: var(--error-color);">📚 Yomon natija. Iltimos, kitob o'qib, yana tayyorlaning!</div>`;
+        certificateZone.classList.add('hidden');
+    }
+
+    resultContent.innerHTML = resultHTML;
+
+    // Optional pedagogical review rendering
+    if (showAnswersToStudent) {
+        renderErrorReview(detailedAnswers);
+    } else {
+        errorReviewList.innerHTML = `<p style="color:var(--text-secondary);">${t('secAnswersHint')}</p>`;
+    }
+
+    // Telegram Bot Push
+    if (tgBotToken && tgChatId) {
+        const tgMessage = `🎓 Yangi Natija (SHSB)\n\n👤 O'quvchi: ${studentName}\n🏫 Sinf: ${studentClass}\n📚 Fan: ${studentSubject}\n📈 Natija: ${totalUserPoints.toFixed(1)} / ${maxPossiblePoints.toFixed(1)} ball (${percentage}%)`;
+        fetch(`https://api.telegram.org/bot${tgBotToken}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: tgChatId,
+                text: tgMessage
+            })
+        }).catch(e => console.log('TG Error:', e));
+    }
+}
+
+// Render questions the student got wrong
+function renderErrorReview(details) {
+    errorReviewList.innerHTML = '';
+    const mistakes = details.filter(d => d.earnedPoints === 0);
+
+    if (mistakes.length === 0) {
+        errorReviewList.innerHTML = `<p style="color:var(--success-color);">Sizda hech qanday xatolik yo'q! 🎉</p>`;
+        return;
+    }
+
+    mistakes.forEach(m => {
+        const div = document.createElement('div');
+        div.className = 'review-item';
+        div.innerHTML = `
+            <div class="review-q">${m.question}</div>
+            <div class="review-correct-ans">Tog'ri javob: ${currentQuizQuestions.find(q => q.question === m.question).options[m.correctIndex]}</div>
+        `;
+        errorReviewList.appendChild(div);
+    });
+}
 
 // --- Leaderboard ---
 function renderLeaderboard() {
-    leaderboardBody.innerHTML = "";
+    leaderboardBody.innerHTML = '';
 
-    // Sort Results: Percentage DESC, Time spent ASC, Blocks ASC
-    const sorted = [...results].sort((a, b) => {
-        if (b.percentage !== a.percentage) return b.percentage - a.percentage;
-        // Parse time to seconds: e.g. "05:20" -> 320
-        const timeA = parseTimeToSeconds(a.time);
-        const timeB = parseTimeToSeconds(b.time);
-        if (timeA !== timeB) return timeA - timeB;
-        return a.blocks - b.blocks;
-    });
-
-    const top10 = sorted.slice(0, 10);
+    // Sort all results globally and get top 10
+    const top10 = [...results].sort((a, b) => b.percentage - a.percentage).slice(0, 10);
 
     if (top10.length === 0) {
-        leaderboardBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">${t('emptyLeaderboard')}</td></tr>`;
+        leaderboardBody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-secondary);">Hozircha reyting bo'sh</td></tr>`;
         return;
     }
 
-    top10.forEach((res, index) => {
-        let medal = index + 1;
-        if (index === 0) medal = "🥇";
-        else if (index === 1) medal = "🥈";
-        else if (index === 2) medal = "🥉";
-
+    top10.forEach((r, idx) => {
         const tr = document.createElement('tr');
+        let badge = '';
+        if (idx === 0) badge = '🥇';
+        else if (idx === 1) badge = '🥈';
+        else if (idx === 2) badge = '🥉';
+        else badge = `${idx + 1}`;
+
         tr.innerHTML = `
-            <td><strong>${medal}</strong></td>
-            <td><strong>${res.name}</strong></td>
-            <td>${res.classGroup}</td>
-            <td>${res.score} b</td>
-            <td>${res.time}</td>
+            <td><strong>${badge}</strong></td>
+            <td>${r.name} <span style="font-size: 0.8em; color: var(--text-secondary);">(${r.class}) - ${r.subject}</span></td>
+            <td style="color: var(--accent-color); font-weight: bold;">${r.percentage}%</td>
         `;
         leaderboardBody.appendChild(tr);
     });
 }
 
-function parseTimeToSeconds(timeStr) {
-    const parts = timeStr.split(':');
-    return parseInt(parts[0]) * 60 + parseInt(parts[1]);
-}
-
-
-// --- Quiz Engine Logic ---
-
-function startQuiz() {
-    authScreen.classList.add('hidden');
-    quizScreen.classList.remove('hidden');
-    studentDisplay.textContent = `${studentName} (${studentClass}) - ${studentSubject}`;
-    totalQuestionsSpan.textContent = currentQuizQuestions.length;
-    currentQuestionIndex = 0;
-    totalUserPoints = 0;
-    studentAnswers = [];
-    earnedPoints = [];
-
-    requestFullscreen();
-
-    testTimeLimitSeconds = quizDuration * 60;
-    timeElapsedSeconds = 0;
-
-    startTimer();
-    loadQuestion();
-    setupProctoring();
-}
-
-function loadQuestion() {
-    const q = currentQuizQuestions[currentQuestionIndex];
-    questionText.textContent = q.question;
-    optionsContainer.innerHTML = '';
-    nextBtn.classList.add('hidden');
-
-    const progress = (currentQuestionIndex / currentQuizQuestions.length) * 100;
-    progressBar.style.width = `${progress}%`;
-    currentQuestionNum.textContent = currentQuestionIndex + 1;
-    questionPointsDisplay.textContent = q.points || 1;
-
-    q.options.forEach((opt, index) => {
-        const div = document.createElement('div');
-        div.className = 'option fade-in';
-        div.textContent = opt;
-        div.addEventListener('click', () => selectOption(index, div));
-        optionsContainer.appendChild(div);
-    });
-}
-
-function selectOption(index, element) {
-    const options = optionsContainer.querySelectorAll('.option');
-    options.forEach(opt => opt.classList.remove('selected'));
-    element.classList.add('selected');
-    nextBtn.classList.remove('hidden');
-    element.dataset.correct = (index === currentQuizQuestions[currentQuestionIndex].correct);
-
-    // Temporarily store selection index
-    element.dataset.index = index;
-}
-
-nextBtn.onclick = () => {
-    const selected = optionsContainer.querySelector('.option.selected');
-    if (!selected) return;
-
-    const selectedIndex = parseInt(selected.dataset.index);
-    studentAnswers.push(selectedIndex);
-
-    // Audio confirmation feedback
-    if (selected.dataset.correct === "true") {
-        const currentPoints = parseFloat(currentQuizQuestions[currentQuestionIndex].points) || 1.0;
-        totalUserPoints += currentPoints;
-        earnedPoints.push(currentPoints);
-        playSound('correct');
-    } else {
-        earnedPoints.push(0);
-        playSound('incorrect');
-    }
-
-    currentQuestionIndex++;
-    if (currentQuestionIndex < currentQuizQuestions.length) {
-        loadQuestion();
-    } else {
-        finishQuiz();
-    }
-};
-
-function startTimer() {
-    clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
-        timeElapsedSeconds++;
-        const remainingSeconds = testTimeLimitSeconds - timeElapsedSeconds;
-
-        if (remainingSeconds <= 0) {
-            timerDisplay.textContent = "00:00";
-            alert(t('alertTimeout'));
-
-            // Check current selected question
-            const selected = optionsContainer.querySelector('.option.selected');
-            if (selected) {
-                studentAnswers.push(parseInt(selected.dataset.index));
-                if (selected.dataset.correct === "true") {
-                    const currentPoints = parseFloat(currentQuizQuestions[currentQuestionIndex].points) || 1.0;
-                    totalUserPoints += currentPoints;
-                    earnedPoints.push(currentPoints);
-                } else {
-                    earnedPoints.push(0);
-                }
-            } else if (studentAnswers.length < currentQuizQuestions.length) {
-                // Fill remaining unanswered as -1
-                while (studentAnswers.length < currentQuizQuestions.length) {
-                    studentAnswers.push(-1);
-                    earnedPoints.push(0);
-                }
-            }
-            finishQuiz();
-            return;
-        }
-
-        // Play warning beeps during the final 30 seconds (every 5 seconds)
-        if (remainingSeconds <= 30 && remainingSeconds % 5 === 0) {
-            playSound('warning');
-        }
-
-        const mins = Math.floor(remainingSeconds / 60).toString().padStart(2, '0');
-        const secs = (remainingSeconds % 60).toString().padStart(2, '0');
-        timerDisplay.textContent = `${mins}:${secs}`;
-    }, 1000);
-}
-
-function formatTimeElapsed() {
-    const mins = Math.floor(timeElapsedSeconds / 60).toString().padStart(2, '0');
-    const secs = (timeElapsedSeconds % 60).toString().padStart(2, '0');
-    return `${mins}:${secs}`;
-}
-
-function getCurrentQuarter() {
-    const month = new Date().getMonth(); // 0-indexed (Jan = 0)
-    if (month >= 8 && month <= 9) return "1"; // Sep(8), Oct(9)
-    if (month >= 10 && month <= 11) return "2"; // Nov(10), Dec(11)
-    if (month >= 0 && month <= 2) return "3"; // Jan(0), Feb(1), Mar(2)
-    return "4"; // Apr-Aug
-}
-
-function finishQuiz() {
-    clearInterval(timerInterval);
-    exitFullscreen();
-    quizScreen.classList.add('hidden');
-    resultScreen.classList.remove('hidden');
-
-    let maxPossiblePoints = 0;
-    currentQuizQuestions.forEach(q => {
-        maxPossiblePoints += parseFloat(q.points) || 1.0;
-    });
-
-    const percentage = maxPossiblePoints > 0 ? Math.round((totalUserPoints / maxPossiblePoints) * 100) : 0;
-    const timeSpentString = formatTimeElapsed();
-    let analysis = "";
-
-    if (percentage >= 90) analysis = t('analysisEx');
-    else if (percentage >= 70) analysis = t('analysisGood');
-    else if (percentage >= 50) analysis = t('analysisSat');
-    else analysis = t('analysisBad');
-
-    resultContent.innerHTML = `
-        <div class="stat-item"><span>${t('studentLabel')}</span> <strong>${studentName} (${studentClass})</strong></div>
-        <div class="stat-item"><span>${t('thScore')}:</span> <strong>${totalUserPoints.toFixed(1)} / ${maxPossiblePoints.toFixed(1)} ${t('quizInfoPoints')}</strong></div>
-        <div class="stat-item"><span>${t('percentageLabel')}</span> <strong>${percentage}%</strong></div>
-        <div class="stat-item"><span>${t('timeSpent')}</span> <strong>${timeSpentString} (${t('totalLimit')} ${quizDuration} ${t('min')})</strong></div>
-        <div class="stat-item"><span>${t('violations')}</span> <strong style="color: ${blockCount > 0 ? 'var(--error-color)' : 'var(--success-color)'}">${blockCount} ${t('times')}</strong></div>
-        <div class="analysis-note">
-            <strong>${t('analysisLabel')}</strong> ${analysis}
-        </div>
-    `;
-
-    // Save student result to LocalStorage DB
-    const studentResult = {
-        name: studentName,
-        classGroup: studentClass,
-        subject: studentSubject,
-        score: totalUserPoints.toFixed(1),
-        totalPossible: maxPossiblePoints.toFixed(1),
-        percentage: percentage,
-        time: timeSpentString,
-        blocks: blockCount,
-        quarter: getCurrentQuarter(),
-        date: new Date().toISOString(),
-        earnedPoints: [...earnedPoints],
-        questionPointsMap: currentQuizQuestions.map(q => parseFloat(q.points) || 1.0)
-    };
-
-    results.push(studentResult);
-    saveResults();
-
-    // Error Review logic
-    renderErrorReview();
-
-    // Gamification (Certificate)
-    if (percentage >= 85) {
-        certificateZone.classList.remove('hidden');
-        generateCertificateCanvas(percentage);
-    } else {
-        certificateZone.classList.add('hidden');
-    }
-
-    // Telegram Bot notify integration
-    sendTelegramNotification(studentResult);
-
-    clearProctoring();
-}
-
-
-// --- Pedagogic "Xatolar ustida ishlash" review ---
-function renderErrorReview() {
-    errorReviewList.innerHTML = "";
-
-    if (!showAnswersToStudent) {
-        errorReviewList.innerHTML = `<p style="color: var(--text-secondary); text-align: center; font-weight: 600;">${t('hiddenAnswersMsg') || "Xavfsizlik nuqtai nazaridan to'g'ri javoblar yashirilgan."}</p>`;
-        return;
-    }
-
-    let errorsCount = 0;
-
-    currentQuizQuestions.forEach((q, index) => {
-        const userChoice = studentAnswers[index];
-        if (userChoice !== q.correct) {
-            errorsCount++;
-            const item = document.createElement('div');
-            item.className = 'review-item';
-
-            const userAnsText = userChoice === -1 || userChoice === undefined ? t('notAnswered') : q.options[userChoice];
-            const correctAnsText = q.options[q.correct];
-
-            item.innerHTML = `
-                <div class="review-q">${index + 1}. ${q.question}</div>
-                <div class="review-user-ans">${t('yourAnswer')} ${userAnsText}</div>
-                <div class="review-correct-ans">${t('lblCorrect')} ${correctAnsText}</div>
-            `;
-            errorReviewList.appendChild(item);
-        }
-    });
-
-    if (errorsCount === 0) {
-        errorReviewList.innerHTML = `<p style="color: var(--success-color); text-align: center; font-weight: 600;">${t('noMistakes')}</p>`;
+// --- Anti-Cheat Proctoring Events ---
+function handleVisibilityChange() {
+    if (document.hidden && !isLocked) {
+        triggerLock();
     }
 }
 
-
-// --- Telegram Notification service ---
-function sendTelegramNotification(res) {
-    if (!tgBotToken || !tgChatId) return; // Telegram is not configured
-
-    const text = `
-📊 *${t('examResult')} (shsb.test.portal)*
-
-👤 *${t('studentLabel')}* ${res.name}
-🏫 *${t('thClass')}:* ${res.classGroup}
-📘 *${t('thSubject')}:* ${res.subject}
-🎯 *${t('thScore')}:* ${res.score} / ${res.totalPossible} (${res.percentage}%)
-⏳ *${t('timeSpent')}* ${res.time}
-⚠️ *${t('violations')}* ${res.blocks} ${t('times')}
-📅 *${t('dateLabel')}* ${new Date().toLocaleString('uz-UZ')}
-    `;
-
-    const url = `https://api.telegram.org/bot${tgBotToken}/sendMessage`;
-
-    fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            chat_id: tgChatId,
-            text: text,
-            parse_mode: 'Markdown'
-        })
-    })
-        .then(response => {
-            if (!response.ok) {
-                console.error("Telegram bot API error");
-            }
-        })
-        .catch(err => {
-            console.error("Telegram connection error: ", err);
-        });
-}
-
-
-// --- HTML5 Canvas Certificate Generator ---
-function generateCertificateCanvas(percentage) {
-    const canvas = document.getElementById('certificate-canvas');
-    const ctx = canvas.getContext('2d');
-
-    // Draw Background
-    const gradient = ctx.createRadialGradient(400, 300, 100, 400, 300, 600);
-    gradient.addColorStop(0, '#1e293b');
-    gradient.addColorStop(1, '#0f172a');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 800, 600);
-
-    // Draw Gold Borders
-    ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 10;
-    ctx.strokeRect(20, 20, 760, 560);
-
-    ctx.strokeStyle = '#d97706';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(30, 30, 740, 540);
-
-    // Top Header
-    ctx.fillStyle = '#38bdf8';
-    ctx.font = 'bold 24px Outfit';
-    ctx.textAlign = 'center';
-    ctx.fillText('shsb.test.portal', 400, 80);
-
-    // Certificate Title
-    ctx.fillStyle = '#f59e0b';
-    ctx.font = 'bold 44px Outfit';
-    ctx.fillText(t('certTitle'), 400, 160);
-
-    // Decorative line
-    ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(250, 190);
-    ctx.lineTo(550, 190);
-    ctx.stroke();
-
-    // Body text
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = '20px Outfit';
-    ctx.fillText(t('certGivenTo'), 400, 240);
-
-    // Student Name
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 36px Outfit';
-    ctx.fillText(studentName, 400, 300);
-
-    // Student Class
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = 'italic 20px Outfit';
-    ctx.fillText(`${studentClass} ${t('studentOfClass')}`, 400, 345);
-
-    // Text detail
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = '18px Outfit';
-    ctx.fillText(`${t('certText1')} (${percentage}%),`, 400, 400);
-    ctx.fillText(t('certText2'), 400, 430);
-
-    // Sign details / Footer
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '16px Outfit';
-    ctx.fillText(`${t('dateLabel')} ${new Date().toLocaleDateString('uz-UZ')}`, 200, 520);
-
-    ctx.fillStyle = '#f59e0b';
-    ctx.font = 'bold 16px Outfit';
-    ctx.fillText(t('portalAdmin'), 600, 520);
-    ctx.font = '14px Outfit';
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText('shsb.test.portal', 600, 540);
-}
-
-function downloadCertificatePNG() {
-    const canvas = document.getElementById('certificate-canvas');
-    const url = canvas.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `sertifikat_${studentName.replace(/\s+/g, '_')}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-
-
-// --- Proctoring & Lock System ---
-
-function onProctorViolation() {
-    if (!isLocked && !quizScreen.classList.contains('hidden')) {
-        lockApp();
+function handleFullscreenChange() {
+    if (!document.fullscreenElement && !isLocked) {
+        triggerLock();
     }
 }
 
-const visibilityHandler = () => {
-    if (document.hidden) onProctorViolation();
-};
-
-const blurHandler = () => {
-    onProctorViolation();
-};
-
-const fullscreenHandler = () => {
-    if (!document.fullscreenElement) onProctorViolation();
-};
-
-function setupProctoring() {
-    document.addEventListener('visibilitychange', visibilityHandler);
-    window.addEventListener('blur', blurHandler);
-    document.addEventListener('fullscreenchange', fullscreenHandler);
-}
-
-function clearProctoring() {
-    document.removeEventListener('visibilitychange', visibilityHandler);
-    window.removeEventListener('blur', blurHandler);
-    document.removeEventListener('fullscreenchange', fullscreenHandler);
-}
-
-function lockApp() {
-    isLocked = true;
+function triggerLock() {
     blockCount++;
+    isLocked = true;
     lockScreen.classList.remove('hidden');
-    adminPassInput.value = "";
+    playSound('wrong');
     unlockError.classList.add('hidden');
-    clearInterval(timerInterval);
+    adminPassInput.value = "";
     adminPassInput.focus();
 }
 
-function unlockApp() {
-    isLocked = false;
-    lockScreen.classList.add('hidden');
-    requestFullscreen();
-    startTimer();
+unlockBtn.addEventListener('click', () => {
+    const pass = adminPassInput.value;
+    if (btoa(pass) === HASHED_ADMIN_PASS) {
+        isLocked = false;
+        lockScreen.classList.add('hidden');
+        document.documentElement.requestFullscreen().catch(e => e);
+    } else {
+        unlockError.classList.remove('hidden');
+    }
+});
+
+// --- Certificate Canvas Draw & Download ---
+downloadCertBtn.addEventListener('click', () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1000;
+    canvas.height = 700;
+    const ctx = canvas.getContext('2d');
+
+    // Background Gradient
+    const grd = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    grd.addColorStop(0, "#0f172a");
+    grd.addColorStop(1, "#1e293b");
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Border
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = 15;
+    ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+
+    // Inner gold border
+    ctx.strokeStyle = "#f59e0b";
+    ctx.lineWidth = 5;
+    ctx.strokeRect(40, 40, canvas.width - 80, canvas.height - 80);
+
+    // Text Header
+    ctx.fillStyle = "#38bdf8";
+    ctx.font = "bold 50px Outfit, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("FAXRIIY YORLIQ", canvas.width / 2, 120);
+
+    // School Name
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "30px Outfit, sans-serif";
+    ctx.fillText("Xo'jayli tumani Ixtisoslashtirilgan Maktabi", canvas.width / 2, 180);
+
+    // Awarded to
+    ctx.fillStyle = "white";
+    ctx.font = "24px Outfit, sans-serif";
+    ctx.fillText("Ushbu sertifikat topshiriladi:", canvas.width / 2, 280);
+
+    // Student Name
+    ctx.fillStyle = "#f59e0b";
+    ctx.font = "bold 60px Outfit, sans-serif";
+    ctx.fillText(studentName, canvas.width / 2, 360);
+
+    // Description
+    ctx.fillStyle = "white";
+    ctx.font = "26px Outfit, sans-serif";
+    ctx.fillText(`${studentClass}-sinf o'quvchisi, ${studentSubject} fanidan`, canvas.width / 2, 450);
+    ctx.fillText(`Ichki SHSB sinovida a'lo natija (${totalUserPoints.toFixed(1)} ball) ko'rsatganligi uchun.`, canvas.width / 2, 500);
+
+    // Date and Signatures
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "20px Courier New, monospace";
+    ctx.fillText(`Sana: ${new Date().toLocaleDateString()}`, 200, 620);
+    ctx.fillText("Maktab ma'muriyati", 800, 620);
+
+    // Line for signatures
+    ctx.beginPath();
+    ctx.moveTo(120, 590);
+    ctx.lineTo(280, 590);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(700, 590);
+    ctx.lineTo(900, 590);
+    ctx.stroke();
+
+    // Trigger Download
+    const link = document.createElement('a');
+    link.download = `Sertifikat_${studentName.replace(/\s+/g, '_')}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+});
+
+// --- QR Code Generator (QRious) ---
+function generateQR() {
+    const url = window.location.href; // Assumes current URL is the portal
+    new QRious({
+        element: qrCanvas,
+        value: url,
+        size: 250,
+        background: 'white',
+        foreground: '#0f172a',
+        level: 'H'
+    });
 }
 
+downloadQrBtn.addEventListener('click', () => {
+    const link = document.createElement('a');
+    link.download = 'QR_Kod_SHSB.png';
+    link.href = qrCanvas.toDataURL('image/png');
+    link.click();
+});
 
-// --- Utility Functions ---
-
-function requestFullscreen() {
-    const elem = document.documentElement;
-    if (elem.requestFullscreen) {
-        elem.requestFullscreen().catch(err => {
-            console.log("Fullscreen request denied: ", err);
-        });
-    }
-}
-
-function exitFullscreen() {
-    if (document.exitFullscreen) {
-        document.exitFullscreen().catch(() => { });
-    }
-}
-
-// --- Gemini AI Pedagogical Analysis ---
-geminiAnalyzeBtn.addEventListener('click', analyzeResultsWithGemini);
-
-async function analyzeResultsWithGemini() {
-    if (!geminiApiKey) {
-        alert(t('alertGeminiNoKey'));
-        setTabActive(tabSettingsBtn, tabSettings);
-        document.getElementById('gemini-api-key').focus();
-        return;
-    }
-
-    if (results.length === 0) {
-        alert(t('noResults'));
-        return;
-    }
-
-    geminiAnalyzeBtn.disabled = true;
-    geminiAnalysisOutput.classList.remove('hidden');
-    geminiAnalysisOutput.innerHTML = `
-        <div style="text-align: center;">
-            <div class="spinner"></div>
-            <p style="margin-top: 10px; color: #8b5cf6;">${t('geminiLoading')}</p>
-        </div>
-    `;
-
-    const compressedResults = results.map(r => ({
-        n: r.name,
-        c: r.classGroup,
-        s: r.subject,
-        p: r.percentage,
-        b: r.blocks
-    }));
-
-    const promptText = `Sen professional maktab psixologi va tajribali pedagogsan. Quyidagi test natijalarini tahlil qil. Qaysi sinf va fanlarda o'zlashtirish past yoki yuqori? Qaysi o'quvchilarda akademik pasayish xavfi bor? Taqiq buzilishi (ko'chirish) holatlari bo'yicha qanday choralar ko'rish kerak? O'qituvchilar va maktab rahbariyati uchun aniq punktma-punkt pedagogik tavsiyalar ber. Javobni Markdown formatida, chiroyli va o'qishga qulay qilib yozgin. Natijalar: ${JSON.stringify(compressedResults)}`;
-
-    try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{
-                        text: promptText
-                    }]
-                }]
-            })
-        });
-
-        if (!response.ok) throw new Error('API Error: ' + response.status);
-
-        const data = await response.json();
-        const aiText = data.candidates[0].content.parts[0].text;
-
-        geminiAnalysisOutput.innerHTML = parseMarkdownToHtml(aiText);
-    } catch (err) {
-        console.error(err);
-        geminiAnalysisOutput.innerHTML = `<p style="color: var(--error-color);">Xatolik yuz berdi: ${err.message}. API kalitingiz to'g'riligiga ishonch hosil qiling.</p>`;
-    } finally {
-        geminiAnalyzeBtn.disabled = false;
-    }
-}
-
+// Utility to parse simple Markdown for Questions and Gemini Output
 function parseMarkdownToHtml(md) {
     let html = md;
     html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
@@ -1690,5 +1488,5 @@ function parseMarkdownToHtml(md) {
     return html;
 }
 
-// Launch app
+// Kickoff
 init();
