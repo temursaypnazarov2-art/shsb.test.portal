@@ -99,6 +99,16 @@ const exportExcelBtn = document.getElementById('export-excel-btn');
 const testDurationInput = document.getElementById('test-duration-input');
 const saveSettingsBtn = document.getElementById('save-settings-btn');
 const filterClass = document.getElementById('filter-class');
+const filterQuarter = document.getElementById('filter-quarter');
+const statsPanel = document.getElementById('stats-panel');
+const statValTotal = document.getElementById('stat-val-total');
+const statValAvg = document.getElementById('stat-val-avg');
+const statValQuality = document.getElementById('stat-val-quality');
+const comparisonPanel = document.getElementById('comparison-panel');
+const compQ1 = document.getElementById('comp-q1');
+const compQ2 = document.getElementById('comp-q2');
+const analyzeBtn = document.getElementById('analyze-btn');
+const comparisonResult = document.getElementById('comparison-result');
 
 // Telegram Settings Inputs
 const tgBotTokenInput = document.getElementById('tg-bot-token');
@@ -400,8 +410,12 @@ wordUploadBtn.addEventListener('click', () => {
 });
 
 // Filter Results
-filterClass.addEventListener('change', () => {
-    renderResultsTable(filterClass.value);
+filterClass.addEventListener('change', (e) => {
+    renderResultsTable(e.target.value, filterQuarter.value);
+});
+
+filterQuarter.addEventListener('change', (e) => {
+    renderResultsTable(filterClass.value, e.target.value);
 });
 
 // Clear All Results
@@ -572,17 +586,26 @@ function populateClassFilters() {
     });
 }
 
-function renderResultsTable(filter = "all") {
-    resultsTableBody.innerHTML = "";
+function renderResultsTable(classFilter = 'all', quarterFilter = 'all') {
+    resultsTableBody.innerHTML = '';
+    
     let list = results;
-    if (filter !== "all") {
-        list = results.filter(r => r.classGroup === filter);
+    if (classFilter !== 'all') {
+        list = list.filter(r => r.classGroup === classFilter);
+    }
+    if (quarterFilter !== 'all') {
+        list = list.filter(r => r.quarter === quarterFilter);
     }
 
     if (list.length === 0) {
         resultsTableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">${t('noResults')}</td></tr>`;
+        statsPanel.classList.add('hidden');
+        comparisonPanel.classList.add('hidden');
         return;
     }
+
+    // Generate class report stats
+    generateClassReport(list);
 
     list.forEach(res => {
         const tr = document.createElement('tr');
@@ -597,6 +620,69 @@ function renderResultsTable(filter = "all") {
         resultsTableBody.appendChild(tr);
     });
 }
+
+// Pedagogical Analytics Logic
+function generateClassReport(list) {
+    statsPanel.classList.remove('hidden');
+    
+    const total = list.length;
+    const avgScore = list.reduce((sum, r) => sum + parseFloat(r.percentage), 0) / total;
+    const qualityCount = list.filter(r => parseFloat(r.percentage) >= 70).length;
+    const qualityPercent = (qualityCount / total) * 100;
+
+    statValTotal.textContent = total;
+    statValAvg.textContent = avgScore.toFixed(1) + '%';
+    statValQuality.textContent = qualityPercent.toFixed(1) + '%';
+
+    if (filterClass.value !== 'all') {
+        comparisonPanel.classList.remove('hidden');
+        comparisonResult.classList.add('hidden');
+    } else {
+        comparisonPanel.classList.add('hidden');
+    }
+}
+
+analyzeBtn.addEventListener('click', () => {
+    const cls = filterClass.value;
+    if (cls === 'all') return;
+    
+    const q1Val = compQ1.value;
+    const q2Val = compQ2.value;
+
+    const classResults = results.filter(r => r.classGroup === cls);
+    const q1List = classResults.filter(r => r.quarter === q1Val);
+    const q2List = classResults.filter(r => r.quarter === q2Val);
+
+    if (q1List.length === 0 || q2List.length === 0) {
+        comparisonResult.classList.remove('hidden');
+        comparisonResult.innerHTML = `<strong style="color: var(--error-color);">Ma'lumot yetarli emas!</strong> Tanlangan choraklardan birida natijalar yo'q.`;
+        return;
+    }
+
+    const avgQ1 = q1List.reduce((sum, r) => sum + parseFloat(r.percentage), 0) / q1List.length;
+    const avgQ2 = q2List.reduce((sum, r) => sum + parseFloat(r.percentage), 0) / q2List.length;
+    
+    const diff = avgQ2 - avgQ1;
+    let diffStr = "";
+    let conclusion = "";
+
+    if (diff > 0) {
+        diffStr = `<span style="color: var(--success-color);">${diff.toFixed(1)}% ${t('compIncreased')}</span>`;
+        conclusion = t('compConclusionGood');
+    } else if (diff < 0) {
+        diffStr = `<span style="color: var(--error-color);">${Math.abs(diff).toFixed(1)}% ${t('compDecreased')}</span>`;
+        conclusion = t('compConclusionBad');
+    } else {
+        diffStr = `<span style="color: var(--text-secondary);">${t('compSame')}</span>`;
+        conclusion = t('compConclusionNeutral');
+    }
+
+    comparisonResult.classList.remove('hidden');
+    comparisonResult.innerHTML = `
+        <div style="margin-bottom: 10px;">${cls} - o'zlashtirish ko'rsatkichi ${q1Val}-chorak (<strong>${avgQ1.toFixed(1)}%</strong>) dan ${q2Val}-chorak (<strong>${avgQ2.toFixed(1)}%</strong>) ga <strong>${diffStr}</strong>.</div>
+        <div><strong>${t('compConclusion')}</strong> ${conclusion}</div>
+    `;
+});
 
 // CSV Export (with UTF-8 BOM)
 function exportResultsToCSV() {
@@ -792,6 +878,14 @@ function formatTimeElapsed() {
     return `${mins}:${secs}`;
 }
 
+function getCurrentQuarter() {
+    const month = new Date().getMonth(); // 0-indexed (Jan = 0)
+    if (month >= 8 && month <= 9) return "1"; // Sep(8), Oct(9)
+    if (month >= 10 && month <= 11) return "2"; // Nov(10), Dec(11)
+    if (month >= 0 && month <= 2) return "3"; // Jan(0), Feb(1), Mar(2)
+    return "4"; // Apr-Aug
+}
+
 function finishQuiz() {
     clearInterval(timerInterval);
     exitFullscreen();
@@ -831,7 +925,9 @@ function finishQuiz() {
         totalPossible: maxPossiblePoints.toFixed(1),
         percentage: percentage,
         time: timeSpentString,
-        blocks: blockCount
+        blocks: blockCount,
+        quarter: getCurrentQuarter(),
+        date: new Date().toISOString()
     };
 
     results.push(studentResult);

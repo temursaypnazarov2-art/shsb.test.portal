@@ -173,12 +173,59 @@ To'g'ri javob: B
                                 <option value="all" data-i18n="filterAll">Barchasi</option>
                                 <!-- Dynamically filled with unique classes -->
                             </select>
+
+                            <label for="filter-quarter" data-i18n="lblFilterQuarter">Chorak:</label>
+                            <select id="filter-quarter">
+                                <option value="all" data-i18n="filterAll">Barchasi</option>
+                                <option value="1" data-i18n="q1">1-chorak</option>
+                                <option value="2" data-i18n="q2">2-chorak</option>
+                                <option value="3" data-i18n="q3">3-chorak</option>
+                                <option value="4" data-i18n="q4">4-chorak</option>
+                            </select>
                         </div>
 
                         <div class="results-buttons">
                             <button id="export-excel-btn" class="success-btn" data-i18n="btnExportCsv">Excel formatda yuklab olish (CSV)</button>
                             <button id="clear-results-btn" class="danger-btn" data-i18n="btnClearResults">Barcha natijalarni tozalash</button>
                         </div>
+                    </div>
+
+                    <!-- Statistics Panel -->
+                    <div class="stats-grid hidden" id="stats-panel">
+                        <div class="stat-card">
+                            <span class="stat-title" data-i18n="statTotalStudents">O'quvchilar soni</span>
+                            <span class="stat-value" id="stat-val-total">0</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-title" data-i18n="statAvgScore">O'rtacha ko'rsatkich (%)</span>
+                            <span class="stat-value" id="stat-val-avg">0%</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-title" data-i18n="statQuality">Sifat ko'rsatkichi (70%+)</span>
+                            <span class="stat-value" id="stat-val-quality">0%</span>
+                        </div>
+                    </div>
+
+                    <!-- Comparison Section -->
+                    <div class="comparison-section hidden" id="comparison-panel">
+                        <h3 data-i18n="comparisonTitle" style="color: white; margin-bottom: 15px; text-align: center;">Ikki chorakni o'zaro tahlil qilish</h3>
+                        <div class="comparison-controls" style="display: flex; gap: 15px; justify-content: center; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">
+                            <select id="comp-q1">
+                                <option value="1" data-i18n="q1">1-chorak</option>
+                                <option value="2" data-i18n="q2">2-chorak</option>
+                                <option value="3" data-i18n="q3">3-chorak</option>
+                                <option value="4" data-i18n="q4">4-chorak</option>
+                            </select>
+                            <span style="color: white; font-weight: bold;">VS</span>
+                            <select id="comp-q2">
+                                <option value="1" data-i18n="q1">1-chorak</option>
+                                <option value="2" data-i18n="q2" selected>2-chorak</option>
+                                <option value="3" data-i18n="q3">3-chorak</option>
+                                <option value="4" data-i18n="q4">4-chorak</option>
+                            </select>
+                            <button id="analyze-btn" class="primary-btn" data-i18n="btnCompare" style="margin-top: 0;">Tahlil qilish</button>
+                        </div>
+                        <div id="comparison-result" class="comparison-result hidden"></div>
                     </div>
                     <div class="table-container">
                         <table class="results-table">
