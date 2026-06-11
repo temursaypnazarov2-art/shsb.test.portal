@@ -981,16 +981,25 @@ exportExcelBtn.addEventListener('click', () => {
     // Row 5: Table Headers
     let headerRow = ["№", "Oqıwshınıń familiyası, atı"];
 
-    // Add question columns with their respective max points dynamically based on first student's details
-    let sampleStudentDetails = exportData.find(r => r.details && r.details.length === maxQuestionsLength)?.details || [];
-
-    for (let i = 0; i < maxQuestionsLength; i++) {
-        let maxP = sampleStudentDetails[i] ? sampleStudentDetails[i].maxPoints : 1;
-        headerRow.push(`${i + 1}-soraw (${maxP} b)`);
+    function getCognitiveType(idx, total) {
+        if (total === 0) return "Bilish";
+        let third = total / 3;
+        if (idx < Math.ceil(third)) return "Bilish";
+        if (idx < Math.ceil(2 * third)) return "Qo'llash";
+        return "Mulohaza qilish";
     }
 
-    headerRow.push("JÁMI");
-    headerRow.push("%");
+    // Add question columns dynamically
+    for (let i = 0; i < maxQuestionsLength; i++) {
+        let cogType = getCognitiveType(i, maxQuestionsLength);
+        headerRow.push(`${i + 1}-soraw (${cogType})`);
+    }
+
+    headerRow.push("Bilish %");
+    headerRow.push("Qo'llash %");
+    headerRow.push("Mulohaza %");
+    headerRow.push("JÁMI (Ball)");
+    headerRow.push("JÁMI %");
     wsData.push(headerRow);
 
     // Rows 6+: Student Data
@@ -1000,15 +1009,31 @@ exportExcelBtn.addEventListener('click', () => {
         let row = [index + 1, student.name];
 
         let totalScore = 0;
+        let counts = { "Bilish": { correct: 0, total: 0 }, "Qo'llash": { correct: 0, total: 0 }, "Mulohaza qilish": { correct: 0, total: 0 } };
+
         for (let i = 0; i < maxQuestionsLength; i++) {
+            let cogType = getCognitiveType(i, maxQuestionsLength);
+            counts[cogType].total++;
+
             if (student.details && student.details[i]) {
                 const earned = student.details[i].earnedPoints || 0;
-                row.push(earned.toFixed(1));
+                const isCorrect = earned > 0;
+                row.push(isCorrect ? '+' : '-');
                 totalScore += earned;
+                if (isCorrect) counts[cogType].correct++;
             } else {
-                row.push(0);
+                row.push('-');
             }
         }
+
+        // Calculate cognitive percentages
+        ["Bilish", "Qo'llash", "Mulohaza qilish"].forEach(type => {
+            if (counts[type].total > 0) {
+                row.push(((counts[type].correct / counts[type].total) * 100).toFixed(1) + '%');
+            } else {
+                row.push('-');
+            }
+        });
 
         row.push(totalScore.toFixed(1));
         row.push(`${student.percentage}%`);
@@ -1021,7 +1046,7 @@ exportExcelBtn.addEventListener('click', () => {
 
     // Styling & Merging
     // A1 to max column merge
-    const maxColIndex = 1 + maxQuestionsLength + 2; // № + Name + N_Questions + JÁMI + %
+    const maxColIndex = 1 + maxQuestionsLength + 5; // № + Name + N_Questions + 3 Cognitive + JÁMI + %
 
     if (!ws['!merges']) ws['!merges'] = [];
     ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: maxColIndex } }); // Row 1
@@ -1050,10 +1075,13 @@ exportExcelBtn.addEventListener('click', () => {
     ws['!cols'][0] = { wch: 5 };  // №
     ws['!cols'][1] = { wch: 35 }; // Name
     for (let i = 0; i < maxQuestionsLength; i++) {
-        ws['!cols'][i + 2] = { wch: 12 }; // Questions
+        ws['!cols'][i + 2] = { wch: 18 }; // Questions (e.g. "1-soraw (Mulohaza qilish)")
     }
-    ws['!cols'][maxQuestionsLength + 2] = { wch: 10 }; // JAMI
-    ws['!cols'][maxQuestionsLength + 3] = { wch: 10 }; // %
+    ws['!cols'][maxQuestionsLength + 2] = { wch: 12 }; // Bilish %
+    ws['!cols'][maxQuestionsLength + 3] = { wch: 12 }; // Qo'llash %
+    ws['!cols'][maxQuestionsLength + 4] = { wch: 14 }; // Mulohaza %
+    ws['!cols'][maxQuestionsLength + 5] = { wch: 14 }; // JAMI (Ball)
+    ws['!cols'][maxQuestionsLength + 6] = { wch: 10 }; // %
 
     XLSX.utils.book_append_sheet(wb, ws, "Natijalar");
 
