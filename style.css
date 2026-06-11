@@ -862,4 +862,40 @@ select:focus {
     border-radius: 6px;
     font-size: 0.8rem;
     font-weight: bold;
+}/* Language Switcher Styling */
+.lang-switcher {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 8px;
+    z-index: 1000;
+}
+
+.lang-btn {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    color: #e2e8f0;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.1);
+}
+
+.lang-btn:hover {
+    background: rgba(56, 189, 248, 0.2);
+    border-color: rgba(56, 189, 248, 0.8);
+    color: #fff;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+}
+
+.lang-btn.active {
+    background: rgba(56, 189, 248, 0.8);
+    color: #fff;
+    border-color: #38bdf8;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
 }
