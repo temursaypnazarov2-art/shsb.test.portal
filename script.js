@@ -6,23 +6,51 @@
 // --- Constants & Database ---
 const HASHED_ADMIN_PASS = "YWRtaW4xMjNfc2hzYg==";
 
-const defaultQuestions = [
-    {
-        question: "O'zbekiston Respublikasining poytaxti qaysi shahar?",
-        options: ["Samarqand", "Toshkent", "Buxoro", "Xiva"],
-        correct: 1,
-        points: 2.0
-    },
-    {
-        question: "Kompyuterning asosiy tezkor xotira turi qaysi?",
-        options: ["RAM", "HDD", "Processor", "Monitor"],
-        correct: 0,
-        points: 3.0
-    }
+const defaultSavollar = [
+    // --- Ona tili (5-11 sinf namunasi) ---
+    { subject: "Ona tili", question: "18-bob. Fe'l nisbatlari nechta turga bo'linadi?", options: ["3 ta", "4 ta", "5 ta", "6 ta"], correct: 2, points: 2.0 },
+    { subject: "Ona tili", question: "19-bob. Qo'shma gaplarning qanday turlari mavjud?", options: ["Bog'langan va ergashgan", "Sodda va murakkab", "To'liqsiz va to'liq", "Yoyiq va yig'iq"], correct: 0, points: 2.0 },
+    { subject: "Ona tili", question: "20-bob. O'zlashtirma gap qanday qo'shtirnoq ichiga olinadi?", options: ["Sohibining so'zidan oldin", "Bosh harf bilan boshlanib qo'shtirnoqda beriladi", "Doim qavs ichida yoziladi", "Nuqtadan keyin ajratiladi"], correct: 1, points: 2.0 },
+
+    // --- Matematika (5-11 sinf namunasi) ---
+    { subject: "Matematika", question: "18-bob. Uchburchakning ichki burchaklari yig'indisi nimaga teng?", options: ["90°", "180°", "360°", "270°"], correct: 1, points: 3.0 },
+    { subject: "Matematika", question: "19-bob. Kvadrat tenglamaning diskriminanti qanday topiladi?", options: ["D = b - 4ac", "D = b^2 - 4ac", "D = a^2 - 4bc", "D = c^2 - 4ab"], correct: 1, points: 3.0 },
+    { subject: "Matematika", question: "20-bob. Agar log_2(x) = 3 bo'lsa, x nechaga teng?", options: ["6", "9", "8", "16"], correct: 2, points: 4.0 },
+
+    // --- Fizika ---
+    { subject: "Fizika", question: "18-bob. Nyutonning ikkinchi qonuni formulasi qaysi?", options: ["F = m*a", "E = m*c^2", "P = m*v", "A = F*S"], correct: 0, points: 3.0 },
+    { subject: "Fizika", question: "19-bob. Yorug'lik tezligi vakuumda taxminan nechaga teng?", options: ["300,000 km/s", "150,000 km/s", "340 m/s", "3,000 km/s"], correct: 0, points: 3.0 },
+    { subject: "Fizika", question: "20-bob. Om qonunining formulasi qanday?", options: ["I = U/R", "I = U*R", "U = I/R", "R = I*U"], correct: 0, points: 3.0 },
+
+    // --- Kimyo ---
+    { subject: "Kimyo", question: "18-bob. Suvning molekulyar formulasi qanday?", options: ["HO2", "H2O", "H2O2", "OH2"], correct: 1, points: 2.0 },
+    { subject: "Kimyo", question: "19-bob. Mendeleyev davriy jadvalining 1-elementi nima?", options: ["Kislorod", "Uglerod", "Vodorod", "Geli"], correct: 2, points: 2.0 },
+
+    // --- Biologiya ---
+    { subject: "Biologiya", question: "18-bob. O'simliklarda fotosintez jarayoni qayerda kechadi?", options: ["Xloroplastlarda", "Mitoxondriyalarda", "Vakuolalarda", "Yadroda"], correct: 0, points: 3.0 },
+    { subject: "Biologiya", question: "19-bob. Inson yuragi nechta kameradan iborat?", options: ["2 ta", "3 ta", "4 ta", "5 ta"], correct: 2, points: 3.0 },
+
+    // --- Tarix ---
+    { subject: "Tarix", question: "18-bob. Amir Temur qachon tug'ilgan?", options: ["1336-yil 9-aprel", "1441-yil 9-fevral", "1370-yil", "1501-yil"], correct: 0, points: 2.0 },
+    { subject: "Tarix", question: "19-bob. Buxoro xonligi qachon amirlikka aylangan?", options: ["1500-yil", "1753-yil", "1868-yil", "1920-yil"], correct: 1, points: 3.0 },
+
+    // --- Huquq ---
+    { subject: "Huquq", question: "18-bob. O'zbekiston Respublikasining Konstitutsiyasi necha bo'limdan iborat?", options: ["5", "6", "7", "8"], correct: 1, points: 3.0 },
+    { subject: "Huquq", question: "19-bob. Inson huquqlari umumjahon deklaratsiyasi qachon qabul qilingan?", options: ["1948-yil 10-dekabr", "1992-yil 8-dekabr", "1945-yil 2-sentabr", "1989-yil 1-oktabr"], correct: 0, points: 3.0 },
+
+    // --- Informatika ---
+    { subject: "Informatika", question: "18-bob. Eng kichik axborot o'lchov birligi nima?", options: ["Bayt", "Bit", "Kilobayt", "Piksel"], correct: 1, points: 2.0 },
+    { subject: "Informatika", question: "19-bob. HTML qanday til hisoblanadi?", options: ["Dasturlash tili", "Hypertext Markup Language", "Ma'lumotlar bazasi tili", "Operatsion tizim"], correct: 1, points: 2.0 }
 ];
 
 // Load from LocalStorage
-let questions = JSON.parse(localStorage.getItem('quiz_questions')) || defaultQuestions;
+let storedQuestionsStr = localStorage.getItem('quiz_questions');
+let questions = storedQuestionsStr ? JSON.parse(storedQuestionsStr) : JSON.parse(JSON.stringify(defaultSavollar));
+
+// Force load defaultSavollar if database is completely empty so users don't see "Test topilmadi"
+if (!questions || questions.length === 0) {
+    questions = JSON.parse(JSON.stringify(defaultSavollar));
+}
 let results = JSON.parse(localStorage.getItem('quiz_results')) || [];
 let quizDuration = parseInt(localStorage.getItem('quiz_duration')) || 20; // Default 20 mins
 let tgBotToken = localStorage.getItem('tg_bot_token') || "";
@@ -88,6 +116,7 @@ let studentClass = "";
 let studentSubject = "";
 let currentQuizQuestions = [];
 let studentAnswers = []; // Tracks indexes of user choices
+let earnedPoints = []; // Tracks actual points earned per question
 let isLocked = false;
 let blockCount = 0;
 let testTimeLimitSeconds = 0;
@@ -649,7 +678,7 @@ clearResultsBtn.addEventListener('click', () => {
 });
 
 // Export CSV
-exportExcelBtn.addEventListener('click', exportResultsToCSV);
+exportExcelBtn.addEventListener('click', exportResultsToExcel);
 
 // Certificate Download
 downloadCertBtn.addEventListener('click', downloadCertificatePNG);
@@ -917,32 +946,190 @@ analyzeBtn.addEventListener('click', () => {
     `;
 });
 
-// CSV Export (with UTF-8 BOM)
-function exportResultsToCSV() {
-    if (results.length === 0) {
-        alert(t('alertNoExport'));
+// Excel Export via SheetJS
+function exportResultsToExcel() {
+    let list = results;
+    if (currentTeacherSession) {
+        list = list.filter(r => r.subject === currentTeacherSession.subject);
+    }
+
+    let cls = filterClass ? filterClass.value : 'all';
+    let qtr = filterQuarter ? filterQuarter.value : 'all';
+
+    if (list.length === 0) {
+        alert(t('alertNoExport') || "Eksport qilish uchun ma'lumot topilmadi!");
         return;
     }
 
-    let csvContent = "\uFEFF";
-    csvContent += `"${t('thName')}","${t('thClass')}","${t('thSubject')}","${t('thScore')}","Maksimal ball","${t('thPercent')}","${t('timeSpent')}","${t('thBlocks')}"\n`;
+    if (cls === 'all') {
+        const classCounts = {};
+        list.forEach(r => { if (r.classGroup) classCounts[r.classGroup] = (classCounts[r.classGroup] || 0) + 1; });
+        const keys = Object.keys(classCounts);
+        cls = keys.length > 0 ? keys.sort((a, b) => classCounts[b] - classCounts[a])[0] : 'Umumiy';
+    }
+    if (qtr === 'all') {
+        const qtrCounts = {};
+        list.forEach(r => { if (r.quarter) qtrCounts[r.quarter] = (qtrCounts[r.quarter] || 0) + 1; });
+        const keys = Object.keys(qtrCounts);
+        qtr = keys.length > 0 ? keys.sort((a, b) => qtrCounts[b] - qtrCounts[a])[0] : 'Umumiy';
+    }
 
-    results.forEach(res => {
-        const cleanName = res.name.replace(/,/g, ' ');
-        const cleanClass = (res.classGroup || '').replace(/,/g, ' ');
-        const cleanSubj = (res.subject || '').replace(/,/g, ' ');
-        csvContent += `"${cleanName}","${cleanClass}","${cleanSubj}",${res.score},${res.totalPossible},${res.percentage}%,${res.time},${res.blocks}\n`;
+    let maxQuestions = 0;
+    let referenceQMap = null;
+    list.forEach(r => {
+        if (r.earnedPoints && r.earnedPoints.length > maxQuestions) {
+            maxQuestions = r.earnedPoints.length;
+            referenceQMap = r.questionPointsMap;
+        }
     });
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    const dateStr = new Date().toISOString().slice(0, 10);
-    link.setAttribute("download", `shsb_test_natijalari_${dateStr}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (maxQuestions === 0) {
+        let qs = currentTeacherSession ? questions.filter(q => q.subject === currentTeacherSession.subject) : questions;
+        maxQuestions = qs.length || 10;
+        referenceQMap = qs.map(q => parseFloat(q.points) || 1.0);
+        if (referenceQMap.length === 0) referenceQMap = Array(maxQuestions).fill(1);
+    }
+    if (!referenceQMap) referenceQMap = Array(maxQuestions).fill(1);
+
+    const overallMaxPoints = referenceQMap.reduce((a, b) => a + b, 0);
+    const subjectName = (currentTeacherSession ? currentTeacherSession.subject : (list[0].subject || "FAN")).toUpperCase();
+    const dateStr = new Date().toLocaleDateString('uz-UZ', { day: 'numeric', month: 'short', year: 'numeric' });
+    const studentsCount = list.length;
+
+    const row1 = [`Qaraqalpaqstan Respublikası Xojeyli rayonı qánigelestirilgen mektebiniń ${cls} klass, ${qtr}-sherek`];
+    const row2 = [`${subjectName} páninen ótkerilgen I-SHSB NÁTIYJELERI`];
+    const row3 = [];
+    const row4 = [`SHSB ótkerilgen sáne - ${dateStr}`, ``, `Sorawlar sanı: - ${maxQuestions}`, ``, `Max ball: - ${overallMaxPoints}`, ``, `Oqıwshılar sanı: - ${studentsCount}`];
+
+    const headerRow = ["№", "Oqıwshınıń familiyası, atı"];
+    for (let i = 0; i < maxQuestions; i++) {
+        const ptStr = referenceQMap[i] == Math.round(referenceQMap[i]) ? referenceQMap[i] : referenceQMap[i].toFixed(1);
+        headerRow.push(`${i + 1}-soraw\n(${ptStr} ball)`);
+    }
+    const maxPtStr = overallMaxPoints == Math.round(overallMaxPoints) ? overallMaxPoints : overallMaxPoints.toFixed(1);
+    headerRow.push(`JÁMI\n(${maxPtStr} ball)`);
+    headerRow.push(`%`);
+
+    const dataRows = [];
+    const colCorrectCounts = Array(maxQuestions).fill(0);
+    const colAttemptedCounts = Array(maxQuestions).fill(0);
+
+    list.forEach((res, index) => {
+        const row = [index + 1, res.name];
+        let hasEarned = res.earnedPoints && res.earnedPoints.length > 0;
+
+        for (let i = 0; i < maxQuestions; i++) {
+            if (hasEarned && i < res.earnedPoints.length) {
+                const pt = parseFloat(res.earnedPoints[i]);
+                if (pt > 0) {
+                    row.push(pt == Math.round(pt) ? pt : pt.toFixed(1));
+                    colCorrectCounts[i]++;
+                } else {
+                    row.push("");
+                }
+                colAttemptedCounts[i]++;
+            } else {
+                row.push("");
+            }
+        }
+
+        row.push(parseFloat(res.score));
+        const pVal = parseFloat(res.percentage);
+        row.push(pVal == Math.round(pVal) ? pVal : pVal.toFixed(1));
+        dataRows.push(row);
+    });
+
+    const footerRow = ["", "JÁMI"];
+    for (let i = 0; i < maxQuestions; i++) {
+        if (colAttemptedCounts[i] > 0) {
+            const perc = (colCorrectCounts[i] / colAttemptedCounts[i]) * 100;
+            footerRow.push(`${perc.toFixed(1)}%`);
+        } else {
+            footerRow.push("");
+        }
+    }
+
+    const avgScore = list.reduce((sum, r) => sum + parseFloat(r.score), 0) / list.length;
+    const avgPerc = list.reduce((sum, r) => sum + parseFloat(r.percentage), 0) / list.length;
+    footerRow.push(parseFloat(avgScore.toFixed(1)));
+    footerRow.push(parseFloat(avgPerc.toFixed(1)));
+
+    const ws_data = [row1, row2, row3, row4, headerRow, ...dataRows, footerRow];
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    const totalCols = headerRow.length;
+
+    if (!ws['!merges']) ws['!merges'] = [];
+    ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } });
+    ws['!merges'].push({ s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } });
+
+    ws['!merges'].push({ s: { r: 3, c: 0 }, e: { r: 3, c: 1 } });
+    ws['!merges'].push({ s: { r: 3, c: 2 }, e: { r: 3, c: 3 } });
+    ws['!merges'].push({ s: { r: 3, c: 4 }, e: { r: 3, c: 5 } });
+    ws['!merges'].push({ s: { r: 3, c: 6 }, e: { r: 3, c: totalCols > 6 ? 7 : 6 } });
+
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    const borderStyle = {
+        top: { style: "thin", color: { rgb: "000000" } },
+        bottom: { style: "thin", color: { rgb: "000000" } },
+        left: { style: "thin", color: { rgb: "000000" } },
+        right: { style: "thin", color: { rgb: "000000" } }
+    };
+
+    for (let R = 0; R <= range.e.r; ++R) {
+        for (let C = 0; C <= range.e.c; ++C) {
+            const cell_address = { c: C, r: R };
+            const cell_ref = XLSX.utils.encode_cell(cell_address);
+            if (!ws[cell_ref]) ws[cell_ref] = { t: 's', v: '' };
+            if (!ws[cell_ref].s) ws[cell_ref].s = {};
+
+            if (R >= 4) {
+                ws[cell_ref].s.border = borderStyle;
+                ws[cell_ref].s.alignment = { horizontal: "center", vertical: "center", wrapText: true };
+                if (C === 1) ws[cell_ref].s.alignment.horizontal = "left";
+            }
+
+            if (R === 0 || R === 1) {
+                ws[cell_ref].s.font = { bold: true, sz: 14, name: "Times New Roman" };
+                ws[cell_ref].s.alignment = { horizontal: "center", vertical: "center" };
+            }
+
+            if (R === 3) {
+                ws[cell_ref].s.font = { bold: false, sz: 11, name: "Times New Roman" };
+                ws[cell_ref].s.alignment = { horizontal: "center" };
+            }
+
+            if (R === 4) {
+                ws[cell_ref].s.font = { bold: true, name: "Times New Roman" };
+                ws[cell_ref].s.fill = { fgColor: { rgb: "FFF2CC" } };
+                ws[cell_ref].s.alignment = { horizontal: "center", vertical: "center", wrapText: true };
+            }
+
+            if (R === range.e.r) {
+                ws[cell_ref].s.font = { bold: true, name: "Times New Roman" };
+                ws[cell_ref].s.fill = { fgColor: { rgb: "D9EAD3" } };
+                ws[cell_ref].s.alignment = { horizontal: "center", vertical: "center" };
+            }
+
+            if (R > 4 && R < range.e.r) {
+                ws[cell_ref].s.font = { name: "Times New Roman" };
+            }
+        }
+    }
+
+    ws['!cols'] = [];
+    ws['!cols'][0] = { wch: 5 };
+    ws['!cols'][1] = { wch: 35 };
+    for (let i = 0; i < maxQuestions; i++) {
+        ws['!cols'][i + 2] = { wch: 8 };
+    }
+    ws['!cols'][maxQuestions + 2] = { wch: 10 };
+    ws['!cols'][maxQuestions + 3] = { wch: 8 };
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Natijalar");
+
+    const isoDate = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `shsb_test_natijalari_${isoDate}.xlsx`);
 }
 
 
@@ -1001,6 +1188,7 @@ function startQuiz() {
     currentQuestionIndex = 0;
     totalUserPoints = 0;
     studentAnswers = [];
+    earnedPoints = [];
 
     requestFullscreen();
 
@@ -1054,8 +1242,10 @@ nextBtn.onclick = () => {
     if (selected.dataset.correct === "true") {
         const currentPoints = parseFloat(currentQuizQuestions[currentQuestionIndex].points) || 1.0;
         totalUserPoints += currentPoints;
+        earnedPoints.push(currentPoints);
         playSound('correct');
     } else {
+        earnedPoints.push(0);
         playSound('incorrect');
     }
 
@@ -1084,11 +1274,15 @@ function startTimer() {
                 if (selected.dataset.correct === "true") {
                     const currentPoints = parseFloat(currentQuizQuestions[currentQuestionIndex].points) || 1.0;
                     totalUserPoints += currentPoints;
+                    earnedPoints.push(currentPoints);
+                } else {
+                    earnedPoints.push(0);
                 }
             } else if (studentAnswers.length < currentQuizQuestions.length) {
                 // Fill remaining unanswered as -1
                 while (studentAnswers.length < currentQuizQuestions.length) {
                     studentAnswers.push(-1);
+                    earnedPoints.push(0);
                 }
             }
             finishQuiz();
@@ -1162,7 +1356,9 @@ function finishQuiz() {
         time: timeSpentString,
         blocks: blockCount,
         quarter: getCurrentQuarter(),
-        date: new Date().toISOString()
+        date: new Date().toISOString(),
+        earnedPoints: [...earnedPoints],
+        questionPointsMap: currentQuizQuestions.map(q => parseFloat(q.points) || 1.0)
     };
 
     results.push(studentResult);
