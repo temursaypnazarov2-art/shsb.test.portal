@@ -1,5 +1,5 @@
 /**
- * shsb.test.portal - Script Logic with Admin Panel & LocalStorage
+ * shsb.test.portal - Script Logic with Timer, Question weights & CSV Export
  * Author: Antigravity AI
  */
 
@@ -10,34 +10,41 @@ const defaultQuestions = [
     {
         question: "O'zbekiston Respublikasining poytaxti qaysi shahar?",
         options: ["Samarqand", "Toshkent", "Buxoro", "Xiva"],
-        correct: 1
+        correct: 1,
+        points: 2.0
     },
     {
-        question: "Kompyuterning asosiy xotira turi qaysi?",
+        question: "Kompyuterning asosiy tezkor xotira turi qaysi?",
         options: ["RAM", "HDD", "Processor", "Monitor"],
-        correct: 0
+        correct: 0,
+        points: 3.0
     }
 ];
 
 // Load from LocalStorage
 let questions = JSON.parse(localStorage.getItem('quiz_questions')) || defaultQuestions;
 let results = JSON.parse(localStorage.getItem('quiz_results')) || [];
+let quizDuration = parseInt(localStorage.getItem('quiz_duration')) || 20; // Default 20 mins
 
-// Save Helper
+// Save Helpers
 function saveQuestions() {
     localStorage.setItem('quiz_questions', JSON.stringify(questions));
 }
 function saveResults() {
     localStorage.setItem('quiz_results', JSON.stringify(results));
 }
+function saveDuration() {
+    localStorage.setItem('quiz_duration', quizDuration.toString());
+}
 
 // App State
 let currentQuestionIndex = 0;
-let score = 0;
+let totalUserPoints = 0; // Sum of points for correct answers
 let studentName = "";
 let isLocked = false;
 let blockCount = 0;
-let startTime;
+let testTimeLimitSeconds = 0;
+let timeElapsedSeconds = 0;
 let timerInterval;
 
 // --- DOM Elements ---
@@ -68,6 +75,9 @@ const tabQuestions = document.getElementById('tab-questions');
 const tabResults = document.getElementById('tab-results');
 const addQBtn = document.getElementById('add-q-btn');
 const clearResultsBtn = document.getElementById('clear-results-btn');
+const exportExcelBtn = document.getElementById('export-excel-btn');
+const testDurationInput = document.getElementById('test-duration-input');
+const saveSettingsBtn = document.getElementById('save-settings-btn');
 
 // Admin Form Inputs
 const newQText = document.getElementById('new-q-text');
@@ -76,6 +86,7 @@ const newQOpt1 = document.getElementById('new-q-opt1');
 const newQOpt2 = document.getElementById('new-q-opt2');
 const newQOpt3 = document.getElementById('new-q-opt3');
 const newQCorrect = document.getElementById('new-q-correct');
+const newQPoints = document.getElementById('new-q-points');
 const adminQuestionsCount = document.getElementById('admin-questions-count');
 const adminQuestionsList = document.getElementById('admin-questions-list');
 const resultsTableBody = document.getElementById('results-table-body');
@@ -87,6 +98,7 @@ const nextBtn = document.getElementById('next-btn');
 const progressBar = document.getElementById('progress-bar');
 const currentQuestionNum = document.getElementById('current-question-num');
 const totalQuestionsSpan = document.getElementById('total-questions');
+const questionPointsDisplay = document.getElementById('question-points-display');
 const timerDisplay = document.getElementById('timer');
 const studentDisplay = document.getElementById('student-display');
 const resultContent = document.getElementById('result-content');
@@ -100,12 +112,25 @@ const unlockError = document.getElementById('unlock-error');
 // --- Initial Setup ---
 function init() {
     totalQuestionsSpan.textContent = questions.length;
+    testDurationInput.value = quizDuration;
     renderQuestionsList();
     renderResultsTable();
 }
 
 
 // --- Event Listeners ---
+
+// Save Timer Settings
+saveSettingsBtn.addEventListener('click', () => {
+    const val = parseInt(testDurationInput.value);
+    if (isNaN(val) || val < 1) {
+        alert("Iltimos, to'g'ri vaqt miqdorini kiriting (kamida 1 daqiqa)!");
+        return;
+    }
+    quizDuration = val;
+    saveDuration();
+    alert("Test sozlamalari saqlandi!");
+});
 
 // Student Start Quiz
 startBtn.addEventListener('click', () => {
@@ -147,6 +172,7 @@ function handleAdminAuth() {
         adminAuthModal.classList.add('hidden');
         authScreen.classList.add('hidden');
         adminPanel.classList.remove('hidden');
+        testDurationInput.value = quizDuration;
         renderQuestionsList();
         renderResultsTable();
     } else {
@@ -184,16 +210,18 @@ addQBtn.addEventListener('click', () => {
     const o2 = newQOpt2.value.trim();
     const o3 = newQOpt3.value.trim();
     const correctVal = parseInt(newQCorrect.value);
+    const pts = parseFloat(newQPoints.value);
 
-    if (!text || !o0 || !o1 || !o2 || !o3) {
-        alert("Iltimos, barcha maydonlarni to'ldiring!");
+    if (!text || !o0 || !o1 || !o2 || !o3 || isNaN(pts) || pts <= 0) {
+        alert("Iltimos, barcha maydonlarni to'g'ri to'ldiring!");
         return;
     }
 
     const newQuestion = {
         question: text,
         options: [o0, o1, o2, o3],
-        correct: correctVal
+        correct: correctVal,
+        points: pts
     };
 
     questions.push(newQuestion);
@@ -206,6 +234,7 @@ addQBtn.addEventListener('click', () => {
     newQOpt1.value = "";
     newQOpt2.value = "";
     newQOpt3.value = "";
+    newQPoints.value = "1.0";
     alert("Yangi savol muvaffaqiyatli saqlandi!");
 });
 
@@ -217,6 +246,9 @@ clearResultsBtn.addEventListener('click', () => {
         renderResultsTable();
     }
 });
+
+// Export Results to Excel (CSV)
+exportExcelBtn.addEventListener('click', exportResultsToCSV);
 
 // Admin Unlock Screen Trigger
 unlockBtn.addEventListener('click', handleProctorUnlock);
@@ -245,7 +277,7 @@ function renderQuestionsList() {
         div.className = 'q-item';
         div.innerHTML = `
             <div class="q-info">
-                <div class="q-text">${index + 1}. ${q.question}</div>
+                <div class="q-text">${index + 1}. ${q.question} <span style="color: var(--accent-color);">(${q.points || 1} ball)</span></div>
                 <div class="q-answer-check">To'g'ri javob: ${q.options[q.correct]}</div>
             </div>
             <button class="danger-btn" onclick="deleteQuestion(${index})">O'chirish</button>
@@ -266,7 +298,7 @@ window.deleteQuestion = function(index) {
 function renderResultsTable() {
     resultsTableBody.innerHTML = "";
     if (results.length === 0) {
-        resultsTableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Hozircha natijalar mavjud emas.</td></tr>`;
+        resultsTableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">Hozircha natijalar mavjud emas.</td></tr>`;
         return;
     }
 
@@ -274,12 +306,43 @@ function renderResultsTable() {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td><strong>${res.name}</strong></td>
-            <td>${res.percentage}% (${res.score}/${res.total})</td>
+            <td><strong>${res.score} / ${res.totalPossible}</strong></td>
+            <td>${res.percentage}%</td>
             <td>${res.time}</td>
             <td style="color: ${res.blocks > 0 ? 'var(--error-color)' : 'var(--success-color)'}">${res.blocks} marta</td>
         `;
         resultsTableBody.appendChild(tr);
     });
+}
+
+// Excel Export Logic (using CSV with UTF-8 BOM)
+function exportResultsToCSV() {
+    if (results.length === 0) {
+        alert("Eksport qilish uchun natijalar mavjud emas!");
+        return;
+    }
+
+    // CSV header including UTF-8 BOM
+    let csvContent = "\uFEFF";
+    csvContent += "F.I.SH.,To'plangan ball,Maksimal ball,Foiz,Sarflangan vaqt,Bloklar soni\n";
+
+    results.forEach(res => {
+        // Clean values just in case they have commas
+        const cleanedName = res.name.replace(/,/g, ' ');
+        csvContent += `"${cleanedName}",${res.score},${res.totalPossible},${res.percentage}%,${res.time},${res.blocks}\n`;
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    
+    // Formatting filename with date
+    const dateStr = new Date().toISOString().slice(0, 10);
+    link.setAttribute("download", `shsb_test_natijalari_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 
@@ -291,12 +354,15 @@ function startQuiz() {
     studentDisplay.textContent = studentName;
     totalQuestionsSpan.textContent = questions.length;
     currentQuestionIndex = 0;
-    score = 0;
+    totalUserPoints = 0;
     
     // Launch Fullscreen
     requestFullscreen();
     
-    startTime = Date.now();
+    // Countdown Timer calculation setup
+    testTimeLimitSeconds = quizDuration * 60;
+    timeElapsedSeconds = 0;
+    
     startTimer();
     loadQuestion();
     
@@ -314,6 +380,7 @@ function loadQuestion() {
     const progress = (currentQuestionIndex / questions.length) * 100;
     progressBar.style.width = `${progress}%`;
     currentQuestionNum.textContent = currentQuestionIndex + 1;
+    questionPointsDisplay.textContent = q.points || 1;
 
     q.options.forEach((opt, index) => {
         const div = document.createElement('div');
@@ -336,7 +403,8 @@ function selectOption(index, element) {
 nextBtn.onclick = () => {
     const selected = optionsContainer.querySelector('.option.selected');
     if (selected && selected.dataset.correct === "true") {
-        score++;
+        const currentPoints = parseFloat(questions[currentQuestionIndex].points) || 1.0;
+        totalUserPoints += currentPoints;
     }
     
     currentQuestionIndex++;
@@ -348,14 +416,34 @@ nextBtn.onclick = () => {
 };
 
 function startTimer() {
-    // Clear in case timer is already running
     clearInterval(timerInterval);
     timerInterval = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
-        const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
-        const secs = (elapsed % 60).toString().padStart(2, '0');
+        timeElapsedSeconds++;
+        const remainingSeconds = testTimeLimitSeconds - timeElapsedSeconds;
+
+        if (remainingSeconds <= 0) {
+            timerDisplay.textContent = "00:00";
+            alert("Vaqt tugadi! Test avtomatik yakunlanadi.");
+            // Handle last unanswered/selected question score addition
+            const selected = optionsContainer.querySelector('.option.selected');
+            if (selected && selected.dataset.correct === "true") {
+                const currentPoints = parseFloat(questions[currentQuestionIndex].points) || 1.0;
+                totalUserPoints += currentPoints;
+            }
+            finishQuiz();
+            return;
+        }
+
+        const mins = Math.floor(remainingSeconds / 60).toString().padStart(2, '0');
+        const secs = (remainingSeconds % 60).toString().padStart(2, '0');
         timerDisplay.textContent = `${mins}:${secs}`;
     }, 1000);
+}
+
+function formatTimeElapsed() {
+    const mins = Math.floor(timeElapsedSeconds / 60).toString().padStart(2, '0');
+    const secs = (timeElapsedSeconds % 60).toString().padStart(2, '0');
+    return `${mins}:${secs}`;
 }
 
 function finishQuiz() {
@@ -364,8 +452,14 @@ function finishQuiz() {
     quizScreen.classList.add('hidden');
     resultScreen.classList.remove('hidden');
     
-    const percentage = Math.round((score / questions.length) * 100);
-    const timeSpent = timerDisplay.textContent;
+    // Calculate total possible points in this test instance
+    let maxPossiblePoints = 0;
+    questions.forEach(q => {
+        maxPossiblePoints += parseFloat(q.points) || 1.0;
+    });
+
+    const percentage = maxPossiblePoints > 0 ? Math.round((totalUserPoints / maxPossiblePoints) * 100) : 0;
+    const timeSpentString = formatTimeElapsed();
     let analysis = "";
     
     if (percentage >= 90) analysis = "A'lo daraja! Siz mavzuni mukammal o'zlashtirgansiz.";
@@ -375,9 +469,9 @@ function finishQuiz() {
 
     resultContent.innerHTML = `
         <div class="stat-item"><span>Talaba:</span> <strong>${studentName}</strong></div>
-        <div class="stat-item"><span>To'g'ri javoblar:</span> <strong>${score} / ${questions.length}</strong></div>
+        <div class="stat-item"><span>To'plangan ball:</span> <strong>${totalUserPoints.toFixed(1)} / ${maxPossiblePoints.toFixed(1)} ball</strong></div>
         <div class="stat-item"><span>Foiz ko'rsatkichi:</span> <strong>${percentage}%</strong></div>
-        <div class="stat-item"><span>Sarflangan vaqt:</span> <strong>${timeSpent}</strong></div>
+        <div class="stat-item"><span>Sarflangan vaqt:</span> <strong>${timeSpentString} (Jami limit: ${quizDuration} daq)</strong></div>
         <div class="stat-item"><span>Qoidabuzarliklar (Bloklar):</span> <strong style="color: ${blockCount > 0 ? 'var(--error-color)' : 'var(--success-color)'}">${blockCount} marta</strong></div>
         <div class="analysis-note">
             <strong>Tahlil:</strong> ${analysis}
@@ -387,10 +481,10 @@ function finishQuiz() {
     // Save student result to LocalStorage DB
     const studentResult = {
         name: studentName,
-        score: score,
-        total: questions.length,
+        score: totalUserPoints.toFixed(1),
+        totalPossible: maxPossiblePoints.toFixed(1),
         percentage: percentage,
-        time: timeSpent,
+        time: timeSpentString,
         blocks: blockCount
     };
 
@@ -449,7 +543,7 @@ function unlockApp() {
     lockScreen.classList.add('hidden');
     requestFullscreen();
     
-    // Adjust start time to ignore block duration
+    // Resume countdown timer
     startTimer();
 }
 

@@ -54,6 +54,16 @@
 
                 <!-- Tab 1: Questions Management -->
                 <div id="tab-questions" class="tab-content">
+                    <!-- Timer Duration Setting Card -->
+                    <div class="settings-card">
+                        <h3>Test sozlamalari</h3>
+                        <div class="inline-form">
+                            <label for="test-duration-input">Test vaqti (daqiqada):</label>
+                            <input type="number" id="test-duration-input" min="1" max="180" value="20">
+                            <button id="save-settings-btn" class="primary-btn small-btn">Saqlash</button>
+                        </div>
+                    </div>
+
                     <div class="add-question-section">
                         <h3>Yangi savol qo'shish</h3>
                         <div class="form-group">
@@ -65,14 +75,20 @@
                             <input type="text" id="new-q-opt2" placeholder="Variant C">
                             <input type="text" id="new-q-opt3" placeholder="Variant D">
                         </div>
-                        <div class="correct-selection">
-                            <label for="new-q-correct">To'g'ri javob:</label>
-                            <select id="new-q-correct">
-                                <option value="0">Variant A</option>
-                                <option value="1">Variant B</option>
-                                <option value="2">Variant C</option>
-                                <option value="3">Variant D</option>
-                            </select>
+                        <div class="question-meta-inputs">
+                            <div class="correct-selection">
+                                <label for="new-q-correct">To'g'ri javob:</label>
+                                <select id="new-q-correct">
+                                    <option value="0">Variant A</option>
+                                    <option value="1">Variant B</option>
+                                    <option value="2">Variant C</option>
+                                    <option value="3">Variant D</option>
+                                </select>
+                            </div>
+                            <div class="points-input-group">
+                                <label for="new-q-points">Savol balli:</label>
+                                <input type="number" id="new-q-points" step="0.1" min="0.1" value="1.0">
+                            </div>
                         </div>
                         <button id="add-q-btn" class="primary-btn">Savolni saqlash</button>
                     </div>
@@ -89,13 +105,17 @@
                 <div id="tab-results" class="tab-content hidden">
                     <div class="results-actions">
                         <h3>Natijalar jadvali</h3>
-                        <button id="clear-results-btn" class="danger-btn">Barcha natijalarni tozalash</button>
+                        <div class="results-buttons">
+                            <button id="export-excel-btn" class="success-btn">Excel formatda yuklab olish (CSV)</button>
+                            <button id="clear-results-btn" class="danger-btn">Barcha natijalarni tozalash</button>
+                        </div>
                     </div>
                     <div class="table-container">
                         <table class="results-table">
                             <thead>
                                 <tr>
                                     <th>F.I.SH.</th>
+                                    <th>To'plangan ball</th>
                                     <th>Foiz</th>
                                     <th>Sarflangan vaqt</th>
                                     <th>Bloklar soni</th>
@@ -124,7 +144,8 @@
                         <div class="progress-bar" id="progress-bar"></div>
                     </div>
                     <div class="question-info">
-                        Savol <span id="current-question-num">1</span> / <span id="total-questions">0</span>
+                        Savol <span id="current-question-num">1</span> / <span id="total-questions">0</span> 
+                        (<span id="question-points-display">0</span> ball)
                     </div>
                     <h2 id="question-text">Savol yuklanmoqda...</h2>
                     <div id="options-container" class="options-grid">
