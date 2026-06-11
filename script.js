@@ -32,7 +32,10 @@ let subjectPins = JSON.parse(localStorage.getItem('quiz_subject_pins')) || {
     "Ona tili": "", "Matematika": "", "Fizika": "", "Kimyo": "",
     "Biologiya": "", "Tarix": "", "Huquq": "", "Informatika": ""
 };
+let teacherTokens = JSON.parse(localStorage.getItem('quiz_teacher_tokens')) || [];
 let geminiApiKey = localStorage.getItem('gemini_api_key') || "";
+let showAnswersToStudent = localStorage.getItem('quiz_show_answers') === 'true';
+let currentTeacherSession = null; // Stores token object if logged in as teacher
 
 // Save Helpers
 function saveQuestions() {
@@ -64,6 +67,17 @@ function saveSettings(duration, token, chatId) {
         geminiApiKey = gKeyEl.value.trim();
         localStorage.setItem('gemini_api_key', geminiApiKey);
     }
+
+    // Save showAnswers preference
+    const showAnsEl = document.getElementById('toggle-show-answers');
+    if (showAnsEl) {
+        showAnswersToStudent = showAnsEl.checked;
+        localStorage.setItem('quiz_show_answers', showAnswersToStudent);
+    }
+}
+
+function saveTeacherTokens() {
+    localStorage.setItem('quiz_teacher_tokens', JSON.stringify(teacherTokens));
 }
 
 // App State
@@ -115,10 +129,12 @@ const tabQuestionsBtn = document.getElementById('tab-questions-btn');
 const tabResultsBtn = document.getElementById('tab-results-btn');
 const tabSettingsBtn = document.getElementById('tab-settings-btn');
 const tabQrcodeBtn = document.getElementById('tab-qrcode-btn');
+const tabSecurityBtn = document.getElementById('tab-security-btn');
 const tabQuestions = document.getElementById('tab-questions');
 const tabResults = document.getElementById('tab-results');
 const tabSettings = document.getElementById('tab-settings');
 const tabQrcode = document.getElementById('tab-qrcode');
+const tabSecurity = document.getElementById('tab-security');
 const addQBtn = document.getElementById('add-q-btn');
 const clearResultsBtn = document.getElementById('clear-results-btn');
 const exportExcelBtn = document.getElementById('export-excel-btn');
@@ -139,6 +155,13 @@ const comparisonResult = document.getElementById('comparison-result');
 // Telegram Settings Inputs
 const tgBotTokenInput = document.getElementById('tg-bot-token');
 const tgChatIdInput = document.getElementById('tg-chat-id');
+
+// Teacher Tokens Elements
+const teacherNameInput = document.getElementById('teacher-name-input');
+const teacherSubjectSelect = document.getElementById('teacher-subject-select');
+const teacherExpireSelect = document.getElementById('teacher-expire-select');
+const generateTokenBtn = document.getElementById('generate-token-btn');
+const teacherTokensList = document.getElementById('teacher-tokens-list');
 
 // Word File Uploader Elements
 const wordFileInput = document.getElementById('word-file-input');
@@ -186,6 +209,8 @@ const unlockError = document.getElementById('unlock-error');
 const qrCanvas = document.getElementById('qr-canvas');
 const downloadQrBtn = document.getElementById('download-qr-btn');
 
+const toggleShowAnswers = document.getElementById('toggle-show-answers');
+
 // --- Initial Setup ---
 function init() {
     totalQuestionsSpan.textContent = questions.length;
@@ -205,8 +230,11 @@ function init() {
     const gKeyEl = document.getElementById('gemini-api-key');
     if (gKeyEl) gKeyEl.value = geminiApiKey;
 
+    if (toggleShowAnswers) toggleShowAnswers.checked = showAnswersToStudent;
+
     renderQuestionsList();
     renderResultsTable();
+    renderTeacherTokens();
     populateClassFilters();
     renderLeaderboard();
     setupAntiCheat();
@@ -306,6 +334,87 @@ saveSettingsBtn.addEventListener('click', () => {
     alert(t('alertSaved'));
 });
 
+// Security Settings
+if (toggleShowAnswers) {
+    toggleShowAnswers.addEventListener('change', (e) => {
+        showAnswersToStudent = e.target.checked;
+        localStorage.setItem('quiz_show_answers', showAnswersToStudent);
+    });
+}
+
+// Teacher Token Generation
+if (generateTokenBtn) {
+    generateTokenBtn.addEventListener('click', () => {
+        const name = teacherNameInput.value.trim();
+        if (!name) {
+            alert("O'qituvchi ismini kiriting!");
+            return;
+        }
+        const subject = teacherSubjectSelect.value;
+        const expireType = teacherExpireSelect.value;
+
+        // Generate random 6 char token
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        let token = "";
+        for (let i = 0; i < 6; i++) {
+            token += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+
+        let durationMs = 0;
+        if (expireType === '2h') durationMs = 2 * 60 * 60 * 1000;
+        else if (expireType === '1d') durationMs = 24 * 60 * 60 * 1000;
+        else if (expireType === '1w') durationMs = 7 * 24 * 60 * 60 * 1000;
+        else if (expireType === '1m') durationMs = 30 * 24 * 60 * 60 * 1000;
+
+        const expireAt = Date.now() + durationMs;
+
+        teacherTokens.push({ name, subject, token, expireAt });
+        saveTeacherTokens();
+        renderTeacherTokens();
+
+        teacherNameInput.value = "";
+    });
+}
+
+function renderTeacherTokens() {
+    if (!teacherTokensList) return;
+    teacherTokensList.innerHTML = "";
+
+    // Auto-remove expired tokens
+    const now = Date.now();
+    let updated = false;
+    teacherTokens = teacherTokens.filter(t => {
+        if (now > t.expireAt) {
+            updated = true;
+            return false;
+        }
+        return true;
+    });
+    if (updated) saveTeacherTokens();
+
+    teacherTokens.forEach(t => {
+        const tr = document.createElement('tr');
+        const expireDate = new Date(t.expireAt).toLocaleString('uz-UZ', { dateStyle: 'short', timeStyle: 'short' });
+
+        tr.innerHTML = `
+            <td>${t.name}</td>
+            <td><span class="subject-badge">${t.subject}</span></td>
+            <td><strong style="color: var(--accent-color); font-family: monospace; font-size: 1.1rem; letter-spacing: 2px;">${t.token}</strong></td>
+            <td style="color: var(--error-color);">${expireDate}</td>
+            <td><button class="danger-btn" onclick="deleteTeacherToken('${t.token}')" style="padding: 5px 10px; font-size: 0.8rem;">O'chirish</button></td>
+        `;
+        teacherTokensList.appendChild(tr);
+    });
+}
+
+window.deleteTeacherToken = function (token) {
+    if (confirm("Ushbu parolni o'chirishni tasdiqlaysizmi?")) {
+        teacherTokens = teacherTokens.filter(t => t.token !== token);
+        saveTeacherTokens();
+        renderTeacherTokens();
+    }
+}
+
 // Student Start Quiz
 startBtn.addEventListener('click', () => {
     const name = studentNameInput.value.trim();
@@ -357,26 +466,73 @@ adminPortalPassInput.addEventListener('keypress', (e) => {
 });
 
 function handleAdminAuth() {
+    const enteredPass = adminPortalPassInput.value.trim();
     const correctPassword = atob(HASHED_ADMIN_PASS);
-    if (adminPortalPassInput.value === correctPassword) {
-        adminAuthModal.classList.add('hidden');
-        authScreen.classList.add('hidden');
-        adminPanel.classList.remove('hidden');
-        testDurationInput.value = quizDuration;
-        tgBotTokenInput.value = tgBotToken;
-        tgChatIdInput.value = tgChatId;
-        renderQuestionsList();
-        renderResultsTable();
-        populateClassFilters();
+
+    let isMasterAdmin = (enteredPass === correctPassword);
+    let teacherTokenData = teacherTokens.find(t => t.token === enteredPass);
+
+    if (isMasterAdmin) {
+        currentTeacherSession = null;
+        openAdminPanelUI();
+    } else if (teacherTokenData) {
+        if (Date.now() > teacherTokenData.expireAt) {
+            alert(t('alertTokenExpired') || "Ushbu parolning amal qilish muddati tugagan!");
+            return;
+        }
+        currentTeacherSession = teacherTokenData;
+        openAdminPanelUI();
     } else {
         adminAuthError.classList.remove('hidden');
         adminPortalPassInput.value = "";
     }
 }
 
+function openAdminPanelUI() {
+    adminAuthModal.classList.add('hidden');
+    authScreen.classList.add('hidden');
+    adminPanel.classList.remove('hidden');
+    testDurationInput.value = quizDuration;
+    tgBotTokenInput.value = tgBotToken;
+    tgChatIdInput.value = tgChatId;
+
+    // Apply Teacher Mode Restrictions
+    if (currentTeacherSession) {
+        tabSettingsBtn.classList.add('hidden');
+        tabSecurityBtn.classList.add('hidden');
+        tabQrcodeBtn.classList.add('hidden');
+        filterClass.value = 'all';
+        // Force the "New question" subject to be the teacher's subject and disable it
+        const newQSubject = document.getElementById('new-q-subject');
+        if (newQSubject) {
+            newQSubject.value = currentTeacherSession.subject;
+            newQSubject.disabled = true;
+        }
+        const wordQSubject = document.getElementById('word-q-subject');
+        if (wordQSubject) {
+            wordQSubject.value = currentTeacherSession.subject;
+            wordQSubject.disabled = true;
+        }
+        setTabActive(tabQuestionsBtn, tabQuestions);
+    } else {
+        tabSettingsBtn.classList.remove('hidden');
+        tabSecurityBtn.classList.remove('hidden');
+        tabQrcodeBtn.classList.remove('hidden');
+        const newQSubject = document.getElementById('new-q-subject');
+        if (newQSubject) newQSubject.disabled = false;
+        const wordQSubject = document.getElementById('word-q-subject');
+        if (wordQSubject) wordQSubject.disabled = false;
+    }
+
+    renderQuestionsList();
+    renderResultsTable();
+    populateClassFilters();
+}
+
 adminLogoutBtn.addEventListener('click', () => {
     adminPanel.classList.add('hidden');
     authScreen.classList.remove('hidden');
+    currentTeacherSession = null;
     renderLeaderboard();
 });
 
@@ -395,10 +551,13 @@ tabQrcodeBtn.addEventListener('click', () => {
     setTabActive(tabQrcodeBtn, tabQrcode);
     generateQR();
 });
+tabSecurityBtn.addEventListener('click', () => {
+    setTabActive(tabSecurityBtn, tabSecurity);
+});
 
 function setTabActive(activeBtn, activeTab) {
-    [tabQuestionsBtn, tabResultsBtn, tabSettingsBtn, tabQrcodeBtn].forEach(b => b.classList.remove('active'));
-    [tabQuestions, tabResults, tabSettings, tabQrcode].forEach(t => t.classList.add('hidden'));
+    [tabQuestionsBtn, tabResultsBtn, tabSettingsBtn, tabQrcodeBtn, tabSecurityBtn].forEach(b => b && b.classList.remove('active'));
+    [tabQuestions, tabResults, tabSettings, tabQrcode, tabSecurity].forEach(t => t && t.classList.add('hidden'));
 
     activeBtn.classList.add('active');
     activeTab.classList.remove('hidden');
@@ -406,15 +565,16 @@ function setTabActive(activeBtn, activeTab) {
 
 // Add Question Manually
 addQBtn.addEventListener('click', () => {
+    let subjectVal = newQSubject.value;
+    if (currentTeacherSession) subjectVal = currentTeacherSession.subject;
+
     const text = newQText.value.trim();
     const o0 = newQOpt0.value.trim();
     const o1 = newQOpt1.value.trim();
     const o2 = newQOpt2.value.trim();
     const o3 = newQOpt3.value.trim();
-    const correctVal = parseInt(newQCorrect.value);
+    const correct = parseInt(newQCorrect.value);
     const pts = parseFloat(newQPoints.value);
-
-    const subjectVal = newQSubject.value;
 
     if (!text || !o0 || !o1 || !o2 || !o3 || isNaN(pts) || pts <= 0) {
         alert(t('alertFields'));
@@ -425,7 +585,7 @@ addQBtn.addEventListener('click', () => {
         subject: subjectVal,
         question: text,
         options: [o0, o1, o2, o3],
-        correct: correctVal,
+        correct: correct,
         points: pts
     });
     saveQuestions();
@@ -457,7 +617,8 @@ wordUploadBtn.addEventListener('click', () => {
         mammoth.extractRawText({ arrayBuffer: arrayBuffer })
             .then(function (result) {
                 const text = result.value;
-                const subj = wordQSubject.value;
+                let subj = wordQSubject.value;
+                if (currentTeacherSession) subj = currentTeacherSession.subject;
                 parseQuestionsFromText(text, subj);
             })
             .catch(function (err) {
@@ -607,13 +768,18 @@ function validateAndPushQuestion(q, list) {
 }
 
 
-// --- Admin Panel Renderers ---
-
+// --- Admin: Render Questions List ---
 function renderQuestionsList() {
-    adminQuestionsList.innerHTML = "";
-    adminQuestionsCount.textContent = questions.length;
+    adminQuestionsList.innerHTML = '';
 
-    questions.forEach((q, index) => {
+    let listToRender = questions;
+    if (currentTeacherSession) {
+        listToRender = questions.filter(q => q.subject === currentTeacherSession.subject);
+    }
+
+    adminQuestionsCount.textContent = listToRender.length;
+
+    listToRender.forEach((q, index) => {
         const div = document.createElement('div');
         div.className = 'q-item';
         div.innerHTML = `
@@ -650,6 +816,12 @@ function renderResultsTable(classFilter = 'all', quarterFilter = 'all') {
     resultsTableBody.innerHTML = '';
 
     let list = results;
+
+    // Teacher Mode restriction
+    if (currentTeacherSession) {
+        list = list.filter(r => r.subject === currentTeacherSession.subject);
+    }
+
     if (classFilter !== 'all') {
         list = list.filter(r => r.classGroup === classFilter);
     }
@@ -1017,6 +1189,12 @@ function finishQuiz() {
 // --- Pedagogic "Xatolar ustida ishlash" review ---
 function renderErrorReview() {
     errorReviewList.innerHTML = "";
+
+    if (!showAnswersToStudent) {
+        errorReviewList.innerHTML = `<p style="color: var(--text-secondary); text-align: center; font-weight: 600;">${t('hiddenAnswersMsg') || "Xavfsizlik nuqtai nazaridan to'g'ri javoblar yashirilgan."}</p>`;
+        return;
+    }
+
     let errorsCount = 0;
 
     currentQuizQuestions.forEach((q, index) => {
@@ -1274,10 +1452,16 @@ async function analyzeResultsWithGemini() {
 
     try {
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: promptText }] }]
+                contents: [{
+                    parts: [{
+                        text: promptText
+                    }]
+                }]
             })
         });
 

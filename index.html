@@ -132,6 +132,7 @@
                     <button id="tab-questions-btn" class="tab-btn active" data-i18n="tabQuestions">Savollar boshqaruvi</button>
                     <button id="tab-results-btn" class="tab-btn" data-i18n="tabResults">O'quvchilar Natijalari</button>
                     <button id="tab-settings-btn" class="tab-btn" data-i18n="tabSettings">Telegram sozlamalari</button>
+                    <button id="tab-security-btn" class="tab-btn" data-i18n="tabSecurity">Xavfsizlik</button>
                     <button id="tab-qrcode-btn" class="tab-btn" data-i18n="tabQr">QR-kod olish</button>
                 </div>
 
@@ -367,6 +368,62 @@ To'g'ri javob: B
                             <div class="settings-group"><label>Huquq:</label><input type="password" id="pin-huquq" placeholder="PIN-kod"></div>
                             <div class="settings-group"><label>Informatika:</label><input type="password" id="pin-informatika" placeholder="PIN-kod"></div>
                         </div>
+                        </div>
+                    </div>
+
+                    <!-- Teacher Tokens System -->
+                    <div class="settings-card" id="teacher-tokens-section">
+                        <h3 data-i18n="settingsTeachersTitle">O'qituvchilar uchun vaqtinchalik ruxsatnomalar</h3>
+                        <p class="settings-hint" data-i18n="settingsTeachersHint">O'qituvchilar o'z faniga savol qo'shishi va natijalarni ko'rishi uchun vaqtinchalik parol (token) yarating.</p>
+                        
+                        <div class="token-generator-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                            <div class="settings-group">
+                                <label data-i18n="lblTeacherName">O'qituvchi F.I.SH:</label>
+                                <input type="text" id="teacher-name-input" placeholder="Masalan: Aliyev Vali">
+                            </div>
+                            <div class="settings-group">
+                                <label data-i18n="lblTeacherSubject">Fanni tanlang:</label>
+                                <select id="teacher-subject-select">
+                                    <option value="Ona tili">Ona tili</option>
+                                    <option value="Matematika">Matematika</option>
+                                    <option value="Fizika">Fizika</option>
+                                    <option value="Kimyo">Kimyo</option>
+                                    <option value="Biologiya">Biologiya</option>
+                                    <option value="Tarix">Tarix</option>
+                                    <option value="Huquq">Huquq</option>
+                                    <option value="Informatika">Informatika</option>
+                                </select>
+                            </div>
+                            <div class="settings-group">
+                                <label data-i18n="lblTeacherExpire">Amal qilish muddati:</label>
+                                <select id="teacher-expire-select">
+                                    <option value="2h" data-i18n="exp2h">2 soat</option>
+                                    <option value="1d" data-i18n="exp1d">1 kun</option>
+                                    <option value="1w" data-i18n="exp1w">1 hafta</option>
+                                    <option value="1m" data-i18n="exp1m">1 oy</option>
+                                </select>
+                            </div>
+                            <div class="settings-group" style="display: flex; align-items: flex-end;">
+                                <button id="generate-token-btn" class="primary-btn" style="width: 100%;" data-i18n="btnGenerateToken">Parol yaratish</button>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="leaderboard-table teacher-tokens-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="thTeacherName">F.I.SH.</th>
+                                        <th data-i18n="thTeacherSubject">Fan</th>
+                                        <th data-i18n="thTeacherToken">Parol</th>
+                                        <th data-i18n="thTeacherExpire">Tugash vaqti</th>
+                                        <th data-i18n="thTeacherAction">Amal</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="teacher-tokens-list">
+                                    <!-- Injected -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     <div class="settings-card">
@@ -390,6 +447,25 @@ To'g'ri javob: B
                             <canvas id="qr-canvas"></canvas>
                         </div>
                         <button id="download-qr-btn" class="success-btn" data-i18n="downloadQr">QR-kodni yuklab olish (PNG)</button>
+                    </div>
+                </div>
+
+                <!-- Tab 5: Security -->
+                <div id="tab-security" class="tab-content hidden">
+                    <div class="settings-card">
+                        <h3 data-i18n="secTitle">Xavfsizlik Sozlamalari</h3>
+                        <div class="glass-card" style="margin-top: 20px; text-align: left; padding: 25px;">
+                            <div class="toggle-container" style="display: flex; justify-content: space-between; align-items: center;">
+                                <div class="toggle-info">
+                                    <strong style="font-size: 1.1rem; display: block;" data-i18n="secShowAnswersTitle">Natijalarda javoblarni ko'rsatish</strong>
+                                    <span style="color: var(--text-secondary); font-size: 0.9rem;" data-i18n="secShowAnswersDesc">Test yakunida o'quvchi xato qilgan savollarning to'g'ri javoblari ro'yxatini ko'ra oladimi?</span>
+                                </div>
+                                <label class="neon-toggle">
+                                    <input type="checkbox" id="toggle-show-answers">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
