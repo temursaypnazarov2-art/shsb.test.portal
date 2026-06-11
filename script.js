@@ -117,6 +117,7 @@ let totalUserPoints = 0;
 let studentName = "";
 let studentClass = "";
 let studentSubject = "";
+let studentQuarter = "";
 let currentQuizQuestions = [];
 let studentAnswers = []; // Tracks indexes of user choices
 let earnedPoints = []; // Tracks actual points earned per question
@@ -147,6 +148,7 @@ const backToStudentBtn = document.getElementById('back-to-student-btn');
 const studentNameInput = document.getElementById('student-name');
 const studentClassInput = document.getElementById('student-class');
 const studentSubjectInput = document.getElementById('student-subject');
+const studentQuarterInput = document.getElementById('student-quarter');
 const quizPinInput = document.getElementById('quiz-pin');
 const startBtn = document.getElementById('start-btn');
 const adminLoginBtn = document.getElementById('admin-login-btn');
@@ -194,6 +196,7 @@ const compQ1 = document.getElementById('comp-q1');
 const compQ2 = document.getElementById('comp-q2');
 const analyzeBtn = document.getElementById('analyze-btn');
 const comparisonResult = document.getElementById('comparison-result');
+const filterQuarter = document.getElementById('filter-quarter');
 
 // Telegram Settings Inputs
 const tgBotTokenInput = document.getElementById('tg-bot-token');
@@ -808,9 +811,18 @@ function populateClassFilters() {
 
 function renderResultsTable() {
     resultsTableBody.innerHTML = '';
-    const filter = filterClass.value;
+    const filterCls = filterClass.value;
+    const filterQ = filterQuarter ? filterQuarter.value : 'all';
 
-    let filteredResults = filter === 'all' ? results : results.filter(r => r.class === filter);
+    let filteredResults = results;
+
+    if (filterCls !== 'all') {
+        filteredResults = filteredResults.filter(r => r.class === filterCls);
+    }
+
+    if (filterQ !== 'all') {
+        filteredResults = filteredResults.filter(r => r.quarter === filterQ);
+    }
 
     // Teacher specific filter
     if (currentTeacherSession) {
@@ -826,6 +838,7 @@ function renderResultsTable() {
             <td>${r.name}</td>
             <td>${r.class}</td>
             <td><span class="subject-badge">${r.subject}</span></td>
+            <td>${r.quarter ? r.quarter + '-chorak' : '-'}</td>
             <td style="color:var(--accent-color); font-weight:bold;">${r.score.toFixed(1)}</td>
             <td style="color:${r.percentage >= 80 ? 'var(--success-color)' : (r.percentage >= 60 ? '#f59e0b' : 'var(--error-color)')};">${r.percentage}%</td>
             <td>${date}</td>
@@ -835,6 +848,53 @@ function renderResultsTable() {
 }
 
 filterClass.addEventListener('change', renderResultsTable);
+if (filterQuarter) {
+    filterQuarter.addEventListener('change', renderResultsTable);
+}
+
+if (analyzeBtn) {
+    analyzeBtn.addEventListener('click', () => {
+        const cls = filterClass.value;
+        if (cls === 'all') return;
+
+        const q1Val = compQ1.value;
+        const q2Val = compQ2.value;
+
+        const classResults = results.filter(r => r.class === cls);
+        const q1List = classResults.filter(r => r.quarter === q1Val);
+        const q2List = classResults.filter(r => r.quarter === q2Val);
+
+        if (q1List.length === 0 || q2List.length === 0) {
+            comparisonResult.classList.remove('hidden');
+            comparisonResult.innerHTML = `<strong style="color: var(--error-color);">Ma'lumot yetarli emas!</strong> Tanlangan choraklardan birida bu sinf natijalari yo'q.`;
+            return;
+        }
+
+        const avgQ1 = q1List.reduce((sum, r) => sum + parseFloat(r.percentage), 0) / q1List.length;
+        const avgQ2 = q2List.reduce((sum, r) => sum + parseFloat(r.percentage), 0) / q2List.length;
+
+        const diff = avgQ2 - avgQ1;
+        let diffStr = "";
+
+        if (diff > 0) {
+            diffStr = `<span style="color: var(--success-color);">${diff.toFixed(1)}% o'sish kuzatildi 📈</span>`;
+        } else if (diff < 0) {
+            diffStr = `<span style="color: var(--error-color);">${Math.abs(diff).toFixed(1)}% pasayish kuzatildi 📉</span>`;
+        } else {
+            diffStr = `<span style="color: var(--text-secondary);">O'zgarishsiz ⚖️</span>`;
+        }
+
+        comparisonResult.classList.remove('hidden');
+        comparisonResult.innerHTML = `
+            <div style="font-size: 1.1rem; text-align: center;">
+                <strong>${cls}</strong> sinfining natijalari:<br>
+                ${q1Val}-chorak: <strong>${avgQ1.toFixed(1)}%</strong> | 
+                ${q2Val}-chorak: <strong>${avgQ2.toFixed(1)}%</strong><br>
+                Xulosa: ${diffStr}
+            </div>
+        `;
+    });
+}
 
 clearResultsBtn.addEventListener('click', () => {
     if (confirm(t('confirmClearResults') || "Barcha natijalarni butunlay o'chirasizmi?")) {
@@ -1046,10 +1106,11 @@ startBtn.addEventListener('click', () => {
     studentName = studentNameInput.value.trim();
     studentClass = studentClassInput.value;
     studentSubject = studentSubjectInput.value;
+    studentQuarter = studentQuarterInput ? studentQuarterInput.value : "";
     const pin = quizPinInput.value.trim();
 
-    if (!studentName || !studentClass || !studentSubject) {
-        alert(t('alertDetails'));
+    if (!studentName || !studentClass || !studentSubject || !studentQuarter) {
+        alert(t('alertDetails') || "Barcha ma'lumotlarni to'ldiring!");
         return;
     }
 
@@ -1236,6 +1297,7 @@ function finishQuiz(timeOut = false) {
         name: studentName,
         class: studentClass,
         subject: studentSubject,
+        quarter: studentQuarter,
         score: totalUserPoints,
         percentage: parseFloat(percentage),
         timestamp: new Date().getTime(),

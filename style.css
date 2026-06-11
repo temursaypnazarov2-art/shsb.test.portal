@@ -811,6 +811,50 @@ select:focus {
     }
 }
 
+.school-branding {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 auto 30px auto;
+    text-align: center;
+    width: 100%;
+}
+
+.school-branding h1 {
+    font-size: 1.8rem;
+    line-height: 1.2;
+    margin-top: 15px;
+}
+
+.school-logo {
+    width: 160px;
+    height: 160px;
+    object-fit: contain;
+    margin-bottom: 20px;
+    
+    /* Rasmdagi to'q ko'k fonni butunlay yashirib, faqat oq chiziqlarni qoldirish */
+    mix-blend-mode: screen; 
+    
+    /* Logotip atrofida jozibali neon oq/ko'k nuri taralib (yonib) turishi uchun kuchaytirilgan effekt */
+    filter: drop-shadow(0px 0px 4px rgba(255, 255, 255, 0.8)) 
+            drop-shadow(0px 0px 15px rgba(37, 99, 235, 0.9));
+            
+    /* Animatsiya: Logotip sekin o'chib-yonib (pulsatsiya) turishi uchun */
+    animation: neonPulse 3s ease-in-out infinite alternate;
+}
+
+@keyframes neonPulse {
+    0% {
+        filter: drop-shadow(0px 0px 4px rgba(255, 255, 255, 0.6)) 
+                drop-shadow(0px 0px 10px rgba(37, 99, 235, 0.7));
+    }
+    100% {
+        filter: drop-shadow(0px 0px 8px rgba(255, 255, 255, 1)) 
+                drop-shadow(0px 0px 25px rgba(37, 99, 235, 1));
+        transform: scale(1.02);
+    }
+}
+
 .subject-badge {
     background: rgba(56, 189, 248, 0.2);
     color: var(--accent-color);

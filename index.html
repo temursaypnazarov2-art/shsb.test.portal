@@ -10,12 +10,22 @@
 <body>
     <div id="toast" class="toast hidden"></div>
 
+    <!-- Language Switcher Panel -->
+    <div class="lang-switcher">
+        <button class="lang-btn" data-lang="qq">QQ</button>
+        <button class="lang-btn active" data-lang="uz">UZ</button>
+        <button class="lang-btn" data-lang="ru">RU</button>
+    </div>
+
     <div id="app">
         <!-- Auth Screen (Landing) -->
         <section id="auth-screen" class="screen">
-            <h1 class="portal-title animate-glow" style="margin-bottom: 20px; text-align: center; font-size: 2.5rem;" data-i18n="schoolName">
-                Xo'jayli tumani ixtisoslashtirilgan maktabi
-            </h1>
+            <div class="school-branding">
+                <img src="logo.png" alt="School Logo" class="school-logo">
+                <h1 class="portal-title animate-glow" style="margin-bottom: 20px; text-align: center; font-size: 2.5rem;" data-i18n="schoolName">
+                    Xo'jayli tumani ixtisoslashtirilgan maktabi
+                </h1>
+            </div>
             
             <div class="landing-container">
                 <div class="glass-card auth-card fade-in">
@@ -47,6 +57,7 @@
                     </div>
                     <div class="input-group">
                         <select id="student-subject">
+                            <option value="" disabled selected data-i18n="subjectPlaceholder">Fanni tanlang</option>
                             <option value="Ona tili" data-i18n="subjOnaTili">Ona tili</option>
                             <option value="Matematika" data-i18n="subjMatematika">Matematika</option>
                             <option value="Fizika" data-i18n="subjFizika">Fizika</option>
@@ -55,6 +66,15 @@
                             <option value="Tarix" data-i18n="subjTarix">Tarix</option>
                             <option value="Huquq" data-i18n="subjHuquq">Huquq</option>
                             <option value="Informatika" data-i18n="subjInformatika">Informatika</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <select id="student-quarter">
+                            <option value="" disabled selected data-i18n="quarterPlaceholder">Chorakni tanlang</option>
+                            <option value="1" data-i18n="q1">1-chorak</option>
+                            <option value="2" data-i18n="q2">2-chorak</option>
+                            <option value="3" data-i18n="q3">3-chorak</option>
+                            <option value="4" data-i18n="q4">4-chorak</option>
                         </select>
                     </div>
                     <div class="input-group">
@@ -232,15 +252,46 @@
                 <div id="tab-results" class="tab-content hidden">
                     <div class="results-actions">
                         <div class="results-filters">
-                            <label data-i18n="filterClassLbl">Sinf filtri:</label>
+                            <label for="filter-class" data-i18n="lblFilterClass">Sinf bo'yicha filter:</label>
                             <select id="filter-class">
                                 <option value="all" data-i18n="filterAll">Barchasi</option>
+                            </select>
+
+                            <label for="filter-quarter" data-i18n="lblFilterQuarter">Chorak:</label>
+                            <select id="filter-quarter">
+                                <option value="all" data-i18n="filterAll">Barchasi</option>
+                                <option value="1" data-i18n="q1">1-chorak</option>
+                                <option value="2" data-i18n="q2">2-chorak</option>
+                                <option value="3" data-i18n="q3">3-chorak</option>
+                                <option value="4" data-i18n="q4">4-chorak</option>
                             </select>
                         </div>
                         <div class="results-buttons">
                             <button id="clear-results-btn" class="danger-btn" data-i18n="btnClearResults">Natijalarni tozalash</button>
                             <button id="export-excel-btn" class="success-btn" data-i18n="btnExportExcel">Excelga yuklash (SHSB Maxsus Format)</button>
                         </div>
+                    </div>
+                    
+                    <!-- Comparison Section -->
+                    <div class="comparison-section" id="comparison-panel" style="margin-top: 20px;">
+                        <h3 data-i18n="comparisonTitle" style="color: white; margin-bottom: 15px; text-align: center;">Ikki chorakni o'zaro tahlil qilish</h3>
+                        <div class="comparison-controls" style="display: flex; gap: 15px; justify-content: center; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">
+                            <select id="comp-q1">
+                                <option value="1" data-i18n="q1">1-chorak</option>
+                                <option value="2" data-i18n="q2">2-chorak</option>
+                                <option value="3" data-i18n="q3">3-chorak</option>
+                                <option value="4" data-i18n="q4">4-chorak</option>
+                            </select>
+                            <span style="color: white; font-weight: bold;">VS</span>
+                            <select id="comp-q2">
+                                <option value="1" data-i18n="q1">1-chorak</option>
+                                <option value="2" data-i18n="q2" selected>2-chorak</option>
+                                <option value="3" data-i18n="q3">3-chorak</option>
+                                <option value="4" data-i18n="q4">4-chorak</option>
+                            </select>
+                            <button id="analyze-btn" class="primary-btn" data-i18n="btnCompare" style="margin-top: 0;">Tahlil qilish</button>
+                        </div>
+                        <div id="comparison-result" class="comparison-result hidden" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px;"></div>
                     </div>
                     
                     <div class="table-container">
@@ -250,9 +301,10 @@
                                     <th data-i18n="thName">F.I.SH.</th>
                                     <th data-i18n="thClass">Sinf</th>
                                     <th data-i18n="thSubject">Fan</th>
-                                    <th data-i18n="thScore">Ball</th>
-                                    <th data-i18n="thPercentage">Foiz (%)</th>
-                                    <th data-i18n="thDate">Sana</th>
+                                    <th data-i18n="lblFilterQuarter">Chorak</th>
+                                    <th data-i18n="thScore">To'plangan ball</th>
+                                    <th data-i18n="thPercent">Foiz</th>
+                                    <th data-i18n="thTime">Sana</th>
                                 </tr>
                             </thead>
                             <tbody id="results-table-body">
