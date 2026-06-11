@@ -88,9 +88,11 @@ const adminLogoutBtn = document.getElementById('admin-logout-btn');
 const tabQuestionsBtn = document.getElementById('tab-questions-btn');
 const tabResultsBtn = document.getElementById('tab-results-btn');
 const tabSettingsBtn = document.getElementById('tab-settings-btn');
+const tabQrcodeBtn = document.getElementById('tab-qrcode-btn');
 const tabQuestions = document.getElementById('tab-questions');
 const tabResults = document.getElementById('tab-results');
 const tabSettings = document.getElementById('tab-settings');
+const tabQrcode = document.getElementById('tab-qrcode');
 const addQBtn = document.getElementById('add-q-btn');
 const clearResultsBtn = document.getElementById('clear-results-btn');
 const exportExcelBtn = document.getElementById('export-excel-btn');
@@ -139,6 +141,10 @@ const errorReviewList = document.getElementById('error-review-list');
 const adminPassInput = document.getElementById('admin-pass');
 const unlockBtn = document.getElementById('unlock-btn');
 const unlockError = document.getElementById('unlock-error');
+
+// QR Code Elements
+const qrCanvas = document.getElementById('qr-canvas');
+const downloadQrBtn = document.getElementById('download-qr-btn');
 
 
 // --- Initial Setup ---
@@ -242,11 +248,11 @@ function playSound(type) {
 saveSettingsBtn.addEventListener('click', () => {
     const durationVal = parseInt(testDurationInput.value);
     if (isNaN(durationVal) || durationVal < 1) {
-        alert("Iltimos, test vaqtini to'g'ri kiriting!");
+        alert(t('alertDuration'));
         return;
     }
     saveSettings(durationVal, tgBotTokenInput.value.trim(), tgChatIdInput.value.trim());
-    alert("Barcha sozlamalar saqlandi!");
+    alert(t('alertSaved'));
 });
 
 // Student Start Quiz
@@ -254,11 +260,11 @@ startBtn.addEventListener('click', () => {
     const name = studentNameInput.value.trim();
     const classGroup = studentClassInput.value.trim();
     if (name.length < 3 || classGroup.length < 1) {
-        alert("Iltimos, ismingiz va sinfingizni to'liq kiriting!");
+        alert(t('alertDetails'));
         return;
     }
     if (questions.length === 0) {
-        alert("Savollar mavjud emas! Iltimos, admin bilan bog'laning.");
+        alert(t('alertNoQuestions'));
         return;
     }
     studentName = name;
@@ -320,10 +326,14 @@ tabResultsBtn.addEventListener('click', () => {
 tabSettingsBtn.addEventListener('click', () => {
     setTabActive(tabSettingsBtn, tabSettings);
 });
+tabQrcodeBtn.addEventListener('click', () => {
+    setTabActive(tabQrcodeBtn, tabQrcode);
+    generateQR();
+});
 
 function setTabActive(activeBtn, activeTab) {
-    [tabQuestionsBtn, tabResultsBtn, tabSettingsBtn].forEach(b => b.classList.remove('active'));
-    [tabQuestions, tabResults, tabSettings].forEach(t => t.classList.add('hidden'));
+    [tabQuestionsBtn, tabResultsBtn, tabSettingsBtn, tabQrcodeBtn].forEach(b => b.classList.remove('active'));
+    [tabQuestions, tabResults, tabSettings, tabQrcode].forEach(t => t.classList.add('hidden'));
     
     activeBtn.classList.add('active');
     activeTab.classList.remove('hidden');
@@ -340,7 +350,7 @@ addQBtn.addEventListener('click', () => {
     const pts = parseFloat(newQPoints.value);
 
     if (!text || !o0 || !o1 || !o2 || !o3 || isNaN(pts) || pts <= 0) {
-        alert("Barcha maydonlarni to'ldiring!");
+        alert(t('alertFields'));
         return;
     }
 
@@ -360,14 +370,14 @@ addQBtn.addEventListener('click', () => {
     newQOpt2.value = "";
     newQOpt3.value = "";
     newQPoints.value = "1.0";
-    alert("Savol qo'shildi!");
+    alert(t('alertAdded'));
 });
 
 // Parse questions from Word .docx file
 wordUploadBtn.addEventListener('click', () => {
     const file = wordFileInput.files[0];
     if (!file) {
-        alert("Iltimos, avval Word (.docx) faylini tanlang!");
+        alert(t('alertSelectFile'));
         return;
     }
 
@@ -383,7 +393,7 @@ wordUploadBtn.addEventListener('click', () => {
             })
             .catch(function(err) {
                 console.error(err);
-                alert("Faylni o'qishda xatolik yuz berdi!");
+                alert(t('alertReadError'));
             });
     };
     reader.readAsArrayBuffer(file);
@@ -396,7 +406,7 @@ filterClass.addEventListener('change', () => {
 
 // Clear All Results
 clearResultsBtn.addEventListener('click', () => {
-    if (confirm("Natijalarni butunlay o'chirmoqchimisiz?")) {
+    if (confirm(t('alertConfirmClear'))) {
         results = [];
         saveResults();
         renderResultsTable();
@@ -425,6 +435,34 @@ function handleProctorUnlock() {
         adminPassInput.value = "";
     }
 }
+
+// --- QR Code Generator ---
+let qrInstance = null;
+function generateQR() {
+    const currentUrl = window.location.href;
+    if (!qrInstance) {
+        qrInstance = new QRious({
+            element: qrCanvas,
+            value: currentUrl,
+            size: 250,
+            background: 'white',
+            foreground: 'black'
+        });
+    } else {
+        qrInstance.value = currentUrl;
+    }
+}
+
+downloadQrBtn.addEventListener('click', () => {
+    if (!qrInstance) return;
+    const url = qrCanvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'shsb_quiz_qr.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+});
 
 
 // --- Word .docx Parsing Engine ---
@@ -481,9 +519,9 @@ function parseQuestionsFromText(rawText) {
         saveQuestions();
         renderQuestionsList();
         wordFileInput.value = "";
-        alert(`Muvaffaqiyatli yuklandi: ${importedQuestions.length} ta yangi savol qo'shildi!`);
+        alert(`${t('alertImportSuccess')} ${importedQuestions.length} ${t('alertImportSuccess2')}`);
     } else {
-        alert("Fayl ichidan mos formatdagi savollar topilmadi! Iltimos shablonni tekshiring.");
+        alert(t('alertImportEmpty'));
     }
 }
 
@@ -506,17 +544,17 @@ function renderQuestionsList() {
         div.className = 'q-item';
         div.innerHTML = `
             <div class="q-info">
-                <div class="q-text">${index + 1}. ${q.question} <span style="color: var(--accent-color);">(${q.points || 1} ball)</span></div>
-                <div class="q-answer-check">To'g'ri javob: ${q.options[q.correct]}</div>
+                <div class="q-text">${index + 1}. ${q.question} <span style="color: var(--accent-color);">(${q.points || 1} ${t('quizInfoPoints')})</span></div>
+                <div class="q-answer-check">${t('lblCorrect')} ${q.options[q.correct]}</div>
             </div>
-            <button class="danger-btn" onclick="deleteQuestion(${index})">O'chirish</button>
+            <button class="danger-btn" onclick="deleteQuestion(${index})">${t('btnDelete')}</button>
         `;
         adminQuestionsList.appendChild(div);
     });
 }
 
 window.deleteQuestion = function(index) {
-    if (confirm("Ushbu savolni o'chirib tashlamoqchimisiz?")) {
+    if (confirm(t('alertConfirmDelete'))) {
         questions.splice(index, 1);
         saveQuestions();
         renderQuestionsList();
@@ -525,7 +563,7 @@ window.deleteQuestion = function(index) {
 
 function populateClassFilters() {
     const uniqueClasses = [...new Set(results.map(r => r.classGroup))].filter(Boolean);
-    filterClass.innerHTML = `<option value="all">Barchasi</option>`;
+    filterClass.innerHTML = `<option value="all">${t('filterAll')}</option>`;
     uniqueClasses.forEach(cls => {
         const opt = document.createElement('option');
         opt.value = cls;
@@ -542,7 +580,7 @@ function renderResultsTable(filter = "all") {
     }
 
     if (list.length === 0) {
-        resultsTableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">Hozircha natijalar mavjud emas.</td></tr>`;
+        resultsTableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">${t('noResults')}</td></tr>`;
         return;
     }
 
@@ -550,11 +588,11 @@ function renderResultsTable(filter = "all") {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td><strong>${res.name}</strong></td>
-            <td>${res.classGroup || 'Noma\'lum'}</td>
+            <td>${res.classGroup || t('unknown')}</td>
             <td><strong>${res.score} / ${res.totalPossible}</strong></td>
             <td>${res.percentage}%</td>
             <td>${res.time}</td>
-            <td style="color: ${res.blocks > 0 ? 'var(--error-color)' : 'var(--success-color)'}">${res.blocks} marta</td>
+            <td style="color: ${res.blocks > 0 ? 'var(--error-color)' : 'var(--success-color)'}">${res.blocks} ${t('times')}</td>
         `;
         resultsTableBody.appendChild(tr);
     });
@@ -563,12 +601,12 @@ function renderResultsTable(filter = "all") {
 // CSV Export (with UTF-8 BOM)
 function exportResultsToCSV() {
     if (results.length === 0) {
-        alert("Eksport qilish uchun natijalar mavjud emas!");
+        alert(t('alertNoExport'));
         return;
     }
 
     let csvContent = "\uFEFF";
-    csvContent += "F.I.SH.,Sinf,To'plangan ball,Maksimal ball,Foiz,Sarflangan vaqt,Bloklar soni\n";
+    csvContent += `"${t('thName')}","${t('thClass')}","${t('thScore')}","Maksimal ball","${t('thPercent')}","${t('timeSpent')}","${t('thBlocks')}"\n`;
 
     results.forEach(res => {
         const cleanName = res.name.replace(/,/g, ' ');
@@ -605,7 +643,7 @@ function renderLeaderboard() {
     const top10 = sorted.slice(0, 10);
 
     if (top10.length === 0) {
-        leaderboardBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">Reyting jadvali bo'sh.</td></tr>`;
+        leaderboardBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">${t('emptyLeaderboard')}</td></tr>`;
         return;
     }
 
@@ -717,7 +755,7 @@ function startTimer() {
 
         if (remainingSeconds <= 0) {
             timerDisplay.textContent = "00:00";
-            alert("Vaqt tugadi! Test avtomatik yakunlanadi.");
+            alert(t('alertTimeout'));
             
             // Check current selected question
             const selected = optionsContainer.querySelector('.option.selected');
@@ -769,19 +807,19 @@ function finishQuiz() {
     const timeSpentString = formatTimeElapsed();
     let analysis = "";
     
-    if (percentage >= 90) analysis = "A'lo daraja! Siz mavzuni mukammal o'zlashtirgansiz.";
-    else if (percentage >= 70) analysis = "Yaxshi natija. Bilimingizni yanada mustahkamlashingiz mumkin.";
-    else if (percentage >= 50) analysis = "Qoniqarli. Takrorlash ko'proq talab etiladi.";
-    else analysis = "Past natija. Iltimos, darslikni qaytadan o'qib chiqing.";
+    if (percentage >= 90) analysis = t('analysisEx');
+    else if (percentage >= 70) analysis = t('analysisGood');
+    else if (percentage >= 50) analysis = t('analysisSat');
+    else analysis = t('analysisBad');
 
     resultContent.innerHTML = `
-        <div class="stat-item"><span>Talaba:</span> <strong>${studentName} (${studentClass})</strong></div>
-        <div class="stat-item"><span>To'plangan ball:</span> <strong>${totalUserPoints.toFixed(1)} / ${maxPossiblePoints.toFixed(1)} ball</strong></div>
-        <div class="stat-item"><span>Foiz ko'rsatkichi:</span> <strong>${percentage}%</strong></div>
-        <div class="stat-item"><span>Sarflangan vaqt:</span> <strong>${timeSpentString} (Jami limit: ${quizDuration} daq)</strong></div>
-        <div class="stat-item"><span>Qoidabuzarliklar (Bloklar):</span> <strong style="color: ${blockCount > 0 ? 'var(--error-color)' : 'var(--success-color)'}">${blockCount} marta</strong></div>
+        <div class="stat-item"><span>${t('studentLabel')}</span> <strong>${studentName} (${studentClass})</strong></div>
+        <div class="stat-item"><span>${t('thScore')}:</span> <strong>${totalUserPoints.toFixed(1)} / ${maxPossiblePoints.toFixed(1)} ${t('quizInfoPoints')}</strong></div>
+        <div class="stat-item"><span>${t('percentageLabel')}</span> <strong>${percentage}%</strong></div>
+        <div class="stat-item"><span>${t('timeSpent')}</span> <strong>${timeSpentString} (${t('totalLimit')} ${quizDuration} ${t('min')})</strong></div>
+        <div class="stat-item"><span>${t('violations')}</span> <strong style="color: ${blockCount > 0 ? 'var(--error-color)' : 'var(--success-color)'}">${blockCount} ${t('times')}</strong></div>
         <div class="analysis-note">
-            <strong>Tahlil:</strong> ${analysis}
+            <strong>${t('analysisLabel')}</strong> ${analysis}
         </div>
     `;
 
@@ -829,20 +867,20 @@ function renderErrorReview() {
             const item = document.createElement('div');
             item.className = 'review-item';
             
-            const userAnsText = userChoice === -1 || userChoice === undefined ? "Javob berilmagan" : q.options[userChoice];
+            const userAnsText = userChoice === -1 || userChoice === undefined ? t('notAnswered') : q.options[userChoice];
             const correctAnsText = q.options[q.correct];
 
             item.innerHTML = `
                 <div class="review-q">${index + 1}. ${q.question}</div>
-                <div class="review-user-ans">Siz tanlagan javob: ${userAnsText}</div>
-                <div class="review-correct-ans">To'g'ri javob: ${correctAnsText}</div>
+                <div class="review-user-ans">${t('yourAnswer')} ${userAnsText}</div>
+                <div class="review-correct-ans">${t('lblCorrect')} ${correctAnsText}</div>
             `;
             errorReviewList.appendChild(item);
         }
     });
 
     if (errorsCount === 0) {
-        errorReviewList.innerHTML = `<p style="color: var(--success-color); text-align: center; font-weight: 600;">Tabriklaymiz! Hech qanday xatoga yo'l qo'yilmadi.</p>`;
+        errorReviewList.innerHTML = `<p style="color: var(--success-color); text-align: center; font-weight: 600;">${t('noMistakes')}</p>`;
     }
 }
 
@@ -852,14 +890,14 @@ function sendTelegramNotification(res) {
     if (!tgBotToken || !tgChatId) return; // Telegram is not configured
 
     const text = `
-📊 *IMTIHON NATIJASI (shsb.test.portal)*
+📊 *${t('examResult')} (shsb.test.portal)*
 
-👤 *Talaba:* ${res.name}
-🏫 *Sinf/Guruh:* ${res.classGroup}
-🎯 *Ball:* ${res.score} / ${res.totalPossible} (${res.percentage}%)
-⏳ *Sarflangan vaqt:* ${res.time}
-⚠️ *Bloklar soni:* ${res.blocks} marta
-📅 *Sana:* ${new Date().toLocaleString('uz-UZ')}
+👤 *${t('studentLabel')}* ${res.name}
+🏫 *${t('thClass')}:* ${res.classGroup}
+🎯 *${t('thScore')}:* ${res.score} / ${res.totalPossible} (${res.percentage}%)
+⏳ *${t('timeSpent')}* ${res.time}
+⚠️ *${t('violations')}* ${res.blocks} ${t('times')}
+📅 *${t('dateLabel')}* ${new Date().toLocaleString('uz-UZ')}
     `;
 
     const url = `https://api.telegram.org/bot${tgBotToken}/sendMessage`;
@@ -916,7 +954,7 @@ function generateCertificateCanvas(percentage) {
     // Certificate Title
     ctx.fillStyle = '#f59e0b';
     ctx.font = 'bold 44px Outfit';
-    ctx.fillText('MAQTOV YORLIG\'I', 400, 160);
+    ctx.fillText(t('certTitle'), 400, 160);
 
     // Decorative line
     ctx.strokeStyle = '#f59e0b';
@@ -929,7 +967,7 @@ function generateCertificateCanvas(percentage) {
     // Body text
     ctx.fillStyle = '#f8fafc';
     ctx.font = '20px Outfit';
-    ctx.fillText('Ushbu sertifikat topshiriladi:', 400, 240);
+    ctx.fillText(t('certGivenTo'), 400, 240);
 
     // Student Name
     ctx.fillStyle = '#ffffff';
@@ -939,22 +977,22 @@ function generateCertificateCanvas(percentage) {
     // Student Class
     ctx.fillStyle = '#94a3b8';
     ctx.font = 'italic 20px Outfit';
-    ctx.fillText(`${studentClass}-sinf o'quvchisi`, 400, 345);
+    ctx.fillText(`${studentClass} ${t('studentOfClass')}`, 400, 345);
 
     // Text detail
     ctx.fillStyle = '#f8fafc';
     ctx.font = '18px Outfit';
-    ctx.fillText(`Portalimizdagi imtihondan yuqori natija (${percentage}%) ko'rsatib,`, 400, 400);
-    ctx.fillText(`maxsus fanlar bo'yicha mustahkam bilimini namoyon etganligi uchun.`, 400, 430);
+    ctx.fillText(`${t('certText1')} (${percentage}%),`, 400, 400);
+    ctx.fillText(t('certText2'), 400, 430);
 
     // Sign details / Footer
     ctx.fillStyle = '#94a3b8';
     ctx.font = '16px Outfit';
-    ctx.fillText(`Sana: ${new Date().toLocaleDateString('uz-UZ')}`, 200, 520);
+    ctx.fillText(`${t('dateLabel')} ${new Date().toLocaleDateString('uz-UZ')}`, 200, 520);
     
     ctx.fillStyle = '#f59e0b';
     ctx.font = 'bold 16px Outfit';
-    ctx.fillText('Portal Ma\'muriyati', 600, 520);
+    ctx.fillText(t('portalAdmin'), 600, 520);
     ctx.font = '14px Outfit';
     ctx.fillStyle = '#94a3b8';
     ctx.fillText('shsb.test.portal', 600, 540);
