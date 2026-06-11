@@ -6,20 +6,65 @@
     <title>shsb.test.portal</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Mammoth.js for reading .docx files client-side -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <!-- QRious.js for client-side QR generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 </head>
 <body>
+    <!-- Toast Notification Container -->
+    <div id="toast" class="toast hidden" data-i18n="toastWarning">Tizim xavfsizligi tufayli kodni ko'rish taqiqlanadi!</div>
+
+    <!-- Hidden canvas for certificate generation -->
+    <canvas id="certificate-canvas" width="800" height="600" style="display: none;"></canvas>
+
+    <!-- Language Switcher Panel -->
+    <div class="lang-switcher">
+        <button class="lang-btn" data-lang="qq">QQ</button>
+        <button class="lang-btn active" data-lang="uz">UZ</button>
+        <button class="lang-btn" data-lang="en">EN</button>
+    </div>
+
     <div id="app">
         <!-- Landing Screen -->
         <section id="auth-screen" class="screen">
-            <div class="glass-card fade-in">
-                <h1 class="portal-logo animate-glow">shsb.test.portal</h1>
-                <p>Xush kelibsiz! Testni boshlash uchun ismingizni kiriting.</p>
-                <div class="input-group">
-                    <input type="text" id="student-name" placeholder="F.I.SH." autocomplete="off">
+            <div class="landing-container">
+                <div class="glass-card auth-card fade-in">
+                    <h1 class="portal-logo animate-glow">shsb.test.portal</h1>
+                    <p data-i18n="welcomeMsg">Xush kelibsiz! Testni boshlash uchun ma'lumotlarni kiriting.</p>
+                    
+                    <div class="input-group">
+                        <input type="text" id="student-name" placeholder="F.I.SH." autocomplete="off" data-i18n-placeholder="namePlaceholder">
+                    </div>
+                    <div class="input-group">
+                        <input type="text" id="student-class" placeholder="Sinf / Guruh (Masalan: 9-A, 11-B)" autocomplete="off" data-i18n-placeholder="classPlaceholder">
+                    </div>
+                    <button id="start-btn" class="primary-btn" data-i18n="startBtn">Testni Boshlash</button>
+                    
+                    <div class="admin-login-trigger">
+                        <button id="admin-login-btn" class="text-link-btn" data-i18n="adminLoginBtn">Admin paneliga kirish</button>
+                    </div>
                 </div>
-                <button id="start-btn" class="primary-btn">Testni Boshlash</button>
-                <div class="admin-login-trigger">
-                    <button id="admin-login-btn" class="text-link-btn">Admin paneliga kirish</button>
+
+                <!-- Top 10 Leaderboard Card -->
+                <div class="glass-card leaderboard-card fade-in">
+                    <h2 class="animate-glow" data-i18n="leaderboardTitle">🏆 Top-10 Reyting</h2>
+                    <div class="leaderboard-container">
+                        <table class="leaderboard-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="thRank">O'rin</th>
+                                    <th data-i18n="thName">F.I.SH.</th>
+                                    <th data-i18n="thClass">Sinf</th>
+                                    <th data-i18n="thPoints">Ball</th>
+                                    <th data-i18n="thTime">Vaqt</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboard-body">
+                                <!-- Leaderboard entries injected here -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </section>
@@ -27,15 +72,15 @@
         <!-- Admin Login Modal -->
         <div id="admin-auth-modal" class="modal-overlay hidden">
             <div class="glass-card modal-card fade-in">
-                <h2>Admin Tizimiga Kirish</h2>
+                <h2 data-i18n="adminModalTitle">Admin Tizimiga Kirish</h2>
                 <div class="input-group">
-                    <input type="password" id="admin-portal-pass" placeholder="Admin parolini kiriting">
+                    <input type="password" id="admin-portal-pass" placeholder="Admin parolini kiriting" data-i18n-placeholder="adminPassPlaceholder">
                 </div>
                 <div class="modal-actions">
-                    <button id="admin-auth-submit" class="primary-btn">Kirish</button>
-                    <button id="admin-auth-cancel" class="secondary-btn">Bekor qilish</button>
+                    <button id="admin-auth-submit" class="primary-btn" data-i18n="adminModalSubmit">Kirish</button>
+                    <button id="admin-auth-cancel" class="secondary-btn" data-i18n="adminModalCancel">Bekor qilish</button>
                 </div>
-                <p id="admin-auth-error" class="error-msg hidden">Noto'g'ri parol!</p>
+                <p id="admin-auth-error" class="error-msg hidden" data-i18n="incorrectPass">Noto'g'ri parol!</p>
             </div>
         </div>
 
@@ -43,58 +88,71 @@
         <section id="admin-panel" class="screen hidden">
             <div class="glass-card admin-card fade-in">
                 <div class="admin-header">
-                    <h2>Admin Boshqaruv Paneli</h2>
-                    <button id="admin-logout-btn" class="danger-btn">Panelni yopish</button>
+                    <h2 data-i18n="adminPanelTitle">Admin Boshqaruv Paneli</h2>
+                    <button id="admin-logout-btn" class="danger-btn" data-i18n="adminLogoutBtn">Panelni yopish</button>
                 </div>
 
                 <div class="admin-tabs">
-                    <button id="tab-questions-btn" class="tab-btn active">Savollar boshqaruvi</button>
-                    <button id="tab-results-btn" class="tab-btn">O'quvchilar natijalari</button>
+                    <button id="tab-questions-btn" class="tab-btn active" data-i18n="tabQuestions">Savollar boshqaruvi</button>
+                    <button id="tab-results-btn" class="tab-btn" data-i18n="tabResults">O'quvchilar Natijalari</button>
+                    <button id="tab-settings-btn" class="tab-btn" data-i18n="tabSettings">Telegram sozlamalari</button>
+                    <button id="tab-qrcode-btn" class="tab-btn" data-i18n="tabQr">QR-kod olish</button>
                 </div>
 
                 <!-- Tab 1: Questions Management -->
                 <div id="tab-questions" class="tab-content">
-                    <!-- Timer Duration Setting Card -->
-                    <div class="settings-card">
-                        <h3>Test sozlamalari</h3>
-                        <div class="inline-form">
-                            <label for="test-duration-input">Test vaqti (daqiqada):</label>
-                            <input type="number" id="test-duration-input" min="1" max="180" value="20">
-                            <button id="save-settings-btn" class="primary-btn small-btn">Saqlash</button>
+                    <div class="admin-dual-sections">
+                        <!-- Left: Manual Add Question -->
+                        <div class="add-question-section">
+                            <h3 data-i18n="manualAddTitle">Yangi savol qo'shish (Qo'lda)</h3>
+                            <div class="form-group">
+                                <input type="text" id="new-q-text" placeholder="Savol matni" data-i18n-placeholder="qTextPlaceholder">
+                            </div>
+                            <div class="options-inputs">
+                                <input type="text" id="new-q-opt0" placeholder="Variant A" data-i18n-placeholder="optAPlaceholder">
+                                <input type="text" id="new-q-opt1" placeholder="Variant B" data-i18n-placeholder="optBPlaceholder">
+                                <input type="text" id="new-q-opt2" placeholder="Variant C" data-i18n-placeholder="optCPlaceholder">
+                                <input type="text" id="new-q-opt3" placeholder="Variant D" data-i18n-placeholder="optDPlaceholder">
+                            </div>
+                            <div class="question-meta-inputs">
+                                <div class="correct-selection">
+                                    <label for="new-q-correct" data-i18n="lblCorrect">To'g'ri javob:</label>
+                                    <select id="new-q-correct">
+                                        <option value="0" data-i18n="optA">Variant A</option>
+                                        <option value="1" data-i18n="optB">Variant B</option>
+                                        <option value="2" data-i18n="optC">Variant C</option>
+                                        <option value="3" data-i18n="optD">Variant D</option>
+                                    </select>
+                                </div>
+                                <div class="points-input-group">
+                                    <label for="new-q-points" data-i18n="lblPoints">Savol balli:</label>
+                                    <input type="number" id="new-q-points" step="0.1" min="0.1" value="1.0">
+                                </div>
+                            </div>
+                            <button id="add-q-btn" class="primary-btn" data-i18n="saveQBtn">Savolni saqlash</button>
                         </div>
-                    </div>
 
-                    <div class="add-question-section">
-                        <h3>Yangi savol qo'shish</h3>
-                        <div class="form-group">
-                            <input type="text" id="new-q-text" placeholder="Savol matni">
-                        </div>
-                        <div class="options-inputs">
-                            <input type="text" id="new-q-opt0" placeholder="Variant A">
-                            <input type="text" id="new-q-opt1" placeholder="Variant B">
-                            <input type="text" id="new-q-opt2" placeholder="Variant C">
-                            <input type="text" id="new-q-opt3" placeholder="Variant D">
-                        </div>
-                        <div class="question-meta-inputs">
-                            <div class="correct-selection">
-                                <label for="new-q-correct">To'g'ri javob:</label>
-                                <select id="new-q-correct">
-                                    <option value="0">Variant A</option>
-                                    <option value="1">Variant B</option>
-                                    <option value="2">Variant C</option>
-                                    <option value="3">Variant D</option>
-                                </select>
-                            </div>
-                            <div class="points-input-group">
-                                <label for="new-q-points">Savol balli:</label>
-                                <input type="number" id="new-q-points" step="0.1" min="0.1" value="1.0">
+                        <!-- Right: Word File Uploader -->
+                        <div class="word-uploader-section">
+                            <h3 data-i18n="wordImportTitle">Word fayldan yuklash (.docx)</h3>
+                            <p class="word-info" data-i18n="wordImportHint">Word faylingiz quyidagi shablonga mos bo'lishi kerak:</p>
+                            <pre class="word-format-preview">
+1. Savol matni?
+A) Variant 1
+B) Variant 2
+C) Variant 3
+D) Variant 4
+To'g'ri javob: B
+                            </pre>
+                            <div class="file-input-wrapper">
+                                <input type="file" id="word-file-input" accept=".docx">
+                                <button id="word-upload-btn" class="success-btn" data-i18n="btnImport">Savollarni import qilish</button>
                             </div>
                         </div>
-                        <button id="add-q-btn" class="primary-btn">Savolni saqlash</button>
                     </div>
 
                     <div class="questions-list-section">
-                        <h3>Mavjud savollar (<span id="admin-questions-count">0</span>)</h3>
+                        <h3><span data-i18n="questionsListTitle">Mavjud savollar</span> (<span id="admin-questions-count">0</span>)</h3>
                         <div id="admin-questions-list" class="questions-list">
                             <!-- Injected questions list -->
                         </div>
@@ -104,27 +162,76 @@
                 <!-- Tab 2: Results -->
                 <div id="tab-results" class="tab-content hidden">
                     <div class="results-actions">
-                        <h3>Natijalar jadvali</h3>
+                        <h3 data-i18n="resultsTableTitle">Natijalar jadvali</h3>
+                        
+                        <div class="results-filters">
+                            <label for="filter-class" data-i18n="lblFilterClass">Sinf bo'yicha filter:</label>
+                            <select id="filter-class">
+                                <option value="all" data-i18n="filterAll">Barchasi</option>
+                                <!-- Dynamically filled with unique classes -->
+                            </select>
+                        </div>
+
                         <div class="results-buttons">
-                            <button id="export-excel-btn" class="success-btn">Excel formatda yuklab olish (CSV)</button>
-                            <button id="clear-results-btn" class="danger-btn">Barcha natijalarni tozalash</button>
+                            <button id="export-excel-btn" class="success-btn" data-i18n="btnExportCsv">Excel formatda yuklab olish (CSV)</button>
+                            <button id="clear-results-btn" class="danger-btn" data-i18n="btnClearResults">Barcha natijalarni tozalash</button>
                         </div>
                     </div>
                     <div class="table-container">
                         <table class="results-table">
                             <thead>
                                 <tr>
-                                    <th>F.I.SH.</th>
-                                    <th>To'plangan ball</th>
-                                    <th>Foiz</th>
-                                    <th>Sarflangan vaqt</th>
-                                    <th>Bloklar soni</th>
+                                    <th data-i18n="thName">F.I.SH.</th>
+                                    <th data-i18n="thClass">Sinf</th>
+                                    <th data-i18n="thScore">To'plangan ball</th>
+                                    <th data-i18n="thPercent">Foiz</th>
+                                    <th data-i18n="thTime">Sarflangan vaqt</th>
+                                    <th data-i18n="thBlocks">Bloklar soni</th>
                                 </tr>
                             </thead>
                             <tbody id="results-table-body">
                                 <!-- Injected results -->
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Settings -->
+                <div id="tab-settings" class="tab-content hidden">
+                    <div class="settings-card">
+                        <h3 data-i18n="settingsGeneralTitle">Test umumiy sozlamalari</h3>
+                        <div class="settings-group">
+                            <label for="test-duration-input" data-i18n="lblTestDuration">Test vaqti (daqiqada):</label>
+                            <input type="number" id="test-duration-input" min="1" max="180" value="20">
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3 data-i18n="settingsTelegramTitle">Telegram bot sozlamalari (Bildirishnoma va zaxira)</h3>
+                        <p class="settings-hint" data-i18n="settingsTelegramHint">Har bir o'quvchi testni tugatgandan so'ng, uning natijalari Telegram orqali sizga yuboriladi.</p>
+                        
+                        <div class="settings-group">
+                            <label for="tg-bot-token" data-i18n="lblTgBotToken">Telegram Bot Token:</label>
+                            <input type="text" id="tg-bot-token" placeholder="Masalan: 123456789:ABCdefGhI..." autocomplete="off">
+                        </div>
+                        <div class="settings-group">
+                            <label for="tg-chat-id" data-i18n="lblTgChatId">Telegram Chat ID (Guruh yoki shaxsiy ID):</label>
+                            <input type="text" id="tg-chat-id" placeholder="Masalan: -10012345678 yoki 98765432" autocomplete="off">
+                        </div>
+                    </div>
+
+                    <button id="save-settings-btn" class="primary-btn" data-i18n="btnSaveSettings">Barcha sozlamalarni saqlash</button>
+                </div>
+
+                <!-- Tab 4: QR Code -->
+                <div id="tab-qrcode" class="tab-content hidden">
+                    <div class="settings-card qr-section">
+                        <h3 data-i18n="qrTitle">Loyiha QR-kodi</h3>
+                        <p class="settings-hint" data-i18n="qrHint">Ushbu QR-kod yordamida o'quvchilar testga tezkor kirishlari mumkin.</p>
+                        <div class="qr-canvas-wrapper">
+                            <canvas id="qr-canvas"></canvas>
+                        </div>
+                        <button id="download-qr-btn" class="success-btn" data-i18n="downloadQr">QR-kodni yuklab olish (PNG)</button>
                     </div>
                 </div>
             </div>
@@ -144,15 +251,15 @@
                         <div class="progress-bar" id="progress-bar"></div>
                     </div>
                     <div class="question-info">
-                        Savol <span id="current-question-num">1</span> / <span id="total-questions">0</span> 
-                        (<span id="question-points-display">0</span> ball)
+                        <span data-i18n="quizInfoQuestion">Savol</span> <span id="current-question-num">1</span> / <span id="total-questions">0</span> 
+                        (<span id="question-points-display">0</span> <span data-i18n="quizInfoPoints">ball</span>)
                     </div>
                     <h2 id="question-text">Savol yuklanmoqda...</h2>
                     <div id="options-container" class="options-grid">
                         <!-- Options will be injected here -->
                     </div>
                     <div class="quiz-controls">
-                        <button id="next-btn" class="primary-btn hidden">Keyingi savol</button>
+                        <button id="next-btn" class="primary-btn hidden" data-i18n="nextBtn">Keyingi savol</button>
                     </div>
                 </div>
             </main>
@@ -161,11 +268,29 @@
         <!-- Result Screen -->
         <section id="result-screen" class="screen hidden">
             <div class="glass-card result-card fade-in">
-                <h1 class="animate-glow">Test Yakunlandi</h1>
+                <h1 class="animate-glow" data-i18n="testFinishedTitle">Test Yakunlandi</h1>
+                
                 <div id="result-content" class="result-details">
                     <!-- Results will be injected here -->
                 </div>
-                <button onclick="location.reload()" class="secondary-btn">Asosiy sahifaga qaytish</button>
+
+                <!-- Gamification: Certificate Zone -->
+                <div id="certificate-zone" class="certificate-badge hidden">
+                    <div class="certificate-icon">🎓</div>
+                    <h3 data-i18n="certCongrats">Tabriklaymiz! Siz yuqori natija ko'rsatdingiz.</h3>
+                    <p data-i18n="certInfo">Siz o'z sertifikatingizni yuklab olishingiz mumkin.</p>
+                    <button id="download-cert-btn" class="success-btn" data-i18n="btnDownloadCert">Sertifikatni yuklab olish (PNG)</button>
+                </div>
+
+                <!-- Pedagogical Analysis: Review of Errors -->
+                <div class="error-review-section">
+                    <h3 data-i18n="errorReviewTitle">Xatolar ustida ishlash</h3>
+                    <div id="error-review-list" class="error-review-list">
+                        <!-- Injected question reviews -->
+                    </div>
+                </div>
+
+                <button onclick="location.reload()" class="secondary-btn" data-i18n="btnBackToHome">Asosiy sahifaga qaytish</button>
             </div>
         </section>
 
@@ -173,14 +298,14 @@
         <div id="lock-screen" class="lock-overlay hidden">
             <div class="lock-card">
                 <div class="warning-icon">⚠️</div>
-                <h1 class="warning-text">SIZ BLOKLANDINGIZ!</h1>
-                <p>Tizimdan foydalanish qoidalari buzildi (ekran o'zgartirildi yoki to'liq ekran rejimidan chiqildi).</p>
-                <p class="admin-note">Blokdan chiqarish uchun admin parolini kiriting:</p>
+                <h1 class="warning-text" data-i18n="lockWarningTitle">SIZ BLOKLANDINGIZ!</h1>
+                <p data-i18n="lockWarningText">Tizimdan foydalanish qoidalari buzildi (ekran o'zgartirildi yoki to'liq ekran rejimidan chiqildi).</p>
+                <p class="admin-note" data-i18n="lockAdminNote">Blokdan chiqarish uchun admin parolini kiriting:</p>
                 <div class="admin-zone">
-                    <input type="password" id="admin-pass" placeholder="Admin paroli">
-                    <button id="unlock-btn" class="unlock-btn">Unlock</button>
+                    <input type="password" id="admin-pass" placeholder="Admin paroli" data-i18n-placeholder="lockPassPlaceholder">
+                    <button id="unlock-btn" class="unlock-btn" data-i18n="lockBtnUnlock">Unlock</button>
                 </div>
-                <p id="unlock-error" class="error-msg hidden">Noto'g'ri parol!</p>
+                <p id="unlock-error" class="error-msg hidden" data-i18n="incorrectPass">Noto'g'ri parol!</p>
             </div>
         </div>
     </div>
