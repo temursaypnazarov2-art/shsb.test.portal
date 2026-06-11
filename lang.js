@@ -1,6 +1,7 @@
 const translations = {
     uz: {
         toastWarning: "Tizim xavfsizligi tufayli kodni ko'rish taqiqlanadi!",
+        schoolName: "Xo'jayli tumani ixtisoslashtirilgan maktabi",
         welcomeMsg: "Xush kelibsiz! Testni boshlash uchun ma'lumotlarni kiriting.",
         namePlaceholder: "F.I.SH.",
         classPlaceholder: "Sinf / Guruh (Masalan: 9-A, 11-B)",
@@ -119,6 +120,7 @@ const translations = {
     },
     qq: {
         toastWarning: "Sistema qawipsizligi sebepli kodti kóriw qadaǵalanadı!",
+        schoolName: "Xojeli rayonı qánigelestirilgen mektebi",
         welcomeMsg: "Xosh keldińiz! Testti baslaw ushın maǵlıwmatlardı kiritiń.",
         namePlaceholder: "F.A.Á.",
         classPlaceholder: "Klass / Gruppa (Mısalı: 9-A, 11-B)",
@@ -236,6 +238,7 @@ const translations = {
     },
     en: {
         toastWarning: "Viewing code is prohibited due to system security!",
+        schoolName: "Khodjeyli specialized school",
         welcomeMsg: "Welcome! Enter your details to start the test.",
         namePlaceholder: "Full Name",
         classPlaceholder: "Class / Group (e.g., 9-A, 11-B)",

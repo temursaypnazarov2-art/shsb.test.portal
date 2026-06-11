@@ -871,3 +871,9 @@ select:focus {
     color: white;
     border-color: var(--accent-color);
 }
+
+.school-logo {
+    max-width: 120px;
+    height: auto;
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.2));
+}
