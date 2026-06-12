@@ -299,7 +299,9 @@ const adminQuestionsList = document.getElementById('admin-questions-list');
 const resultsTableBody = document.getElementById('results-table-body');
 const geminiAnalyzeBtn = document.getElementById('gemini-analyze-btn');
 const geminiAnalysisOutput = document.getElementById('gemini-analysis-output');
-
+const geminiOverlay = document.getElementById('gemini-overlay');
+const geminiLoading = document.getElementById('gemini-loading');
+const closeGeminiBtn = document.getElementById('close-gemini-btn');
 // Quiz Screen Elements
 const questionText = document.getElementById('question-text');
 const optionsContainer = document.getElementById('options-container');
@@ -801,7 +803,7 @@ window.toggleQuestionFormat = function () {
         openInputs.style.display = 'block';
     } else {
         closedInputs.style.display = 'block';
-        if (correctSelection) correctSelection.style.display = 'block';
+        if (correctSelection) correctSelection.style.display = '';
         openInputs.style.display = 'none';
     }
 };
@@ -1489,22 +1491,17 @@ exportExcelBtn.addEventListener('click', () => {
     XLSX.writeFile(wb, fileName);
     showToast(`Excel fayl yuklandi: ${fileName}`);
     saveResults();
-}
+});
 
 // --- Gemini API Call logic ---
-const geminiAnalyzeBtn = document.getElementById('gemini-analyze-btn');
-const geminiOverlay = document.getElementById('gemini-overlay');
-const geminiLoading = document.getElementById('gemini-loading');
-const geminiAnalysisOutput = document.getElementById('gemini-analysis-output');
-const closeGeminiBtn = document.getElementById('close-gemini-btn');
 
-if (closeGeminiBtn) {
+if (closeGeminiBtn && geminiOverlay) {
     closeGeminiBtn.addEventListener('click', () => {
         geminiOverlay.classList.add('hidden');
     });
 }
 
-if (geminiAnalyzeBtn) {
+if (geminiAnalyzeBtn && geminiLoading && geminiAnalysisOutput) {
     geminiAnalyzeBtn.addEventListener('click', async () => {
         if (!GEMINI_API_KEY || GEMINI_API_KEY === "Sizning_API_Kalitingiz") {
             alert(t('alertGeminiKey') || "API kilit sozlanmagan! script.js faylida kalitni kiriting.");
@@ -1648,7 +1645,18 @@ startBtn.addEventListener('click', () => {
 
     if (instTitle) instTitle.textContent = `${studentSubject} - ${testType}`;
     if (instTime) instTime.textContent = (t('lblTime') || "Vaqt:") + ` ${activeDuration} daqiqa`;
-    if (instCount) instCount.textContent = (t('lblCount') || "Savollar soni:") + ` ${currentQuizQuestions.length} ta`;
+
+    if (instCount) {
+        let openQ = currentQuizQuestions.filter(q => q.type === 'open').length;
+        let closedQ = currentQuizQuestions.length - openQ;
+        let qDetails = `(Yopiq: ${closedQ}, Ochiq: ${openQ})`;
+        if (document.documentElement.lang === 'qq') {
+            qDetails = `(Jabıq: ${closedQ}, Ashıq: ${openQ})`;
+        } else if (document.documentElement.lang === 'en') {
+            qDetails = `(Closed: ${closedQ}, Open: ${openQ})`;
+        }
+        instCount.textContent = (t('lblCount') || "Savollar soni:") + ` ${currentQuizQuestions.length} ta ${qDetails}`;
+    }
 
     authScreen.classList.add('hidden');
     instructionScreen.classList.remove('hidden');
