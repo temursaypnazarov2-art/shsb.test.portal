@@ -254,7 +254,6 @@ let teacherTimerInterval = null;
 
 const addQBtn = document.getElementById('add-q-btn');
 const saveSettingsBtn = document.getElementById('save-settings-btn');
-const saveApiBtn = document.getElementById('save-api-btn');
 const clearResultsBtn = document.getElementById('clear-results-btn');
 const exportExcelBtn = document.getElementById('export-excel-btn');
 const filterClass = document.getElementById('filter-class');
@@ -681,11 +680,6 @@ saveSettingsBtn.addEventListener('click', () => {
     }
 
     saveSettings(dur, token, chatId);
-    showToast(t('settingsSavedMsg'));
-});
-
-saveApiBtn.addEventListener('click', () => {
-    saveSettings(quizDuration, tgBotToken, tgChatId);
     showToast(t('settingsSavedMsg'));
 });
 
