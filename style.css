@@ -843,6 +843,25 @@ select:focus {
     animation: neonPulse 3s ease-in-out infinite alternate;
 }
 
+.school-logo.logo-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 4rem;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: rgba(56, 189, 248, 0.15);
+    border: 2px solid rgba(56, 189, 248, 0.4);
+    mix-blend-mode: normal;
+    filter: none;
+    animation: none;
+}
+
+.school-logo.logo-fallback::before {
+    content: "🎓";
+}
+
 @keyframes neonPulse {
     0% {
         filter: drop-shadow(0px 0px 4px rgba(255, 255, 255, 0.6)) 

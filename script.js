@@ -5,7 +5,63 @@
 
 // --- Constants & Database ---
 const HASHED_ADMIN_PASS = "YWRtaW4xMjNfc2hzYg==";
-const GEMINI_API_KEY = "Sizning_API_Kalitingiz";
+const SUBJECTS = ["Ona tili", "Matematika", "Fizika", "Kimyo", "Biologiya", "Tarix", "Huquq", "Informatika"];
+const PIN_INPUT_IDS = ['pin-onatili', 'pin-matematika', 'pin-fizika', 'pin-kimyo', 'pin-biologiya', 'pin-tarix', 'pin-huquq', 'pin-informatika'];
+const DUR_INPUT_IDS = ['dur-onatili', 'dur-matematika', 'dur-fizika', 'dur-kimyo', 'dur-biologiya', 'dur-tarix', 'dur-huquq', 'dur-informatika'];
+const QUARTERS = ["1", "2", "3", "4"];
+
+function getGeminiApiKey() {
+    const key = (localStorage.getItem('gemini_api_key') || '').trim();
+    return key && key !== 'Sizning_API_Kalitingiz' ? key : '';
+}
+
+function ensureSubjectQuarterMaps() {
+    SUBJECTS.forEach(subj => {
+        if (!subjectPinsDatabase[subj]) subjectPinsDatabase[subj] = { "1": "", "2": "", "3": "", "4": "" };
+        if (!subjectDurationsDatabase[subj]) subjectDurationsDatabase[subj] = { "1": 20, "2": 20, "3": 20, "4": 20 };
+        if (!subjectTestTypesDatabase[subj]) subjectTestTypesDatabase[subj] = { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" };
+        QUARTERS.forEach(q => {
+            if (subjectPinsDatabase[subj][q] === undefined) subjectPinsDatabase[subj][q] = "";
+            if (subjectDurationsDatabase[subj][q] === undefined) subjectDurationsDatabase[subj][q] = 20;
+            if (subjectTestTypesDatabase[subj][q] === undefined) subjectTestTypesDatabase[subj][q] = "BSB";
+        });
+    });
+}
+
+function loadAdminPinFields(quarter) {
+    ensureSubjectQuarterMaps();
+    SUBJECTS.forEach((subj, index) => {
+        const el = document.getElementById(PIN_INPUT_IDS[index]);
+        const durEl = document.getElementById(DUR_INPUT_IDS[index]);
+        if (el) el.value = subjectPinsDatabase[subj][quarter] || "";
+        if (durEl) durEl.value = subjectDurationsDatabase[subj][quarter] || 20;
+    });
+}
+
+function saveAdminPinFields(quarter) {
+    ensureSubjectQuarterMaps();
+    SUBJECTS.forEach((subj, index) => {
+        const el = document.getElementById(PIN_INPUT_IDS[index]);
+        const durEl = document.getElementById(DUR_INPUT_IDS[index]);
+        if (el) subjectPinsDatabase[subj][quarter] = el.value.trim();
+        if (durEl) subjectDurationsDatabase[subj][quarter] = parseInt(durEl.value, 10) || 20;
+    });
+    localStorage.setItem('quiz_subject_pins_db', JSON.stringify(subjectPinsDatabase));
+    localStorage.setItem('quiz_subject_durations_db', JSON.stringify(subjectDurationsDatabase));
+}
+
+function setAdminActiveQuarter(quarter, syncSelectors = true) {
+    adminActiveQuarter = quarter;
+    localStorage.setItem('quiz_admin_quarter', quarter);
+    if (!questionsDatabase[quarter]) questionsDatabase[quarter] = [];
+    questions = questionsDatabase[quarter];
+    if (syncSelectors) {
+        const settingsQ = document.getElementById('admin-settings-quarter');
+        const questionsQ = document.getElementById('admin-questions-quarter');
+        if (settingsQ) settingsQ.value = quarter;
+        if (questionsQ) questionsQ.value = quarter;
+    }
+}
 
 const defaultSavollar = [
     // --- Ona tili (5-11 sinf namunasi) ---
@@ -121,10 +177,15 @@ let subjectQuarters = JSON.parse(localStorage.getItem('quiz_subject_quarters')) 
     "Biologiya": "1", "Tarix": "1", "Huquq": "1", "Informatika": "1"
 };
 
-let questions = questionsDatabase["1"]; // Default to 1, will dynamically update
+let adminActiveQuarter = localStorage.getItem('quiz_admin_quarter') || "1";
+if (!questionsDatabase[adminActiveQuarter]) questionsDatabase[adminActiveQuarter] = [];
+let questions = questionsDatabase[adminActiveQuarter];
 let teacherTokens = JSON.parse(localStorage.getItem('quiz_teacher_tokens')) || [];
 let showAnswersToStudent = localStorage.getItem('quiz_show_answers') === 'true';
+let geminiApiKey = localStorage.getItem('gemini_api_key') || "";
 let currentTeacherSession = null; // Stores token object if logged in as teacher
+
+ensureSubjectQuarterMaps();
 
 const staticTeacherPasswords = {
     '3UTYGB': 'Ona tili'
@@ -146,28 +207,22 @@ function saveSettings(duration, token, chatId) {
     localStorage.setItem('tg_bot_token', tgBotToken);
     localStorage.setItem('tg_chat_id', tgChatId);
 
-    // Save PINs & Durations
-    const pinIds = ['pin-onatili', 'pin-matematika', 'pin-fizika', 'pin-kimyo', 'pin-biologiya', 'pin-tarix', 'pin-huquq', 'pin-informatika'];
-    const durIds = ['dur-onatili', 'dur-matematika', 'dur-fizika', 'dur-kimyo', 'dur-biologiya', 'dur-tarix', 'dur-huquq', 'dur-informatika'];
-    const subjs = ["Ona tili", "Matematika", "Fizika", "Kimyo", "Biologiya", "Tarix", "Huquq", "Informatika"];
-    pinIds.forEach((id, index) => {
-        const el = document.getElementById(id);
-        const durEl = document.getElementById(durIds[index]);
-        if (el) subjectPins[subjs[index]] = el.value.trim();
-        if (durEl) subjectDurations[subjs[index]] = parseInt(durEl.value) || 20;
-    });
-    localStorage.setItem('quiz_subject_pins', JSON.stringify(subjectPins));
-    localStorage.setItem('quiz_subject_durations', JSON.stringify(subjectDurations));
+    const quarterEl = document.getElementById('admin-settings-quarter');
+    const quarter = quarterEl ? quarterEl.value : adminActiveQuarter;
+    saveAdminPinFields(quarter);
+    setAdminActiveQuarter(quarter, true);
 
-    // Save Gemini Key
     const gKeyEl = document.getElementById('gemini-api-key');
     if (gKeyEl) {
         geminiApiKey = gKeyEl.value.trim();
         localStorage.setItem('gemini_api_key', geminiApiKey);
     }
 
-    showAnswersToStudent = document.getElementById('toggle-show-answers').checked;
-    localStorage.setItem('quiz_show_answers', showAnswersToStudent);
+    const toggleEl = document.getElementById('toggle-show-answers');
+    if (toggleEl) {
+        showAnswersToStudent = toggleEl.checked;
+        localStorage.setItem('quiz_show_answers', showAnswersToStudent);
+    }
 }
 function saveTeacherTokens() {
     localStorage.setItem('quiz_teacher_tokens', JSON.stringify(teacherTokens));
@@ -217,8 +272,9 @@ const backToStudentBtn = document.getElementById('back-to-student-btn');
 const studentNameInput = document.getElementById('student-name');
 const studentClassInput = document.getElementById('student-class');
 const studentSubjectInput = document.getElementById('student-subject');
-const studentQuarterInput = document.getElementById('student-quarter');
 const quizPinInput = document.getElementById('quiz-pin');
+const adminSettingsQuarter = document.getElementById('admin-settings-quarter');
+const adminQuestionsQuarter = document.getElementById('admin-questions-quarter');
 const startBtn = document.getElementById('start-btn');
 const adminLoginBtn = document.getElementById('admin-login-btn');
 const leaderboardBody = document.getElementById('leaderboard-body');
@@ -331,29 +387,39 @@ const toggleShowAnswers = document.getElementById('toggle-show-answers');
 
 // --- Initial Setup ---
 function init() {
-    totalQuestionsSpan.textContent = questions.length;
-    testDurationInput.value = quizDuration;
-    tgBotTokenInput.value = tgBotToken;
-    tgChatIdInput.value = tgChatId;
+    if (totalQuestionsSpan) totalQuestionsSpan.textContent = questions.length;
+    if (testDurationInput) testDurationInput.value = quizDuration;
+    if (tgBotTokenInput) tgBotTokenInput.value = tgBotToken;
+    if (tgChatIdInput) tgChatIdInput.value = tgChatId;
 
-    // Load PINs, Durations, and Gemini Key to inputs
-    const pinIds = ['pin-onatili', 'pin-matematika', 'pin-fizika', 'pin-kimyo', 'pin-biologiya', 'pin-tarix', 'pin-huquq', 'pin-informatika'];
-    const durIds = ['dur-onatili', 'dur-matematika', 'dur-fizika', 'dur-kimyo', 'dur-biologiya', 'dur-tarix', 'dur-huquq', 'dur-informatika'];
-    const subjs = ["Ona tili", "Matematika", "Fizika", "Kimyo", "Biologiya", "Tarix", "Huquq", "Informatika"];
-    pinIds.forEach((id, index) => {
-        const el = document.getElementById(id);
-        const durEl = document.getElementById(durIds[index]);
-        if (el && subjectPins[subjs[index]]) {
-            el.value = subjectPins[subjs[index]];
-        }
-        if (durEl && subjectDurations[subjs[index]]) {
-            durEl.value = subjectDurations[subjs[index]];
-        }
-    });
+    setAdminActiveQuarter(adminActiveQuarter, true);
+    loadAdminPinFields(adminActiveQuarter);
+
     const gKeyEl = document.getElementById('gemini-api-key');
     if (gKeyEl) gKeyEl.value = geminiApiKey;
 
-    if (toggleShowAnswers) toggleShowAnswers.checked = showAnswersToStudent;
+    if (toggleShowAnswers) {
+        toggleShowAnswers.checked = showAnswersToStudent;
+        toggleShowAnswers.addEventListener('change', () => {
+            showAnswersToStudent = toggleShowAnswers.checked;
+            localStorage.setItem('quiz_show_answers', showAnswersToStudent);
+        });
+    }
+
+    if (adminSettingsQuarter) {
+        adminSettingsQuarter.addEventListener('change', (e) => {
+            const quarter = e.target.value;
+            setAdminActiveQuarter(quarter, true);
+            loadAdminPinFields(quarter);
+        });
+    }
+    if (adminQuestionsQuarter) {
+        adminQuestionsQuarter.addEventListener('change', (e) => {
+            const quarter = e.target.value;
+            setAdminActiveQuarter(quarter, true);
+            renderQuestionsList();
+        });
+    }
 
     renderQuestionsList();
     renderResultsTable();
@@ -536,6 +602,8 @@ function openAdminPanelUI() {
         // Show Teacher specific UI blocks
         teacherTimerBanner.classList.remove('hidden');
         teacherPinSetter.classList.remove('hidden');
+        const adminQuarterSelector = document.getElementById('admin-quarter-selector');
+        if (adminQuarterSelector) adminQuarterSelector.classList.add('hidden');
         filterClass.value = 'all';
 
         // Start Teacher Timer
@@ -571,7 +639,12 @@ function openAdminPanelUI() {
 
         teacherTimerBanner.classList.add('hidden');
         teacherPinSetter.classList.add('hidden');
+        const adminQuarterSelector = document.getElementById('admin-quarter-selector');
+        if (adminQuarterSelector) adminQuarterSelector.classList.remove('hidden');
         clearInterval(teacherTimerInterval);
+
+        setAdminActiveQuarter(adminActiveQuarter, true);
+        loadAdminPinFields(adminActiveQuarter);
 
         showToast("Admin paneliga kirdingiz!");
     }
@@ -1497,8 +1570,8 @@ if (closeGeminiBtn && geminiOverlay) {
 
 if (geminiAnalyzeBtn && geminiLoading && geminiAnalysisOutput) {
     geminiAnalyzeBtn.addEventListener('click', async () => {
-        if (!GEMINI_API_KEY || GEMINI_API_KEY === "Sizning_API_Kalitingiz") {
-            alert(t('alertGeminiKey') || "API kilit sozlanmagan! script.js faylida kalitni kiriting.");
+        if (!getGeminiApiKey()) {
+            alert(t('alertGeminiKey') || "API kalit sozlanmagan! Sozlamalar bo'limidan Gemini kalitini kiriting.");
             return;
         }
 
@@ -1552,7 +1625,7 @@ if (geminiAnalyzeBtn && geminiLoading && geminiAnalysisOutput) {
 Natijalar:
 ${statsStr}`;
 
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${getGeminiApiKey()}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1811,8 +1884,8 @@ nextBtn.addEventListener('click', () => {
     let isCorrect = false;
 
     if (q.type === 'open') {
-        const studentAnsStr = String(studentAnswers[currentQuestionIndex]).toLowerCase().trim();
-        const correctAnsStr = String(q.openAnswer || "").toLowerCase().trim();
+        const studentAnsStr = normalizeAnswer(studentAnswers[currentQuestionIndex]);
+        const correctAnsStr = normalizeAnswer(q.openAnswer || "");
         if (studentAnsStr === correctAnsStr && studentAnsStr !== "") {
             isCorrect = true;
         }
@@ -2110,6 +2183,10 @@ downloadQrBtn.addEventListener('click', () => {
     link.href = qrCanvas.toDataURL('image/png');
     link.click();
 });
+
+function normalizeAnswer(str) {
+    return String(str || '').toLowerCase().trim().replace(/\s+/g, ' ');
+}
 
 // Utility to parse simple Markdown for Questions and Gemini Output
 function parseMarkdownToHtml(md) {

@@ -22,7 +22,7 @@
         <!-- Auth Screen (Landing) -->
         <section id="auth-screen" class="screen">
             <div class="school-branding">
-                <img src="logo.png" alt="School Logo" class="school-logo">
+                <img src="logo.png" alt="School Logo" class="school-logo" onerror="this.classList.add('logo-fallback'); this.removeAttribute('src');">
                 <h1 class="portal-title animate-glow" style="margin-bottom: 20px; text-align: center; font-size: 2.5rem;" data-i18n="schoolName">
                     Xo'jayli tumani ixtisoslashtirilgan maktabi
                 </h1>
@@ -141,6 +141,15 @@
 
                 <!-- Questions Management Tab -->
                 <div id="tab-questions" class="tab-content">
+                    <div id="admin-quarter-selector" class="settings-group" style="margin-bottom: 20px; text-align: left;">
+                        <label for="admin-questions-quarter" data-i18n="lblAdminQuarter">Savollar choragi:</label>
+                        <select id="admin-questions-quarter" style="width: 100%; max-width: 280px; padding: 10px; border-radius: 8px; margin-top: 8px;">
+                            <option value="1" data-i18n="q1">1-chorak</option>
+                            <option value="2" data-i18n="q2">2-chorak</option>
+                            <option value="3" data-i18n="q3">3-chorak</option>
+                            <option value="4" data-i18n="q4">4-chorak</option>
+                        </select>
+                    </div>
                     
                     <!-- Teacher Pin & Duration Setter Block -->
                     <div id="teacher-pin-setter" class="hidden" style="background: rgba(56, 189, 248, 0.1); border: 1px solid var(--accent-color); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
@@ -426,6 +435,15 @@
                     <div class="settings-card">
                         <h3 data-i18n="settingsPinsTitle">Fanlar va PIN-kodlar</h3>
                         <p class="settings-hint" data-i18n="settingsPinsHint">O'quvchilar testni boshlashi uchun har bir fanga maxsus PIN-kod va Vaqt o'rnating.</p>
+                        <div class="settings-group" style="margin-bottom: 15px;">
+                            <label for="admin-settings-quarter" data-i18n="lblAdminQuarter">Chorak:</label>
+                            <select id="admin-settings-quarter" style="width: 100%; max-width: 280px; padding: 10px; border-radius: 8px; margin-top: 8px;">
+                                <option value="1" data-i18n="q1">1-chorak</option>
+                                <option value="2" data-i18n="q2">2-chorak</option>
+                                <option value="3" data-i18n="q3">3-chorak</option>
+                                <option value="4" data-i18n="q4">4-chorak</option>
+                            </select>
+                        </div>
                         <div class="subject-pin-settings" style="display: flex; flex-direction: column; gap: 10px;">
                             <div style="display: flex; gap: 10px;">
                                 <div style="flex: 1;"><label>Ona tili:</label><input type="text" id="pin-onatili" placeholder="PIN-kod"></div>
@@ -459,6 +477,14 @@
                                 <div style="flex: 1;"><label>Informatika:</label><input type="text" id="pin-informatika" placeholder="PIN-kod"></div>
                                 <div style="flex: 1;"><label>Vaqt (daqiqa):</label><input type="number" id="dur-informatika" placeholder="20"></div>
                             </div>
+                        </div>
+                    </div>
+                    <div class="settings-card">
+                        <h3 data-i18n="settingsGeminiTitle">Gemini AI Sozlamalari</h3>
+                        <p class="settings-hint" data-i18n="settingsGeminiHint">Pedagogik tahlil o'tkazish uchun Google Gemini API kalitini kiriting.</p>
+                        <div class="settings-group">
+                            <label data-i18n="lblGeminiKey">Gemini AI API Kaliti:</label>
+                            <input type="password" id="gemini-api-key" placeholder="AIza..." autocomplete="off">
                         </div>
                     </div>
                     <button id="save-settings-btn" class="primary-btn" data-i18n="btnSaveSettings">Barcha sozlamalarni saqlash</button>
@@ -603,8 +629,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <!-- Include Docx Parser Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
-    <script src="lang.js"></script>
-    <script src="script.js"></script>
 
     <!-- Gemini AI Overlay -->
     <div id="gemini-overlay" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
@@ -625,5 +649,7 @@
             </div>
         </div>
     </div>
+    <script src="lang.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
