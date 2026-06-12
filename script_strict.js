@@ -1,4 +1,4 @@
-/**
+﻿"use strict";`n/**
  * shsb.test.portal - Script Logic with Docx, Telegram, Filters, Leaderboard, Canvas Cert & Audio
  * Author: Antigravity AI
  */
@@ -21,13 +21,11 @@ function ensureSubjectQuarterMaps() {
         if (!subjectDurationsDatabase[subj]) subjectDurationsDatabase[subj] = { "1": 20, "2": 20, "3": 20, "4": 20 };
         if (!subjectTestTypesDatabase[subj]) subjectTestTypesDatabase[subj] = { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" };
         if (!subjectUnblockPinsDatabase[subj]) subjectUnblockPinsDatabase[subj] = { "1": "admin123", "2": "admin123", "3": "admin123", "4": "admin123" };
-        if (!subjectClassesDatabase[subj]) subjectClassesDatabase[subj] = { "1": "all", "2": "all", "3": "all", "4": "all" };
         QUARTERS.forEach(q => {
             if (subjectPinsDatabase[subj][q] === undefined) subjectPinsDatabase[subj][q] = "";
             if (subjectDurationsDatabase[subj][q] === undefined) subjectDurationsDatabase[subj][q] = 20;
             if (subjectTestTypesDatabase[subj][q] === undefined) subjectTestTypesDatabase[subj][q] = "BSB";
             if (subjectUnblockPinsDatabase[subj][q] === undefined) subjectUnblockPinsDatabase[subj][q] = "admin123";
-            if (subjectClassesDatabase[subj][q] === undefined) subjectClassesDatabase[subj][q] = "all";
         });
     });
 }
@@ -74,7 +72,7 @@ const defaultSavollar = [
     { subject: "Ona tili", question: "20-bob. O'zlashtirma gap qanday qo'shtirnoq ichiga olinadi?", options: ["Sohibining so'zidan oldin", "Bosh harf bilan boshlanib qo'shtirnoqda beriladi", "Doim qavs ichida yoziladi", "Nuqtadan keyin ajratiladi"], correct: 1, points: 2.0 },
 
     // --- Matematika (5-11 sinf namunasi) ---
-    { subject: "Matematika", question: "18-bob. Uchburchakning ichki burchaklari yig'indisi nimaga teng?", options: ["90\u00B0", "180\u00B0", "360\u00B0", "270\u00B0"], correct: 1, points: 3.0 },
+    { subject: "Matematika", question: "18-bob. Uchburchakning ichki burchaklari yig'indisi nimaga teng?", options: ["90Р В РІР‚в„ўР вЂ™Р’В°", "180Р В РІР‚в„ўР вЂ™Р’В°", "360Р В РІР‚в„ўР вЂ™Р’В°", "270Р В РІР‚в„ўР вЂ™Р’В°"], correct: 1, points: 3.0 },
     { subject: "Matematika", question: "19-bob. Kvadrat tenglamaning diskriminanti qanday topiladi?", options: ["D = b - 4ac", "D = b^2 - 4ac", "D = a^2 - 4bc", "D = c^2 - 4ab"], correct: 1, points: 3.0 },
     { subject: "Matematika", question: "20-bob. Agar log_2(x) = 3 bo'lsa, x nechaga teng?", options: ["6", "9", "8", "16"], correct: 2, points: 4.0 },
 
@@ -118,21 +116,6 @@ let resultsDatabase = {
     "3": JSON.parse(localStorage.getItem('results_q3')) || [],
     "4": JSON.parse(localStorage.getItem('results_q4')) || []
 };
-
-(function migrateOldResults() {
-    const oldResults = localStorage.getItem('quiz_results_db');
-    if (!oldResults) return;
-    try {
-        const parsed = JSON.parse(oldResults);
-        QUARTERS.forEach(q => {
-            if (Array.isArray(parsed[q]) && parsed[q].length && !resultsDatabase[q].length) {
-                resultsDatabase[q] = parsed[q];
-            }
-        });
-        QUARTERS.forEach(q => localStorage.setItem(`results_q${q}`, JSON.stringify(resultsDatabase[q] || [])));
-        localStorage.removeItem('quiz_results_db');
-    } catch (e) { /* ignore */ }
-})();
 let quizDuration = parseInt(localStorage.getItem('quiz_duration')) || 20; // Default 20 mins
 let tgBotToken = localStorage.getItem('tg_bot_token') || "";
 let tgChatId = localStorage.getItem('tg_chat_id') || "";
@@ -142,7 +125,6 @@ let subjectPinsDatabase = JSON.parse(localStorage.getItem('quiz_subject_pins_db'
 let subjectDurationsDatabase = JSON.parse(localStorage.getItem('quiz_subject_durations_db'));
 let subjectTestTypesDatabase = JSON.parse(localStorage.getItem('quiz_subject_test_types_db'));
 let subjectUnblockPinsDatabase = JSON.parse(localStorage.getItem('quiz_subject_unblock_pins_db'));
-let subjectClassesDatabase = JSON.parse(localStorage.getItem('quiz_subject_classes_db'));
 
 // Migration for pins and durations
 if (!subjectPinsDatabase) {
@@ -195,14 +177,6 @@ if (!subjectUnblockPinsDatabase) {
         subjectUnblockPinsDatabase[subj] = { "1": "admin123", "2": "admin123", "3": "admin123", "4": "admin123" };
     });
     localStorage.setItem('quiz_subject_unblock_pins_db', JSON.stringify(subjectUnblockPinsDatabase));
-}
-
-if (!subjectClassesDatabase) {
-    subjectClassesDatabase = {};
-    SUBJECTS.forEach(subj => {
-        subjectClassesDatabase[subj] = { "1": "all", "2": "all", "3": "all", "4": "all" };
-    });
-    localStorage.setItem('quiz_subject_classes_db', JSON.stringify(subjectClassesDatabase));
 }
 
 let subjectQuarters = JSON.parse(localStorage.getItem('quiz_subject_quarters')) || {
@@ -296,36 +270,6 @@ let timerInterval;
 let toastTimeout;
 
 let audioCtx = null;
-let analyticsChartInstance = null;
-
-function seedDefaultQuestions() {
-    const total = QUARTERS.reduce((sum, q) => sum + (questionsDatabase[q]?.length || 0), 0);
-    if (total > 0) return;
-    defaultSavollar.forEach(q => {
-        questionsDatabase["1"].push({
-            ...q,
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
-            type: 'closed',
-            targetClass: 'all',
-            cognitive: 'Bilish'
-        });
-    });
-    saveQuestions();
-    questions = questionsDatabase[adminActiveQuarter];
-}
-
-function seedDefaultPins() {
-    ensureSubjectQuarterMaps();
-    let hasPin = false;
-    SUBJECTS.forEach(subj => {
-        if (subjectPinsDatabase[subj]?.["1"]) hasPin = true;
-    });
-    if (hasPin) return;
-    SUBJECTS.forEach(subj => {
-        subjectPinsDatabase[subj]["1"] = "SHSB1";
-    });
-    localStorage.setItem('quiz_subject_pins_db', JSON.stringify(subjectPinsDatabase));
-}
 
 const authScreen = document.getElementById('auth-screen');
 const instructionScreen = document.getElementById('instruction-screen');
@@ -446,8 +390,6 @@ const qrCanvas = document.getElementById('qr-canvas');
 const downloadQrBtn = document.getElementById('download-qr-btn');
 
     function init() {
-    seedDefaultQuestions();
-    seedDefaultPins();
     if (totalQuestionsSpan) totalQuestionsSpan.textContent = questions.length;
     if (testDurationInput) testDurationInput.value = quizDuration;
     if (tgBotTokenInput) tgBotTokenInput.value = tgBotToken;
@@ -504,7 +446,6 @@ const downloadQrBtn = document.getElementById('download-qr-btn');
     populateClassFilters();
     renderLeaderboard();
     setupAntiCheat();
-    if (typeof toggleQuestionFormat === 'function') toggleQuestionFormat();
 }
 
 function setupAntiCheat() {
@@ -675,8 +616,6 @@ function openAdminPanelUI() {
         const unblockPasswordInput = document.getElementById('unblockPasswordInput');
         if (unblockPasswordInput) unblockPasswordInput.value = subjectUnblockPinsDatabase[subj][qtr] || "admin123";
         if (teacherSubjectTestType) teacherSubjectTestType.value = subjectTestTypesDatabase[subj][qtr] || "BSB";
-        const testTargetClass = document.getElementById('testTargetClass');
-        if (testTargetClass) testTargetClass.value = subjectClassesDatabase[subj][qtr] || "all";
 
         showToast(`Xush kelibsiz, ${currentTeacherSession.name || currentTeacherSession.subject}`);
     } else {
@@ -742,8 +681,6 @@ saveTeacherPinBtn.addEventListener('click', () => {
     const testType = teacherSubjectTestType ? teacherSubjectTestType.value : "BSB";
     const unblockPasswordInput = document.getElementById('unblockPasswordInput');
     const unblockPin = unblockPasswordInput ? unblockPasswordInput.value.trim() : "admin123";
-    const testTargetClass = document.getElementById('testTargetClass');
-    const targetClass = testTargetClass ? testTargetClass.value : "all";
     const subj = currentTeacherSession.subject;
     const qtr = teacherSubjectQuarter.value;
 
@@ -751,20 +688,17 @@ saveTeacherPinBtn.addEventListener('click', () => {
     if (!subjectDurationsDatabase[subj]) subjectDurationsDatabase[subj] = { "1": 20, "2": 20, "3": 20, "4": 20 };
     if (!subjectTestTypesDatabase[subj]) subjectTestTypesDatabase[subj] = { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" };
     if (!subjectUnblockPinsDatabase[subj]) subjectUnblockPinsDatabase[subj] = { "1": "admin123", "2": "admin123", "3": "admin123", "4": "admin123" };
-    if (!subjectClassesDatabase[subj]) subjectClassesDatabase[subj] = { "1": "all", "2": "all", "3": "all", "4": "all" };
 
     subjectPinsDatabase[subj][qtr] = pin;
     subjectDurationsDatabase[subj][qtr] = dur;
     subjectTestTypesDatabase[subj][qtr] = testType;
     subjectUnblockPinsDatabase[subj][qtr] = unblockPin || "admin123";
-    subjectClassesDatabase[subj][qtr] = targetClass;
     subjectQuarters[subj] = qtr;
 
     localStorage.setItem('quiz_subject_pins_db', JSON.stringify(subjectPinsDatabase));
     localStorage.setItem('quiz_subject_durations_db', JSON.stringify(subjectDurationsDatabase));
     localStorage.setItem('quiz_subject_test_types_db', JSON.stringify(subjectTestTypesDatabase));
     localStorage.setItem('quiz_subject_unblock_pins_db', JSON.stringify(subjectUnblockPinsDatabase));
-    localStorage.setItem('quiz_subject_classes_db', JSON.stringify(subjectClassesDatabase));
     localStorage.setItem('quiz_subject_quarters', JSON.stringify(subjectQuarters));
 
     alert("Faningiz uchun sozlamalar muvaffaqiyatli saqlandi!");
@@ -791,8 +725,6 @@ teacherSubjectQuarter.addEventListener('change', () => {
     if (teacherSubjectTestType) teacherSubjectTestType.value = subjectTestTypesDatabase[subj][qtr] || "BSB";
     const unblockPasswordInput = document.getElementById('unblockPasswordInput');
     if (unblockPasswordInput) unblockPasswordInput.value = subjectUnblockPinsDatabase[subj][qtr] || "admin123";
-    const testTargetClass = document.getElementById('testTargetClass');
-    if (testTargetClass) testTargetClass.value = subjectClassesDatabase[subj][qtr] || "all";
 
     renderQuestionsList();
 });
@@ -882,7 +814,7 @@ function renderTeacherTokens() {
         const validTokens = teacherTokens.filter(t => t.expireAt > now);
         if (validTokens.length > 0) {
             const latest = validTokens[validTokens.length - 1];
-            const dateStr = `${new Date(latest.expireAt).getFullYear()}-${String(new Date(latest.expireAt).getMonth()+1).padStart(2, '0')}-${String(new Date(latest.expireAt).getDate()).padStart(2, '0')} ${String(new Date(latest.expireAt).getHours()).padStart(2, '0')}:${String(new Date(latest.expireAt).getMinutes()).padStart(2, '0')}`;
+            const dateStr = ${new Date(latest.expireAt).getFullYear()}-- :;
             activeDisplay.innerHTML = `<span data-i18n="currentActiveToken">${t('currentActiveToken') || 'Joriy vaqtinchalik parol:'}</span> <strong style="font-family:monospace; color:var(--text-color);">${latest.token}</strong> | <span data-i18n="thExpireDate">${t('thExpireDate') || 'Amal qilish muddati:'}</span> ${dateStr}`;
         } else {
             activeDisplay.innerHTML = `<span data-i18n="noActiveToken">${t('noActiveToken') || 'Faol vaqtinchalik parol mavjud emas'}</span>`;
@@ -933,7 +865,7 @@ function renderQuestionsList() {
         div.innerHTML = `
             <div class="q-info">
                 <div class="q-text">${realIndex + 1}. ${q.question} <span class="subject-badge">${q.subject}</span></div>
-                <div class="q-answer-check">To'g'ri: ${q.type === 'open' ? q.openAnswer : q.options[q.correct]} (${q.points} ball)</div>
+                <div class="q-answer-check">Р В Р вЂ Р РЋРЎв„ўР Р†Р вЂљР’В¦ To'g'ri: ${q.type === 'open' ? q.openAnswer : q.options[q.correct]} (${q.points} ball)</div>
             </div>
             <button class="danger-btn" onclick="deleteQuestion(${realIndex})">O'chirish</button>
         `;
@@ -984,21 +916,9 @@ addQBtn.addEventListener('click', () => {
         questionObj.correct = corr;
     }
 
-    const targetClassEl = document.getElementById('new-q-target-class');
-    const cognitiveEl = document.getElementById('new-q-cognitive');
-    if (targetClassEl) questionObj.targetClass = targetClassEl.value;
-    if (cognitiveEl) questionObj.cognitive = cognitiveEl.value;
-
     questions.push(questionObj);
     saveQuestions();
     renderQuestionsList();
-    newQText.value = '';
-    newQOpt0.value = '';
-    newQOpt1.value = '';
-    newQOpt2.value = '';
-    newQOpt3.value = '';
-    const openAnsEl = document.getElementById('new-q-open-answer');
-    if (openAnsEl) openAnsEl.value = '';
     showToast("Savol qo'shildi!");
 });
 
@@ -1033,90 +953,16 @@ function renderResultsTable() {
     if (currentTeacherSession) filteredResults = filteredResults.filter(r => r.subject === currentTeacherSession.subject);
 
     filteredResults.sort((a, b) => b.percentage - a.percentage);
-    populateStudentSelect(filteredResults);
-
-    if (filteredResults.length === 0) {
-        resultsTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center;">${t('noResults') || "Hozircha natijalar mavjud emas."}</td></tr>`;
-        renderAnalyticsChart(filteredResults);
-        return;
-    }
-
-    filteredResults.forEach((r, idx) => {
+    filteredResults.forEach(r => {
         const tr = document.createElement('tr');
-        const dateStr = r.date ? new Date(r.date).toLocaleString() : '-';
         tr.innerHTML = `
             <td>${r.name}</td>
             <td>${r.class}</td>
             <td>${r.subject}</td>
-            <td>${r.quarter || '-'}</td>
-            <td>${(r.score ?? 0).toFixed ? r.score.toFixed(1) : r.score} / ${r.maxScore ?? '-'}</td>
             <td>${r.percentage}%</td>
-            <td>
-                <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
-                    <span>${dateStr}</span>
-                    <button class="batafsil-btn" data-idx="${idx}" style="background: var(--accent-color); border: none; padding: 4px 8px; border-radius: 4px; color: white; cursor: pointer; font-size: 12px;">Batafsil</button>
-                </div>
-            </td>
         `;
         resultsTableBody.appendChild(tr);
     });
-
-    document.querySelectorAll('.batafsil-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const idx = parseInt(e.target.getAttribute('data-idx'));
-            showStudentDetails(filteredResults[idx]);
-        });
-    });
-
-    renderAnalyticsChart(filteredResults);
-}
-
-const closeDetailsBtn = document.getElementById('close-details-btn');
-if (closeDetailsBtn) {
-    closeDetailsBtn.addEventListener('click', () => {
-        const overlay = document.getElementById('student-details-overlay');
-        if (overlay) overlay.classList.add('hidden');
-    });
-}
-
-function showStudentDetails(result) {
-    const overlay = document.getElementById('student-details-overlay');
-    const title = document.getElementById('student-details-title');
-    const content = document.getElementById('student-details-content');
-    if (!overlay || !title || !content) return;
-
-    title.textContent = `${result.name} (${result.class}) - ${result.subject}`;
-    content.innerHTML = '';
-
-    if (!result.studentAnswers || !result.earnedPoints) {
-        content.innerHTML = '<p>Bu natijada batafsil ma\'lumotlar saqlanmagan.</p>';
-        overlay.classList.remove('hidden');
-        return;
-    }
-
-    let html = '<div style="display: flex; flex-direction: column; gap: 10px;">';
-    result.studentAnswers.forEach((ans, i) => {
-        const earned = result.earnedPoints[i] || 0;
-        const isCorrect = earned > 0;
-        const color = isCorrect ? '#10b981' : '#ef4444';
-        const status = isCorrect ? "To'g'ri" : "Xato";
-        let ansText = (ans === null || ans === undefined) ? (t('notAnswered') || "Belgilanmagan") : String(ans);
-        if (result.questions && result.questions[i] && result.questions[i].type !== 'open' && typeof ans === 'number') {
-            const qtr = result.quarter || '1';
-            const qList = (questionsDatabase[qtr] || []).filter(q => q.subject === result.subject);
-            if (qList[i]?.options?.[ans]) ansText = qList[i].options[ans];
-        }
-        
-        html += `
-        <div style="padding: 10px; background: rgba(0,0,0,0.2); border-left: 4px solid ${color}; border-radius: 4px;">
-            <div style="font-weight:bold; margin-bottom: 5px;">Savol ${i + 1} <span style="float:right; color: ${color};">${status} (${earned} ball)</span></div>
-            <div style="font-size: 0.9em; color: var(--text-secondary);">O'quvchi javobi: <span style="color: white;">${ansText}</span></div>
-        </div>`;
-    });
-    html += '</div>';
-    
-    content.innerHTML = html;
-    overlay.classList.remove('hidden');
 }
 
 filterClass.addEventListener('change', renderResultsTable);
@@ -1149,18 +995,8 @@ startBtn.addEventListener('click', () => {
         return;
     }
 
-    const targetClass = subjectClassesDatabase[studentSubject] ? subjectClassesDatabase[studentSubject][matchedQuarter] : "all";
-    if (targetClass !== "all" && targetClass !== studentClass) {
-        alert("Sizning sinfingiz uchun test hozircha mavjud emas!");
-        return;
-    }
-
     studentQuarter = matchedQuarter;
-    currentQuizQuestions = questionsDatabase[studentQuarter].filter(q => {
-        if (q.subject !== studentSubject) return false;
-        if (!q.targetClass || q.targetClass === 'all') return true;
-        return q.targetClass === studentClass;
-    });
+    currentQuizQuestions = questionsDatabase[studentQuarter].filter(q => q.subject === studentSubject);
 
     if (currentQuizQuestions.length === 0) {
         alert("Test topilmadi!");
@@ -1174,10 +1010,8 @@ startBtn.addEventListener('click', () => {
     studentAnswers = new Array(currentQuizQuestions.length).fill(null);
     earnedPoints = new Array(currentQuizQuestions.length).fill(0);
     isLocked = false;
-    blockCount = 0;
     timeElapsedSeconds = 0;
 
-    populateInstructionScreen();
     authScreen.classList.add('hidden');
     instructionScreen.classList.remove('hidden');
     currentScreen = 'instruction';
@@ -1214,40 +1048,24 @@ function loadQuestion() {
     const q = currentQuizQuestions[currentQuestionIndex];
     questionText.textContent = q.question;
     optionsContainer.innerHTML = '';
-    nextBtn.classList.add('hidden');
-
-    if (currentQuestionNum) currentQuestionNum.textContent = currentQuestionIndex + 1;
-    if (totalQuestionsSpan) totalQuestionsSpan.textContent = currentQuizQuestions.length;
-    if (questionPointsDisplay) questionPointsDisplay.textContent = q.points || 1;
-    if (progressBar) progressBar.style.width = `${(currentQuestionIndex / currentQuizQuestions.length) * 100}%`;
-    if (studentDisplay) studentDisplay.textContent = `${studentName} | ${studentClass} | ${studentSubject}`;
-
     if (q.type === 'open') {
         const input = document.createElement('input');
         input.type = 'text';
-        input.className = 'option';
-        input.value = studentAnswers[currentQuestionIndex] || '';
-        input.placeholder = t('phOpenAnswer') || "Javobingizni kiriting...";
         input.oninput = (e) => {
             studentAnswers[currentQuestionIndex] = e.target.value;
             nextBtn.classList.remove('hidden');
         };
         optionsContainer.appendChild(input);
-        if (studentAnswers[currentQuestionIndex]) nextBtn.classList.remove('hidden');
     } else {
         q.options.forEach((opt, index) => {
             const btn = document.createElement('button');
-            btn.className = 'option' + (studentAnswers[currentQuestionIndex] === index ? ' selected' : '');
             btn.textContent = opt;
             btn.onclick = () => {
                 studentAnswers[currentQuestionIndex] = index;
-                optionsContainer.querySelectorAll('.option').forEach(b => b.classList.remove('selected'));
-                btn.classList.add('selected');
                 nextBtn.classList.remove('hidden');
             };
             optionsContainer.appendChild(btn);
         });
-        if (studentAnswers[currentQuestionIndex] !== null) nextBtn.classList.remove('hidden');
     }
 }
 
@@ -1259,7 +1077,6 @@ nextBtn.addEventListener('click', () => {
 
 function finishQuiz() {
     clearInterval(timerInterval);
-    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     quizScreen.classList.add('hidden');
     resultScreen.classList.remove('hidden');
     currentScreen = 'result';
@@ -1269,14 +1086,12 @@ function finishQuiz() {
         const p = parseFloat(q.points) || 1;
         const ans = studentAnswers[index];
         if (q.type === 'open') {
-            const correctAns = q.openAnswer || q.correct || '';
-            if (normalizeAnswer(ans) === normalizeAnswer(correctAns)) {
+            if (normalizeAnswer(ans) === normalizeAnswer(q.correct)) {
                 score += p;
                 earnedPoints[index] = p;
             }
         } else {
-            const correctIdx = parseInt(q.correct, 10);
-            if (ans === correctIdx) {
+            if (ans === parseInt(q.correct)) {
                 score += p;
                 earnedPoints[index] = p;
             }
@@ -1285,6 +1100,9 @@ function finishQuiz() {
     totalUserPoints = score;
     const maxPoints = currentQuizQuestions.reduce((sum, q) => sum + (parseFloat(q.points) || 1), 0);
     const percentage = Math.round((totalUserPoints / maxPoints) * 100) || 0;
+
+    const totalScoreEl = document.getElementById('total-score');
+    if(totalScoreEl) totalScoreEl.textContent = totalUserPoints.toFixed(1);
 
     const newResult = {
         name: studentName,
@@ -1295,23 +1113,13 @@ function finishQuiz() {
         maxScore: maxPoints,
         percentage: percentage,
         date: new Date().toISOString(),
-        timeSpent: timeElapsedSeconds,
-        blocks: blockCount,
         studentAnswers: [...studentAnswers],
-        earnedPoints: [...earnedPoints],
-        questions: currentQuizQuestions.map(q => ({ question: q.question, type: q.type }))
+        earnedPoints: [...earnedPoints]
     };
 
     if (!resultsDatabase[studentQuarter]) resultsDatabase[studentQuarter] = [];
     resultsDatabase[studentQuarter].push(newResult);
-    saveResults();
-    populateClassFilters();
-    renderLeaderboard();
-
-    populateResultScreen(percentage, maxPoints);
-    sendTelegramMessage(
-        `SHSB natija\n${studentName} (${studentClass})\nFan: ${studentSubject}\nChorak: ${studentQuarter}\nBall: ${totalUserPoints.toFixed(1)} / ${maxPoints}\nFoiz: ${percentage}%`
-    );
+    localStorage.setItem('quiz_results_db', JSON.stringify(resultsDatabase));
 
     if (showAnswersToStudent) {
         errorReviewList.innerHTML = '';
@@ -1322,14 +1130,12 @@ function finishQuiz() {
             div.style.padding = '10px';
             div.style.background = 'rgba(0,0,0,0.2)';
             div.style.borderLeft = earned > 0 ? '4px solid #10b981' : '4px solid #ef4444';
-            const correctText = q.type === 'open' ? (q.openAnswer || q.correct) : q.options[q.correct];
-            const studentText = q.type === 'open'
-                ? (studentAnswers[index] || t('notAnswered'))
-                : (studentAnswers[index] !== null ? q.options[studentAnswers[index]] : t('notAnswered'));
+            let correctText = q.type === 'open' ? q.correct : q.options[q.correct];
+            let studentText = q.type === 'open' ? studentAnswers[index] : (studentAnswers[index] !== null ? q.options[studentAnswers[index]] : "Belgilanmagan");
             div.innerHTML = `
                 <div style="font-weight:bold; margin-bottom:5px;">Savol ${index + 1}: ${q.question}</div>
-                <div style="color: #ef4444; font-size: 0.9em; margin-bottom: 3px;">${t('yourAnswer') || "Sizning javobingiz:"} ${studentText}</div>
-                <div style="color: #10b981; font-size: 0.9em;">${t('lblCorrectAnswer') || "To'g'ri javob:"} ${correctText}</div>
+                <div style="color: #ef4444; font-size: 0.9em; margin-bottom: 3px;">Sizning javobingiz: ${studentText}</div>
+                <div style="color: #10b981; font-size: 0.9em;">To'g'ri javob: ${correctText}</div>
                 <div style="color: #f59e0b; font-size: 0.8em; margin-top:5px;">Ball: ${earned} / ${q.points || 1}</div>
             `;
             errorReviewList.appendChild(div);
@@ -1482,368 +1288,6 @@ function normalizeAnswer(str) {
     return String(str || '').toLowerCase().trim().replace(/\s+/g, ' ');
 }
 
-function getOpenAnswer(q) {
-    return q.openAnswer || q.correct || '';
-}
-
-function getAnalysisNote(percentage) {
-    if (percentage >= 90) return t('analysisEx');
-    if (percentage >= 70) return t('analysisGood');
-    if (percentage >= 50) return t('analysisSat');
-    return t('analysisBad');
-}
-
-function populateInstructionScreen() {
-    const testType = subjectTestTypesDatabase[studentSubject]?.[studentQuarter] || 'BSB';
-    if (instTitle) instTitle.textContent = `${studentSubject} - ${testType}`;
-    const mins = subjectDurationsDatabase[studentSubject]?.[studentQuarter] || 20;
-    if (instTime) instTime.textContent = `${t('lblTime') || 'Vaqt:'} ${mins} ${t('min') || 'daq'}`;
-    if (instCount) instCount.textContent = `${t('lblCount') || 'Savollar soni:'} ${currentQuizQuestions.length} ta`;
-    if (timerDisplay) {
-        const m = Math.floor(testTimeLimitSeconds / 60);
-        const s = testTimeLimitSeconds % 60;
-        timerDisplay.textContent = `${m}:${s < 10 ? '0' + s : s}`;
-    }
-}
-
-function populateResultScreen(percentage, maxPoints) {
-    if (!resultContent) return;
-    const mins = Math.floor(timeElapsedSeconds / 60);
-    const secs = timeElapsedSeconds % 60;
-    resultContent.innerHTML = `
-        <div class="stat-item"><span>${t('studentLabel') || 'Talaba:'}</span><strong>${studentName}</strong></div>
-        <div class="stat-item"><span>${t('thClass') || 'Sinf:'}</span><strong>${studentClass}</strong></div>
-        <div class="stat-item"><span>${t('thSubject') || 'Fan:'}</span><strong>${studentSubject}</strong></div>
-        <div class="stat-item"><span>${t('thScore') || 'Ball:'}</span><strong>${totalUserPoints.toFixed(1)} / ${maxPoints}</strong></div>
-        <div class="stat-item"><span>${t('percentageLabel') || 'Foiz:'}</span><strong>${percentage}%</strong></div>
-        <div class="stat-item"><span>${t('timeSpent') || 'Vaqt:'}</span><strong>${mins}:${secs < 10 ? '0' + secs : secs}</strong></div>
-        <div class="stat-item"><span>${t('violations') || 'Bloklar:'}</span><strong>${blockCount} ${t('times') || 'marta'}</strong></div>
-        <div class="analysis-note">${getAnalysisNote(percentage)}</div>
-    `;
-    if (certificateZone) {
-        if (percentage >= 80) certificateZone.classList.remove('hidden');
-        else certificateZone.classList.add('hidden');
-    }
-}
-
-function renderLeaderboard() {
-    if (!leaderboardBody) return;
-    const all = getResultsArray('all');
-    all.sort((a, b) => b.percentage - a.percentage);
-    const top10 = all.slice(0, 10);
-    if (top10.length === 0) {
-        leaderboardBody.innerHTML = `<tr><td colspan="3" style="text-align:center;">${t('emptyLeaderboard') || "Reyting jadvali bo'sh."}</td></tr>`;
-        return;
-    }
-    leaderboardBody.innerHTML = '';
-    top10.forEach((r, i) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${i + 1}</td><td>${r.name}</td><td>${r.percentage}%</td>`;
-        leaderboardBody.appendChild(tr);
-    });
-}
-
-window.toggleQuestionFormat = function toggleQuestionFormat() {
-    const type = document.getElementById('new-q-type')?.value || 'closed';
-    const closed = document.getElementById('closed-format-inputs');
-    const open = document.getElementById('open-format-inputs');
-    const correctGroup = document.getElementById('correct-selection-group');
-    if (closed) closed.style.display = type === 'closed' ? 'block' : 'none';
-    if (open) open.style.display = type === 'open' ? 'block' : 'none';
-    if (correctGroup) correctGroup.style.display = type === 'closed' ? 'flex' : 'none';
-};
-
-function populateStudentSelect(results) {
-    const studentSelect = document.getElementById('studentSelect');
-    if (!studentSelect) return;
-    const current = studentSelect.value;
-    studentSelect.innerHTML = `<option value="" disabled selected>${t('selStudent') || "O'quvchini tanlang..."}</option>`;
-    const seen = new Set();
-    results.forEach((r, idx) => {
-        const key = `${r.name}|${r.class}|${r.subject}|${r.date}`;
-        if (seen.has(key)) return;
-        seen.add(key);
-        const opt = document.createElement('option');
-        opt.value = String(idx);
-        opt.textContent = `${r.name} (${r.class}) - ${r.subject}`;
-        studentSelect.appendChild(opt);
-    });
-    if (current) studentSelect.value = current;
-}
-
-function renderAnalyticsChart(results) {
-    const canvas = document.getElementById('analytics-chart');
-    if (!canvas || typeof Chart === 'undefined') return;
-    const levels = ['Bilish', "Qo'llash", 'Mulohaza qilish'];
-    const totals = { 'Bilish': 0, "Qo'llash": 0, 'Mulohaza qilish': 0 };
-    const counts = { 'Bilish': 0, "Qo'llash": 0, 'Mulohaza qilish': 0 };
-
-    results.forEach(r => {
-        if (!r.earnedPoints) return;
-        const qtr = r.quarter || '1';
-        const subjectQs = (questionsDatabase[qtr] || []).filter(q => q.subject === r.subject);
-        r.earnedPoints.forEach((earned, i) => {
-            const q = subjectQs[i];
-            const level = q?.cognitive || 'Bilish';
-            if (!totals[level]) totals[level] = 0;
-            totals[level] += earned;
-            counts[level] = (counts[level] || 0) + 1;
-        });
-    });
-
-    const data = levels.map(l => counts[l] ? Math.round((totals[l] / counts[l]) * 100) / 100 : 0);
-    if (analyticsChartInstance) analyticsChartInstance.destroy();
-    analyticsChartInstance = new Chart(canvas, {
-        type: 'bar',
-        data: {
-            labels: levels,
-            datasets: [{
-                label: "O'rtacha ball",
-                data: data,
-                backgroundColor: ['#38bdf8', '#10b981', '#f59e0b']
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: { legend: { labels: { color: '#fff' } } },
-            scales: {
-                x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.1)' } },
-                y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.1)' }, beginAtZero: true }
-            }
-        }
-    });
-}
-
-function compareQuarters() {
-    if (!compQ1 || !compQ2 || !comparisonResult) return;
-    const q1 = compQ1.value;
-    const q2 = compQ2.value;
-    const r1 = getResultsArray(q1);
-    const r2 = getResultsArray(q2);
-    const avg = arr => arr.length ? arr.reduce((s, r) => s + r.percentage, 0) / arr.length : 0;
-    const a1 = avg(r1);
-    const a2 = avg(r2);
-    const diff = a2 - a1;
-    let trend = t('compSame') || "O'zgarishsiz";
-    if (diff > 0) trend = `${t('compIncreased') || "O'sdi"} ${diff.toFixed(1)}%`;
-    else if (diff < 0) trend = `${t('compDecreased') || "Pasaydi"} ${Math.abs(diff).toFixed(1)}%`;
-
-    let conclusion = t('compConclusionNeutral');
-    if (diff > 3) conclusion = t('compConclusionGood');
-    else if (diff < -3) conclusion = t('compConclusionBad');
-
-    comparisonResult.classList.remove('hidden');
-    comparisonResult.innerHTML = `
-        <p><strong>${q1}-chorak:</strong> ${a1.toFixed(1)}% (${r1.length} ta natija)</p>
-        <p><strong>${q2}-chorak:</strong> ${a2.toFixed(1)}% (${r2.length} ta natija)</p>
-        <p><strong>${trend}</strong></p>
-        <p style="margin-top:10px;">${t('compConclusion') || 'Xulosa:'} ${conclusion}</p>
-    `;
-}
-
-async function sendTelegramMessage(text) {
-    if (!tgBotToken || !tgChatId) return;
-    try {
-        await fetch(`https://api.telegram.org/bot${tgBotToken}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: tgChatId, text })
-        });
-    } catch (e) {
-        console.log('Telegram error:', e);
-    }
-}
-
-function parseWordQuestions(text, subject) {
-    const blocks = text.split(/\n(?=\d+[\.\)]\s)/).filter(b => b.trim());
-    const parsed = [];
-    blocks.forEach(block => {
-        const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
-        if (!lines.length) return;
-        const questionLine = lines[0].replace(/^\d+[\.\)]\s*/, '');
-        const options = [];
-        let correct = 0;
-        let points = 1;
-        let type = 'closed';
-        let openAnswer = '';
-
-        lines.slice(1).forEach(line => {
-            const optMatch = line.match(/^([A-Da-d])[\)\.\:]\s*(.+)/);
-            if (optMatch) {
-                options.push(optMatch[2].trim());
-                return;
-            }
-            const ansMatch = line.match(/^Javob\s*:\s*([A-Da-d]|.+)$/i);
-            if (ansMatch) {
-                const val = ansMatch[1].trim();
-                if (/^[A-Da-d]$/.test(val)) correct = val.toUpperCase().charCodeAt(0) - 65;
-                else { type = 'open'; openAnswer = val; }
-                return;
-            }
-            const ptsMatch = line.match(/^Ball\s*:\s*([\d.]+)/i);
-            if (ptsMatch) points = parseFloat(ptsMatch[1]) || 1;
-        });
-
-        if (!questionLine) return;
-        const obj = {
-            subject,
-            question: questionLine,
-            points,
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
-            type,
-            targetClass: 'all',
-            cognitive: 'Bilish'
-        };
-        if (type === 'open') obj.openAnswer = openAnswer;
-        else if (options.length >= 2) { obj.options = options.slice(0, 4); obj.correct = correct; }
-        else return;
-        parsed.push(obj);
-    });
-    return parsed;
-}
-
-async function handleWordUpload() {
-    const file = wordFileInput?.files?.[0];
-    if (!file) {
-        showToast(t('alertSelectFile') || "Word faylini tanlang!");
-        return;
-    }
-    try {
-        const arrayBuffer = await file.arrayBuffer();
-        const result = await mammoth.extractRawText({ arrayBuffer });
-        const subject = wordQSubject?.value || SUBJECTS[0];
-        const parsed = parseWordQuestions(result.value, subject);
-        if (!parsed.length) {
-            showToast(t('alertImportEmpty') || "Mos formatdagi savollar topilmadi!");
-            return;
-        }
-        parsed.forEach(q => questions.push(q));
-        saveQuestions();
-        renderQuestionsList();
-        wordFileInput.value = '';
-        showToast(`${t('alertImportSuccess') || 'Yuklandi:'} ${parsed.length} ${t('alertImportSuccess2') || 'ta savol'}`);
-    } catch (e) {
-        console.error(e);
-        showToast(t('alertReadError') || "Faylni o'qishda xatolik!");
-    }
-}
-
-function exportResultsToExcel() {
-    const filterCls = filterClass?.value || 'all';
-    const filterQ = filterQuarter?.value || 'all';
-    let data = getResultsArray(filterQ);
-    if (filterCls !== 'all') data = data.filter(r => r.class === filterCls);
-    if (currentTeacherSession) data = data.filter(r => r.subject === currentTeacherSession.subject);
-    if (!data.length) {
-        showToast(t('alertNoExport') || "Eksport uchun natijalar yo'q!");
-        return;
-    }
-    if (typeof XLSX === 'undefined') {
-        showToast("Excel kutubxonasi yuklanmagan!");
-        return;
-    }
-    const rows = data.map(r => ({
-        'F.I.SH': r.name,
-        'Sinf': r.class,
-        'Fan': r.subject,
-        'Chorak': r.quarter,
-        'Ball': r.score,
-        'Maks ball': r.maxScore,
-        'Foiz': r.percentage + '%',
-        'Sana': r.date ? new Date(r.date).toLocaleString() : ''
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Natijalar');
-    XLSX.writeFile(wb, `SHSB_Natijalar_${new Date().toISOString().slice(0, 10)}.xlsx`);
-}
-
-function clearAllResults() {
-    if (!confirm(t('confirmClearResults') || t('alertConfirmClear') || "Natijalarni tozalashni tasdiqlaysizmi?")) return;
-    QUARTERS.forEach(q => { resultsDatabase[q] = []; });
-    saveResults();
-    populateClassFilters();
-    renderResultsTable();
-    renderLeaderboard();
-    showToast(t('msgResultsCleared') || "Natijalar tozalandi!");
-}
-
-async function runGeminiAnalysis() {
-    const apiKey = getGeminiApiKey();
-    if (!apiKey) {
-        showToast(t('alertGeminiKey') || "Gemini API kaliti sozlanmagan!");
-        return;
-    }
-    if (!geminiOverlay) return;
-    geminiOverlay.classList.remove('hidden');
-    if (geminiLoading) geminiLoading.style.display = 'flex';
-    if (geminiAnalysisOutput) {
-        geminiAnalysisOutput.style.display = 'none';
-        geminiAnalysisOutput.innerHTML = '';
-    }
-
-    const filterCls = filterClass?.value || 'all';
-    const filterQ = filterQuarter?.value || 'all';
-    let data = getResultsArray(filterQ);
-    if (filterCls !== 'all') data = data.filter(r => r.class === filterCls);
-    if (currentTeacherSession) data = data.filter(r => r.subject === currentTeacherSession.subject);
-
-    const summary = data.slice(0, 50).map(r =>
-        `${r.name} (${r.class}), ${r.subject}, ${r.percentage}%`
-    ).join('\n');
-
-    const prompt = `Siz pedagogik tahlilchisiz. Quyidagi maktab test natijalarini o'zbek tilida qisqa tahlil qiling:\n${summary || "Natijalar yo'q"}`;
-
-    try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
-        const json = await res.json();
-        const text = json?.candidates?.[0]?.content?.parts?.[0]?.text || "Tahlil natijasi olinmadi.";
-        if (geminiLoading) geminiLoading.style.display = 'none';
-        if (geminiAnalysisOutput) {
-            geminiAnalysisOutput.style.display = 'block';
-            geminiAnalysisOutput.innerHTML = parseMarkdownToHtml(text);
-        }
-    } catch (e) {
-        if (geminiLoading) geminiLoading.style.display = 'none';
-        if (geminiAnalysisOutput) {
-            geminiAnalysisOutput.style.display = 'block';
-            geminiAnalysisOutput.textContent = "Gemini API xatosi: " + e.message;
-        }
-    }
-}
-
-if (wordUploadBtn) wordUploadBtn.addEventListener('click', handleWordUpload);
-if (exportExcelBtn) exportExcelBtn.addEventListener('click', exportResultsToExcel);
-if (clearResultsBtn) clearResultsBtn.addEventListener('click', clearAllResults);
-if (geminiAnalyzeBtn) geminiAnalyzeBtn.addEventListener('click', runGeminiAnalysis);
-if (closeGeminiBtn) closeGeminiBtn.addEventListener('click', () => {
-    if (geminiOverlay) geminiOverlay.classList.add('hidden');
-});
-if (analyzeBtn) analyzeBtn.addEventListener('click', compareQuarters);
-
-const viewDetailsBtn = document.getElementById('view-details-btn');
-if (viewDetailsBtn) {
-    viewDetailsBtn.addEventListener('click', () => {
-        const studentSelect = document.getElementById('studentSelect');
-        const filterCls = filterClass?.value || 'all';
-        const filterQ = filterQuarter?.value || 'all';
-        let data = getResultsArray(filterQ);
-        if (filterCls !== 'all') data = data.filter(r => r.class === filterCls);
-        if (currentTeacherSession) data = data.filter(r => r.subject === currentTeacherSession.subject);
-        data.sort((a, b) => b.percentage - a.percentage);
-        const idx = parseInt(studentSelect?.value, 10);
-        if (isNaN(idx) || !data[idx]) {
-            showToast(t('selStudent') || "O'quvchini tanlang!");
-            return;
-        }
-        showStudentDetails(data[idx]);
-    });
-}
-
 // Utility to parse simple Markdown for Questions and Gemini Output
 function parseMarkdownToHtml(md) {
     let html = md;
@@ -1862,6 +1306,7 @@ function parseMarkdownToHtml(md) {
 
 // Kickoff
 init();
+
 
 
 

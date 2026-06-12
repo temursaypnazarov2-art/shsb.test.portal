@@ -96,7 +96,7 @@
 
                 <!-- Top 10 Leaderboard Card -->
                 <div class="glass-card leaderboard-card fade-in">
-                    <h2 class="animate-glow" data-i18n="leaderboardTitle">🏆 Top-10 Reyting</h2>
+                    <h2 class="animate-glow" data-i18n="leaderboardTitle">Top-10 Reyting</h2>
                     <div class="leaderboard-container">
                         <table class="leaderboard-table">
                             <thead>
@@ -121,7 +121,7 @@
         <section id="admin-panel" class="screen hidden">
             <!-- TEACHER COUNTDOWN BANNER (Hidden by default, shown for teachers) -->
             <div id="teacher-timer-banner" class="hidden" style="width: 100%; max-width: 1000px; background: rgba(239, 68, 68, 0.2); border: 1px solid var(--error-color); border-radius: 12px; padding: 15px; margin-bottom: 20px; text-align: center; color: white; display: flex; justify-content: center; align-items: center; gap: 10px; animation: pulse 2s infinite;">
-                <span style="font-size: 1.5rem;">⏱️</span>
+                <span style="font-size: 1.5rem;">&#9201;</span>
                 <strong><span data-i18n="teacherTimerPrefix">Sizning ruxsatnomangiz tugashiga qoldi:</span> <span id="teacher-timer-text" style="font-family: monospace; font-size: 1.2rem; color: #fca5a5;">--:--</span></strong>
             </div>
 
@@ -179,6 +179,30 @@
                                     <option value="CHSB" data-i18n="testTypeCHSB">CHSB</option>
                                 </select>
                             </div>
+                            <div style="flex: 1; min-width: 200px;">
+                                <label style="display: block; margin-bottom: 5px; color: var(--text-secondary);" data-i18n="lblTargetClass">Mo'ljallangan sinf:</label>
+                                <select id="testTargetClass" style="width: 100%; padding: 10px; border-radius: 8px;">
+                                    <option value="all">Barchasi (All)</option>
+                                    <option value="5-A">5-A</option>
+                                    <option value="5-B">5-B</option>
+                                    <option value="6-A">6-A</option>
+                                    <option value="6-B">6-B</option>
+                                    <option value="7-A">7-A</option>
+                                    <option value="7-B">7-B</option>
+                                    <option value="8-A">8-A</option>
+                                    <option value="8-B">8-B</option>
+                                    <option value="9-A">9-A</option>
+                                    <option value="9-B">9-B</option>
+                                    <option value="10-A">10-A</option>
+                                    <option value="10-B">10-B</option>
+                                    <option value="11-A">11-A</option>
+                                    <option value="11-B">11-B</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1; min-width: 200px;">
+                                <label style="display: block; margin-bottom: 5px; color: var(--text-secondary);" data-i18n="lblUnblockPin">Blokdan chiqarish paroli:</label>
+                                <input type="password" id="unblockPasswordInput" placeholder="Blokdan chiqarish paroli..." style="width: 100%; padding: 10px; border-radius: 8px;">
+                            </div>
                         </div>
                         <button id="save-teacher-pin-btn" class="success-btn" style="margin-top: 15px;" data-i18n="btnSaveTeacherSettings">Sozlamalarni saqlash</button>
                     </div>
@@ -200,12 +224,34 @@
                                 </select>
                             </div>
                             
-                            <div class="question-format-selection" style="margin-bottom: 15px;">
-                                <label data-i18n="lblQFormat">Savol formati:</label>
-                                <select id="new-q-type" style="width: 100%; padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white;" onchange="toggleQuestionFormat()">
-                                    <option value="closed" data-i18n="fmtClosed">Yopiq test (A,B,C,D)</option>
-                                    <option value="open" data-i18n="fmtOpen">Ochiq savol (Yozma)</option>
-                                </select>
+                            <div class="question-format-selection" style="margin-bottom: 15px; display: flex; gap: 15px; flex-wrap: wrap;">
+                                <div style="flex: 1; min-width: 200px;">
+                                    <label data-i18n="lblQFormat">Savol formati:</label>
+                                    <select id="new-q-type" style="width: 100%; padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white;" onchange="toggleQuestionFormat()">
+                                        <option value="closed" data-i18n="fmtClosed">Yopiq test (A,B,C,D)</option>
+                                        <option value="open" data-i18n="fmtOpen">Ochiq savol (Yozma)</option>
+                                    </select>
+                                </div>
+                                <div style="flex: 1; min-width: 200px;">
+                                    <label data-i18n="lblTargetClass">Mo'ljallangan sinf:</label>
+                                    <select id="new-q-target-class" style="width: 100%; padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white;">
+                                        <option value="all" data-i18n="filterAll">Barchasi</option>
+                                        <option value="5-A">5-A</option>
+                                        <option value="5-B">5-B</option>
+                                        <option value="6-A">6-A</option>
+                                        <option value="6-B">6-B</option>
+                                        <option value="7-A">7-A</option>
+                                        <option value="7-B">7-B</option>
+                                        <option value="8-A">8-A</option>
+                                        <option value="8-B">8-B</option>
+                                        <option value="9-A">9-A</option>
+                                        <option value="9-B">9-B</option>
+                                        <option value="10-A">10-A</option>
+                                        <option value="10-B">10-B</option>
+                                        <option value="11-A">11-A</option>
+                                        <option value="11-B">11-B</option>
+                                    </select>
+                                </div>
                             </div>
 
                             <div style="margin-bottom: 15px;">
@@ -293,13 +339,19 @@
                 <!-- Results Tab -->
                 <div id="tab-results" class="tab-content hidden">
                     <div class="results-actions">
-                        <div class="results-filters">
+                        <div class="results-filters" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 15px;">
                             <label for="filter-class" data-i18n="lblFilterClass">Sinf bo'yicha filter:</label>
                             <select id="filter-class">
                                 <option value="all" data-i18n="filterAll">Barchasi</option>
                             </select>
+                            
+                            <label for="studentSelect" data-i18n="lblSelectStudent" style="margin-left: 10px;">O'quvchini tanlang:</label>
+                            <select id="studentSelect">
+                                <option value="" disabled selected data-i18n="selStudent">O'quvchini tanlang...</option>
+                            </select>
+                            <button id="view-details-btn" class="primary-btn" data-i18n="btnViewDetails" style="margin: 0; padding: 8px 15px; font-size: 14px;">Batafsil ko'rish</button>
 
-                            <label for="filter-quarter" data-i18n="lblFilterQuarter">Chorak:</label>
+                            <label for="filter-quarter" data-i18n="lblFilterQuarter" style="margin-left: 10px;">Chorak:</label>
                             <select id="filter-quarter">
                                 <option value="all" data-i18n="qAll">Barcha choraklar</option>
                                 <option value="1" data-i18n="q1">1-chorak</option>
@@ -311,7 +363,7 @@
                         <div class="results-buttons">
                             <button id="clear-results-btn" class="danger-btn" data-i18n="btnClearResults">Natijalarni tozalash</button>
                             <button id="export-excel-btn" class="success-btn" data-i18n="btnExportExcel">Excelga yuklash (SHSB Maxsus Format)</button>
-                            <button id="gemini-analyze-btn" class="primary-btn" data-i18n="btnAnalyzeAI" style="background: linear-gradient(135deg, #6366f1, #a855f7); border: none; box-shadow: 0 4px 15px rgba(99,102,241,0.4);">Gemini AI tahlili ✨</button>
+                            <button id="gemini-analyze-btn" class="primary-btn" data-i18n="btnAnalyzeAI" style="background: linear-gradient(135deg, #6366f1, #a855f7); border: none; box-shadow: 0 4px 15px rgba(99,102,241,0.4);">Gemini AI tahlili</button>
                         </div>
                     </div>
                     
@@ -385,15 +437,12 @@
                                     <option value="Huquq" data-i18n="subjHuquq">Huquq</option>
                                     <option value="Informatika" data-i18n="subjInformatika">Informatika</option>
                                 </select>
-                                <select id="teacher-expire-select" style="flex: 1; min-width: 150px; padding: 10px; border-radius: 8px;">
-                                    <option value="2">2 soat</option>
-                                    <option value="24">1 kun</option>
-                                    <option value="168">1 hafta</option>
-                                    <option value="720">1 oy</option>
-                                </select>
+                                <input type="datetime-local" id="tempPasswordExpiry" style="flex: 1; min-width: 150px; padding: 10px; border-radius: 8px;">
                                 <button id="generate-token-btn" class="primary-btn" style="flex: 1; min-width: 150px; padding: 10px;" data-i18n="btnGenerateToken">Parol yaratish</button>
                             </div>
                         </div>
+
+                        <div id="activeTempPasswordDisplay" class="info-box" style="margin-bottom: 15px; text-align: center; font-size: 1.1rem; font-weight: bold; background: rgba(56,189,248,0.1); padding: 15px; border-radius: 8px; color: var(--accent-color);"></div>
 
                         <div class="table-container" style="max-height: 250px; overflow-y: auto;">
                             <table class="results-table" style="font-size: 0.9rem;">
@@ -402,7 +451,7 @@
                                         <th>F.I.SH</th>
                                         <th>Fan</th>
                                         <th>Parol (Token)</th>
-                                        <th>Amal qilish muddati</th>
+                                        <th data-i18n="thExpireDate">Amal qilish muddati</th>
                                         <th>Harakat</th>
                                     </tr>
                                 </thead>
@@ -495,13 +544,10 @@
                     
                     <div class="settings-card">
                         <h3 data-i18n="secAnswersTitle">Test Javoblari (O'quvchiga)</h3>
-                        <div class="settings-group" style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
-                            <span style="font-weight: 600;" data-i18n="secAnswersLabel">Test yakunida to'g'ri javoblarni o'quvchiga ko'rsatish:</span>
-                            <label class="switch" style="position: relative; display: inline-block; width: 60px; height: 34px;">
-                                <input type="checkbox" id="toggle-show-answers" style="opacity: 0; width: 0; height: 0;">
-                                <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px;"></span>
-                            </label>
-                        </div>
+                                                  <div class="settings-group" style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
+                              <span style="font-weight: 600;" data-i18n="secAnswersLabel">Test yakunida to'g'ri javoblarni o'quvchiga ko'rsatish:</span>
+                              <button id="toggleShowAnswersBtn" class="settings-btn" style="background-color: #ef4444; color: white; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; border: none; transition: 0.3s;" data-i18n="btnShowAnswersOff">Javoblarni ko'rsatish: O'CHIRILGAN</button>
+                          </div>
                     </div>
                 </div>
 
@@ -581,7 +627,7 @@
 
                 <!-- Gamification: Certificate Zone -->
                 <div id="certificate-zone" class="certificate-badge hidden">
-                    <div class="certificate-icon">🎓</div>
+                    <div class="certificate-icon">&#127941;</div>
                     <h3 data-i18n="certCongrats">Tabriklaymiz! Siz yuqori natija ko'rsatdingiz.</h3>
                     <p data-i18n="certInfo">Siz o'z sertifikatingizni yuklab olishingiz mumkin.</p>
                     <button id="download-cert-btn" class="success-btn" data-i18n="btnDownloadCert">Sertifikatni yuklab olish (PNG)</button>
@@ -602,13 +648,13 @@
         <!-- Lock Screen / Proctoring Overlay -->
         <div id="lock-screen" class="lock-overlay hidden">
             <div class="lock-card">
-                <div class="warning-icon">⚠️</div>
+                <div class="warning-icon">&#9888;</div>
                 <h1 class="warning-text" data-i18n="lockWarningTitle">SIZ BLOKLANDINGIZ!</h1>
                 <p data-i18n="lockWarningText">Tizimdan foydalanish qoidalari buzildi (ekran o'zgartirildi yoki to'liq ekran rejimidan chiqildi).</p>
-                <p class="admin-note" data-i18n="lockAdminNote">Blokdan chiqarish uchun admin parolini kiriting:</p>
+                <p class="admin-note" data-i18n="lockAdminNote">Siz test qoidalarini buzgansiz! Testni davom ettirish uchun o'qituvchi parolini kiriting:</p>
                 <div class="admin-zone">
-                    <input type="password" id="admin-pass" placeholder="Admin paroli" data-i18n-placeholder="lockPassPlaceholder">
-                    <button id="unlock-btn" class="unlock-btn" data-i18n="lockBtnUnlock">Unlock</button>
+                    <input type="password" id="teacherUnlockInput" placeholder="O'qituvchi paroli" data-i18n-placeholder="lockPassPlaceholder">
+                    <button id="unlock-btn" class="unlock-btn" data-i18n="lockBtnUnlock">Ochish</button>
                 </div>
                 <p id="unlock-error" class="error-msg hidden" data-i18n="incorrectPass">Noto'g'ri parol!</p>
             </div>
@@ -634,7 +680,7 @@
     <div id="gemini-overlay" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
         <div style="background: var(--bg-secondary); padding: 30px; border-radius: 16px; width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto; border: 1px solid var(--accent-color); box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative;">
             <h2 style="color: white; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;" data-i18n="aiAnalysisTitle">
-                <span style="font-size: 24px;">✨</span> Gemini AI Tahlili
+                <span style="font-size: 24px;">&#10024;</span> Gemini AI Tahlili
             </h2>
             
             <div id="gemini-loading" style="display: flex; flex-direction: column; align-items: center; padding: 40px 0;">
@@ -651,5 +697,23 @@
     </div>
     <script src="lang.js"></script>
     <script src="script.js"></script>
+    <!-- Student Details Overlay -->
+    <div id="student-details-overlay" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+        <div style="background: var(--bg-secondary); padding: 30px; border-radius: 16px; width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto; border: 1px solid var(--accent-color); box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative;">
+            <h2 style="color: white; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;" id="student-details-title">
+                O'quvchi Natijalari
+            </h2>
+            <div id="student-details-content" style="color: rgba(255,255,255,0.9); line-height: 1.6; font-size: 15px; display: flex; flex-direction: column; gap: 15px;">
+                <!-- Content will be generated dynamically -->
+            </div>
+            <div style="text-align: right; margin-top: 20px;">
+                <button id="close-details-btn" class="danger-btn" data-i18n="btnCloseDetails">Yopish</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
+
+
+
