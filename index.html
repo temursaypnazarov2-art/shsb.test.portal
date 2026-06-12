@@ -32,7 +32,7 @@
                 <div class="glass-card auth-card fade-in">
                 
                 <div id="student-login-section" class="login-section fade-in">
-                    <p data-i18n="welcomeMsg">Xush kelibsiz! Testni boshlash uchun ma'lumotlarni kiriting.</p>
+                    <p class="auth-subtitle" data-i18n="welcomeMsg">Xush kelibsiz! Testga kirish uchun ma'lumotlarni kiriting.</p>
                     
                     <div class="input-group">
                         <input type="text" id="student-name" placeholder="F.I.SH (Masalan: Aliyev Vali)" autocomplete="off" data-i18n-placeholder="namePlaceholder">
@@ -73,7 +73,7 @@
                     <div class="input-group">
                         <input type="password" id="quiz-pin" placeholder="O'qituvchi bergan maxsus kodni kiriting" autocomplete="off" data-i18n-placeholder="pinPlaceholder">
                     </div>
-                    <button id="start-btn" class="primary-btn" data-i18n="startBtn">Testni Boshlash</button>
+                    <button id="start-btn" class="primary-btn" data-i18n="startBtn">Kirish</button>
                     
                     <div class="admin-login-trigger">
                         <button id="admin-login-btn" class="text-link-btn" data-i18n="adminLoginLink">O'qituvchilar va Admin kirishi</button>
@@ -203,10 +203,9 @@
                                 <label data-i18n="lblUploadImage" style="display: block; margin-bottom: 5px; color: var(--text-secondary);">Rasm yuklash (Ixtiyoriy):</label>
                                 <input type="file" id="new-q-image" accept="image/*" style="width: 100%; padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white;">
                             </div>
-
-                            <textarea id="new-q-text" placeholder="Savol matnini bu yerga yozing..." data-i18n-placeholder="phQuestionText"></textarea>
-                            
-                            <div id="closed-format-inputs">
+                            <textarea id="new-q-text" placeholder="Savol matnini bu yerga yozing..." data-i18n-placeholder="phQuestionText" style="width: 100%; min-height: 100px; padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; margin-bottom: 15px; resize: vertical;"></textarea>
+                              
+                            <div id="closed-format-inputs" class="options-group">
                                 <div class="options-inputs">
                                     <input type="text" id="new-q-opt0" placeholder="A varianti..." data-i18n-placeholder="phOptA">
                                     <input type="text" id="new-q-opt1" placeholder="B varianti..." data-i18n-placeholder="phOptB">
@@ -214,8 +213,8 @@
                                     <input type="text" id="new-q-opt3" placeholder="D varianti..." data-i18n-placeholder="phOptD">
                                 </div>
                             </div>
-                            <div id="open-format-inputs" style="display: none; margin-bottom: 15px;">
-                                <input type="text" id="new-q-open-answer" placeholder="Javob kalitini kiriting..." data-i18n-placeholder="phOpenAnswer" style="width: 100%; padding: 12px; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white;">
+                            <div id="open-format-inputs" class="open-question-group" style="display: none; margin-bottom: 15px;">
+                                <input type="text" id="new-q-open-answer" placeholder="Javob kalitini kiriting..." data-i18n-placeholder="phOpenAnswer" style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white;">
                             </div>
                             
                             <div class="question-meta-inputs">
@@ -413,7 +412,7 @@
                         </div>
                     </div>
                     <div class="settings-card">
-                        <h3 data-i18n="settingsTgTitle">Telegram Bot Integratsiyasi</h3>
+                        <h3 data-i18n="settingsTelegramTitle">Sozlamalar</h3>
                         <p class="settings-hint" data-i18n="settingsTgHint">O'quvchi testni yakunlaganda, natija avtomatik ravishda telegram bot yoki guruhga yuboriladi.</p>
                         <div class="settings-group">
                             <label data-i18n="lblTgToken">Bot Token:</label>
