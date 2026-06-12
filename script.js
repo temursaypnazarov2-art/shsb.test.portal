@@ -5,6 +5,7 @@
 
 // --- Constants & Database ---
 const HASHED_ADMIN_PASS = "YWRtaW4xMjNfc2hzYg==";
+const GEMINI_API_KEY = "Sizning_API_Kalitingiz";
 
 const defaultSavollar = [
     // --- Ona tili (5-11 sinf namunasi) ---
@@ -44,38 +45,95 @@ const defaultSavollar = [
 ];
 
 // Load from LocalStorage
-let storedQuestionsStr = localStorage.getItem('quiz_questions');
-let questions = storedQuestionsStr ? JSON.parse(storedQuestionsStr) : JSON.parse(JSON.stringify(defaultSavollar));
-
-// Force load defaultSavollar if database is completely empty so users don't see "Test topilmadi"
-if (!questions || questions.length === 0) {
-    questions = JSON.parse(JSON.stringify(defaultSavollar));
+let questionsDatabase = JSON.parse(localStorage.getItem('quiz_questions_db'));
+if (!questionsDatabase) {
+    let oldQuestions = localStorage.getItem('quiz_questions');
+    let migrated = oldQuestions ? JSON.parse(oldQuestions) : JSON.parse(JSON.stringify(defaultSavollar));
+    if (!migrated || migrated.length === 0) {
+        migrated = JSON.parse(JSON.stringify(defaultSavollar));
+    }
+    questionsDatabase = {
+        "1": migrated,
+        "2": [],
+        "3": [],
+        "4": []
+    };
+    localStorage.setItem('quiz_questions_db', JSON.stringify(questionsDatabase));
 }
+
 let results = JSON.parse(localStorage.getItem('quiz_results')) || [];
 let quizDuration = parseInt(localStorage.getItem('quiz_duration')) || 20; // Default 20 mins
 let tgBotToken = localStorage.getItem('tg_bot_token') || "";
 let tgChatId = localStorage.getItem('tg_chat_id') || "";
 
-let subjectPins = JSON.parse(localStorage.getItem('quiz_subject_pins')) || {
-    "Ona tili": "", "Matematika": "", "Fizika": "", "Kimyo": "",
-    "Biologiya": "", "Tarix": "", "Huquq": "", "Informatika": ""
-};
-let subjectDurations = JSON.parse(localStorage.getItem('quiz_subject_durations')) || {
-    "Ona tili": 20, "Matematika": 20, "Fizika": 20, "Kimyo": 20,
-    "Biologiya": 20, "Tarix": 20, "Huquq": 20, "Informatika": 20
-};
+// New isolated storage for pins and durations
+let subjectPinsDatabase = JSON.parse(localStorage.getItem('quiz_subject_pins_db'));
+let subjectDurationsDatabase = JSON.parse(localStorage.getItem('quiz_subject_durations_db'));
+let subjectTestTypesDatabase = JSON.parse(localStorage.getItem('quiz_subject_test_types_db'));
+
+// Migration for pins and durations
+if (!subjectPinsDatabase) {
+    let oldPins = JSON.parse(localStorage.getItem('quiz_subject_pins')) || {};
+    subjectPinsDatabase = {
+        "Ona tili": { "1": oldPins["Ona tili"] || "", "2": "", "3": "", "4": "" },
+        "Matematika": { "1": oldPins["Matematika"] || "", "2": "", "3": "", "4": "" },
+        "Fizika": { "1": oldPins["Fizika"] || "", "2": "", "3": "", "4": "" },
+        "Kimyo": { "1": oldPins["Kimyo"] || "", "2": "", "3": "", "4": "" },
+        "Biologiya": { "1": oldPins["Biologiya"] || "", "2": "", "3": "", "4": "" },
+        "Tarix": { "1": oldPins["Tarix"] || "", "2": "", "3": "", "4": "" },
+        "Huquq": { "1": oldPins["Huquq"] || "", "2": "", "3": "", "4": "" },
+        "Informatika": { "1": oldPins["Informatika"] || "", "2": "", "3": "", "4": "" }
+    };
+    localStorage.setItem('quiz_subject_pins_db', JSON.stringify(subjectPinsDatabase));
+}
+
+if (!subjectDurationsDatabase) {
+    let oldDurations = JSON.parse(localStorage.getItem('quiz_subject_durations')) || {};
+    subjectDurationsDatabase = {
+        "Ona tili": { "1": oldDurations["Ona tili"] || 20, "2": 20, "3": 20, "4": 20 },
+        "Matematika": { "1": oldDurations["Matematika"] || 20, "2": 20, "3": 20, "4": 20 },
+        "Fizika": { "1": oldDurations["Fizika"] || 20, "2": 20, "3": 20, "4": 20 },
+        "Kimyo": { "1": oldDurations["Kimyo"] || 20, "2": 20, "3": 20, "4": 20 },
+        "Biologiya": { "1": oldDurations["Biologiya"] || 20, "2": 20, "3": 20, "4": 20 },
+        "Tarix": { "1": oldDurations["Tarix"] || 20, "2": 20, "3": 20, "4": 20 },
+        "Huquq": { "1": oldDurations["Huquq"] || 20, "2": 20, "3": 20, "4": 20 },
+        "Informatika": { "1": oldDurations["Informatika"] || 20, "2": 20, "3": 20, "4": 20 }
+    };
+    localStorage.setItem('quiz_subject_durations_db', JSON.stringify(subjectDurationsDatabase));
+}
+
+if (!subjectTestTypesDatabase) {
+    subjectTestTypesDatabase = {
+        "Ona tili": { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" },
+        "Matematika": { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" },
+        "Fizika": { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" },
+        "Kimyo": { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" },
+        "Biologiya": { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" },
+        "Tarix": { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" },
+        "Huquq": { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" },
+        "Informatika": { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" }
+    };
+    localStorage.setItem('quiz_subject_test_types_db', JSON.stringify(subjectTestTypesDatabase));
+}
+
 let subjectQuarters = JSON.parse(localStorage.getItem('quiz_subject_quarters')) || {
     "Ona tili": "1", "Matematika": "1", "Fizika": "1", "Kimyo": "1",
     "Biologiya": "1", "Tarix": "1", "Huquq": "1", "Informatika": "1"
 };
+
+let questions = questionsDatabase["1"]; // Default to 1, will dynamically update
 let teacherTokens = JSON.parse(localStorage.getItem('quiz_teacher_tokens')) || [];
-let geminiApiKey = localStorage.getItem('gemini_api_key') || "";
 let showAnswersToStudent = localStorage.getItem('quiz_show_answers') === 'true';
 let currentTeacherSession = null; // Stores token object if logged in as teacher
 
+const staticTeacherPasswords = {
+    '3UTYGB': 'Ona tili'
+    // Kelajakda boshqa fanlarni shu yerga qo'shish mumkin
+};
+
 // Save Helpers
 function saveQuestions() {
-    localStorage.setItem('quiz_questions', JSON.stringify(questions));
+    localStorage.setItem('quiz_questions_db', JSON.stringify(questionsDatabase));
 }
 function saveResults() {
     localStorage.setItem('quiz_results', JSON.stringify(results));
@@ -138,11 +196,18 @@ let audioCtx = null;
 // --- DOM Elements ---
 // Screens
 const authScreen = document.getElementById('auth-screen');
+const instructionScreen = document.getElementById('instruction-screen');
 const quizScreen = document.getElementById('quiz-screen');
 const resultScreen = document.getElementById('result-screen');
 const adminPanel = document.getElementById('admin-panel');
 const lockScreen = document.getElementById('lock-screen');
 const toastAlert = document.getElementById('toast');
+
+// Instruction Screen Elements
+const instTitle = document.getElementById('inst-title');
+const instTime = document.getElementById('inst-time');
+const instCount = document.getElementById('inst-count');
+const beginTestBtn = document.getElementById('begin-test-btn');
 
 // Auth Screen Elements
 const studentLoginSection = document.getElementById('student-login-section');
@@ -181,6 +246,7 @@ const teacherPinSetter = document.getElementById('teacher-pin-setter');
 const teacherSubjectPin = document.getElementById('teacher-subject-pin');
 const teacherSubjectDuration = document.getElementById('teacher-subject-duration');
 const teacherSubjectQuarter = document.getElementById('teacher-subject-quarter');
+const teacherSubjectTestType = document.getElementById('teacher-subject-test-type');
 const saveTeacherPinBtn = document.getElementById('save-teacher-pin-btn');
 const teacherTimerBanner = document.getElementById('teacher-timer-banner');
 const teacherTimerText = document.getElementById('teacher-timer-text');
@@ -387,6 +453,13 @@ function handleAdminAuth() {
         return;
     }
 
+    // Check Static Teacher Passwords
+    if (staticTeacherPasswords[inputPass]) {
+        currentTeacherSession = { subject: staticTeacherPasswords[inputPass] };
+        openAdminPanelUI();
+        return;
+    }
+
     // Check if Teacher Token
     const now = new Date().getTime();
     const tokenObj = teacherTokens.find(t => t.token === inputPass && t.expireAt > now);
@@ -422,6 +495,43 @@ function openAdminPanelUI() {
         // Hide specific elements inside visible tabs if needed
         document.querySelector('.admin-header h2').textContent = `O'qituvchi Paneli: ${currentTeacherSession.subject}`;
 
+        const subjDropdown = document.getElementById('new-q-subject');
+        if (subjDropdown) subjDropdown.style.display = 'none';
+
+        let subjLabel = document.getElementById('teacher-fixed-subject');
+        if (!subjLabel) {
+            subjLabel = document.createElement('div');
+            subjLabel.id = 'teacher-fixed-subject';
+            subjLabel.className = 'fixed-subject-label fade-in';
+            subjLabel.style.padding = '10px';
+            subjLabel.style.marginBottom = '15px';
+            subjLabel.style.background = 'rgba(0,0,0,0.3)';
+            subjLabel.style.borderRadius = '6px';
+            subjLabel.style.color = 'var(--accent-color)';
+            subjLabel.style.fontWeight = 'bold';
+            subjDropdown.parentNode.insertBefore(subjLabel, subjDropdown);
+        }
+        subjLabel.style.display = 'block';
+
+        const subjToKey = {
+            'Ona tili': 'subjOnaTili',
+            'Matematika': 'subjMatematika',
+            'Fizika': 'subjFizika',
+            'Kimyo': 'subjKimyo',
+            'Biologiya': 'subjBiologiya',
+            'Tarix': 'subjTarix',
+            'Huquq': 'subjHuquq',
+            'Informatika': 'subjInformatika'
+        };
+        const i18nKey = subjToKey[currentTeacherSession.subject] || '';
+        if (i18nKey) {
+            subjLabel.setAttribute('data-i18n', i18nKey);
+        } else {
+            subjLabel.removeAttribute('data-i18n');
+        }
+        subjLabel.textContent = currentTeacherSession.subject;
+        applyTranslations();
+
         // Show Teacher specific UI blocks
         teacherTimerBanner.classList.remove('hidden');
         teacherPinSetter.classList.remove('hidden');
@@ -433,17 +543,30 @@ function openAdminPanelUI() {
         teacherTimerInterval = setInterval(updateTeacherTimer, 1000);
 
         // Pre-fill Teacher PIN/Duration/Quarter
-        teacherSubjectPin.value = subjectPins[currentTeacherSession.subject] || "";
-        teacherSubjectDuration.value = subjectDurations[currentTeacherSession.subject] || 20;
-        teacherSubjectQuarter.value = subjectQuarters[currentTeacherSession.subject] || "1";
+        const subj = currentTeacherSession.subject;
+        const qtr = subjectQuarters[subj] || "1";
+        teacherSubjectQuarter.value = qtr;
 
-        showToast(`Xush kelibsiz, ${currentTeacherSession.name}`);
+        // Ensure questions points to current quarter
+        questions = questionsDatabase[qtr];
+
+        teacherSubjectPin.value = subjectPinsDatabase[subj][qtr] || "";
+        teacherSubjectDuration.value = subjectDurationsDatabase[subj][qtr] || 20;
+        if (teacherSubjectTestType) teacherSubjectTestType.value = subjectTestTypesDatabase[subj][qtr] || "BSB";
+
+        showToast(`Xush kelibsiz, ${currentTeacherSession.name || currentTeacherSession.subject}`);
     } else {
         // Admin Mode: Ensure everything is visible
         tabSettingsBtn.classList.remove('hidden');
         tabQrcodeBtn.classList.remove('hidden');
         tabSecurityBtn.classList.remove('hidden');
-        document.querySelector('.admin-header h2').textContent = "Boshqaruv Paneli (Admin)";
+        document.querySelector('.admin-header h2').textContent = "Admin Panel";
+
+        const subjDropdown = document.getElementById('new-q-subject');
+        if (subjDropdown) subjDropdown.style.display = 'block';
+
+        const subjLabel = document.getElementById('teacher-fixed-subject');
+        if (subjLabel) subjLabel.style.display = 'none';
 
         teacherTimerBanner.classList.add('hidden');
         teacherPinSetter.classList.add('hidden');
@@ -487,17 +610,42 @@ saveTeacherPinBtn.addEventListener('click', () => {
     if (!currentTeacherSession) return;
     const pin = teacherSubjectPin.value.trim();
     const dur = parseInt(teacherSubjectDuration.value) || 20;
+    const testType = teacherSubjectTestType ? teacherSubjectTestType.value : "BSB";
     const subj = currentTeacherSession.subject;
+    const qtr = teacherSubjectQuarter.value;
 
-    subjectPins[subj] = pin;
-    subjectDurations[subj] = dur;
-    subjectQuarters[subj] = teacherSubjectQuarter.value;
+    if (!subjectPinsDatabase[subj]) subjectPinsDatabase[subj] = { "1": "", "2": "", "3": "", "4": "" };
+    if (!subjectDurationsDatabase[subj]) subjectDurationsDatabase[subj] = { "1": 20, "2": 20, "3": 20, "4": 20 };
+    if (!subjectTestTypesDatabase[subj]) subjectTestTypesDatabase[subj] = { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" };
 
-    localStorage.setItem('quiz_subject_pins', JSON.stringify(subjectPins));
-    localStorage.setItem('quiz_subject_durations', JSON.stringify(subjectDurations));
+    subjectPinsDatabase[subj][qtr] = pin;
+    subjectDurationsDatabase[subj][qtr] = dur;
+    subjectTestTypesDatabase[subj][qtr] = testType;
+    subjectQuarters[subj] = qtr;
+
+    localStorage.setItem('quiz_subject_pins_db', JSON.stringify(subjectPinsDatabase));
+    localStorage.setItem('quiz_subject_durations_db', JSON.stringify(subjectDurationsDatabase));
+    localStorage.setItem('quiz_subject_test_types_db', JSON.stringify(subjectTestTypesDatabase));
     localStorage.setItem('quiz_subject_quarters', JSON.stringify(subjectQuarters));
 
     alert(t('teacherPinSaved') || "Faningiz uchun sozlamalar muvaffaqiyatli saqlandi!");
+});
+
+teacherSubjectQuarter.addEventListener('change', () => {
+    if (!currentTeacherSession) return;
+    const qtr = teacherSubjectQuarter.value;
+    const subj = currentTeacherSession.subject;
+
+    // Update local variables
+    subjectQuarters[subj] = qtr;
+    questions = questionsDatabase[qtr];
+
+    // Update UI inputs for the newly selected quarter
+    teacherSubjectPin.value = subjectPinsDatabase[subj][qtr] || "";
+    teacherSubjectDuration.value = subjectDurationsDatabase[subj][qtr] || 20;
+    if (teacherSubjectTestType) teacherSubjectTestType.value = subjectTestTypesDatabase[subj][qtr] || "BSB";
+
+    renderQuestionsList();
 });
 
 // --- Admin Tabs Logic ---
@@ -641,45 +789,119 @@ function renderQuestionsList() {
     });
 }
 
+window.toggleQuestionFormat = function () {
+    const qType = document.getElementById('new-q-type').value;
+    const closedInputs = document.getElementById('closed-format-inputs');
+    const correctSelection = document.getElementById('correct-selection-group');
+    const openInputs = document.getElementById('open-format-inputs');
+
+    if (qType === 'open') {
+        closedInputs.style.display = 'none';
+        if (correctSelection) correctSelection.style.display = 'none';
+        openInputs.style.display = 'block';
+    } else {
+        closedInputs.style.display = 'block';
+        if (correctSelection) correctSelection.style.display = 'block';
+        openInputs.style.display = 'none';
+    }
+};
+
 addQBtn.addEventListener('click', () => {
     const text = newQText.value.trim();
-    const opt0 = newQOpt0.value.trim();
-    const opt1 = newQOpt1.value.trim();
-    const opt2 = newQOpt2.value.trim();
-    const opt3 = newQOpt3.value.trim();
-    const corr = parseInt(newQCorrect.value);
     const pts = parseFloat(newQPoints.value);
+    const cogElement = document.getElementById('new-q-cognitive');
+    const cog = cogElement ? cogElement.value : "Bilish";
+    const typeElement = document.getElementById('new-q-type');
+    const qType = typeElement ? typeElement.value : "closed";
+
     let subj = newQSubject.value;
 
     if (currentTeacherSession) {
         subj = currentTeacherSession.subject;
     }
 
-    if (!text || !opt0 || !opt1 || !opt2 || !opt3 || isNaN(pts)) {
+    if (!text || isNaN(pts)) {
         showToast(t('alertFillFields'));
         return;
     }
 
-    questions.push({
+    let questionObj = {
         subject: subj,
         question: text,
-        options: [opt0, opt1, opt2, opt3],
-        correct: corr,
-        points: pts
-    });
+        points: pts,
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+        cognitiveLevel: cog,
+        type: qType
+    };
 
-    saveQuestions();
-    renderQuestionsList();
+    if (qType === 'open') {
+        const openAns = document.getElementById('new-q-open-answer').value.trim();
+        if (!openAns) {
+            showToast(t('alertFillFields'));
+            return;
+        }
+        questionObj.openAnswer = openAns;
+    } else {
+        const opt0 = newQOpt0.value.trim();
+        const opt1 = newQOpt1.value.trim();
+        const opt2 = newQOpt2.value.trim();
+        const opt3 = newQOpt3.value.trim();
+        const corr = parseInt(newQCorrect.value);
+        if (!opt0 || !opt1 || !opt2 || !opt3) {
+            showToast(t('alertFillFields'));
+            return;
+        }
+        questionObj.options = [opt0, opt1, opt2, opt3];
+        questionObj.correct = corr;
+    }
 
-    // Clear inputs
-    newQText.value = '';
-    newQOpt0.value = '';
-    newQOpt1.value = '';
-    newQOpt2.value = '';
-    newQOpt3.value = '';
-    newQPoints.value = '1';
+    const clearInputs = () => {
+        newQText.value = '';
+        newQOpt0.value = '';
+        newQOpt1.value = '';
+        newQOpt2.value = '';
+        newQOpt3.value = '';
+        if (document.getElementById('new-q-open-answer')) document.getElementById('new-q-open-answer').value = '';
+        newQPoints.value = '1';
+        if (document.getElementById('new-q-image')) document.getElementById('new-q-image').value = '';
+        showToast(t('alertAdded') || "Savol qo'shildi!");
+    };
 
-    showToast(t('msgQuestionAdded'));
+    const imageInput = document.getElementById('new-q-image');
+    if (imageInput && imageInput.files && imageInput.files[0]) {
+        const file = imageInput.files[0];
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const img = new Image();
+            img.onload = function () {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                let width = img.width;
+                let height = img.height;
+                const MAX_WIDTH = 800;
+                if (width > MAX_WIDTH) {
+                    height *= MAX_WIDTH / width;
+                    width = MAX_WIDTH;
+                }
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+                questionObj.image = canvas.toDataURL('image/jpeg', 0.7);
+
+                questions.push(questionObj);
+                saveQuestions();
+                renderQuestionsList();
+                clearInputs();
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    } else {
+        questions.push(questionObj);
+        saveQuestions();
+        renderQuestionsList();
+        clearInputs();
+    }
 });
 
 window.deleteQuestion = (index) => {
@@ -743,7 +965,9 @@ function parseWordText(text, subject) {
                     question: currentQ,
                     options: optionsTemp.slice(0, 4),
                     correct: correctIndex,
-                    points: pointsVal
+                    points: pointsVal,
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+                    cognitiveLevel: "Bilish"
                 });
                 newQCount++;
             }
@@ -786,7 +1010,9 @@ function parseWordText(text, subject) {
             question: currentQ,
             options: optionsTemp.slice(0, 4),
             correct: correctIndex,
-            points: pointsVal
+            points: pointsVal,
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+            cognitiveLevel: "Bilish"
         });
         newQCount++;
     }
@@ -852,6 +1078,134 @@ function renderResultsTable() {
             <td>${date}</td>
         `;
         resultsTableBody.appendChild(tr);
+    });
+
+    renderAnalyticsDashboard();
+}
+
+let analyticsChartInstance = null;
+
+function renderAnalyticsDashboard() {
+    const filterCls = filterClass.value;
+    const filterQ = filterQuarter ? filterQuarter.value : 'all';
+
+    let filteredResults = results;
+
+    if (filterCls !== 'all') {
+        filteredResults = filteredResults.filter(r => r.class === filterCls);
+    }
+
+    if (filterQ !== 'all') {
+        filteredResults = filteredResults.filter(r => r.quarter === filterQ);
+    }
+
+    if (currentTeacherSession) {
+        filteredResults = filteredResults.filter(r => r.subject === currentTeacherSession.subject);
+    }
+
+    const canvas = document.getElementById('analytics-chart');
+    if (!canvas) return;
+
+    if (filteredResults.length === 0) {
+        if (analyticsChartInstance) {
+            analyticsChartInstance.destroy();
+            analyticsChartInstance = null;
+        }
+        return;
+    }
+
+    let maxQuestionsLength = 0;
+    filteredResults.forEach(r => {
+        if (r.details && r.details.length > maxQuestionsLength) {
+            maxQuestionsLength = r.details.length;
+        }
+    });
+
+    let counts = {};
+    counts[t('cogKnowing') || "Bilish"] = { correct: 0, total: 0 };
+    counts[t('cogApp') || "Qo'llash"] = { correct: 0, total: 0 };
+    counts[t('cogReasoning') || "Mulohaza qilish"] = { correct: 0, total: 0 };
+
+    function getCog(idx, total, stDetails) {
+        let rawCog = "Bilish";
+        if (stDetails && stDetails[idx] && stDetails[idx].cognitiveLevel) {
+            rawCog = stDetails[idx].cognitiveLevel;
+        } else {
+            let third = total / 3;
+            if (idx >= Math.ceil(third) && idx < Math.ceil(2 * third)) rawCog = "Qo'llash";
+            else if (idx >= Math.ceil(2 * third)) rawCog = "Mulohaza qilish";
+        }
+
+        if (rawCog === "Bilish") return t('cogKnowing') || "Bilish";
+        if (rawCog === "Qo'llash") return t('cogApp') || "Qo'llash";
+        if (rawCog === "Mulohaza qilish") return t('cogReasoning') || "Mulohaza qilish";
+        return t('cogKnowing') || "Bilish";
+    }
+
+    filteredResults.forEach(student => {
+        if (!student.details) return;
+        for (let i = 0; i < maxQuestionsLength; i++) {
+            let cogType = getCog(i, maxQuestionsLength, student.details);
+            counts[cogType].total++;
+            if (student.details[i]) {
+                const earned = student.details[i].earnedPoints || 0;
+                if (earned > 0) counts[cogType].correct++;
+            }
+        }
+    });
+
+    const labels = [t('cogKnowing') || "Bilish", t('cogApp') || "Qo'llash", t('cogReasoning') || "Mulohaza qilish"];
+    const dataPercent = labels.map(lbl => {
+        if (counts[lbl].total === 0) return 0;
+        return ((counts[lbl].correct / counts[lbl].total) * 100).toFixed(1);
+    });
+
+    if (analyticsChartInstance) {
+        analyticsChartInstance.destroy();
+    }
+
+    analyticsChartInstance = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: "O'zlashtirish (%)",
+                data: dataPercent,
+                backgroundColor: [
+                    'rgba(56, 189, 248, 0.7)',
+                    'rgba(168, 85, 247, 0.7)',
+                    'rgba(34, 197, 94, 0.7)'
+                ],
+                borderColor: [
+                    'rgb(56, 189, 248)',
+                    'rgb(168, 85, 247)',
+                    'rgb(34, 197, 94)'
+                ],
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        color: 'white',
+                        callback: function (value) { return value + "%" }
+                    },
+                    grid: { color: 'rgba(255,255,255,0.1)' }
+                },
+                x: {
+                    ticks: { color: 'white' },
+                    grid: { display: false }
+                }
+            },
+            plugins: {
+                legend: { display: false }
+            }
+        }
     });
 }
 
@@ -936,9 +1290,30 @@ exportExcelBtn.addEventListener('click', () => {
     let subjText = "Barcha fanlar";
     let classText = filterClass.value === 'all' ? "Barcha sinflar" : filterClass.value;
 
+    const qFilter = document.getElementById('filter-quarter') ? document.getElementById('filter-quarter').value : 'all';
+    let targetQuarter = qFilter;
+    if (targetQuarter === 'all' && currentTeacherSession) {
+        targetQuarter = teacherSubjectQuarter.value || "1";
+    } else if (targetQuarter === 'all') {
+        targetQuarter = "1";
+    }
+
+    exportData = exportData.filter(r => r.quarter === targetQuarter);
+
     if (currentTeacherSession) {
-        exportData = results.filter(r => r.subject === currentTeacherSession.subject);
-        subjText = currentTeacherSession.subject;
+        exportData = exportData.filter(r => r.subject === currentTeacherSession.subject);
+        const subjToKey = {
+            'Ona tili': 'subjOnaTili',
+            'Matematika': 'subjMatematika',
+            'Fizika': 'subjFizika',
+            'Kimyo': 'subjKimyo',
+            'Biologiya': 'subjBiologiya',
+            'Tarix': 'subjTarix',
+            'Huquq': 'subjHuquq',
+            'Informatika': 'subjInformatika'
+        };
+        const i18nKey = subjToKey[currentTeacherSession.subject] || '';
+        subjText = i18nKey ? (t(i18nKey) || currentTeacherSession.subject) : currentTeacherSession.subject;
     } else {
         if (filterClass.value !== 'all') {
             exportData = results.filter(r => r.class === filterClass.value);
@@ -954,7 +1329,6 @@ exportExcelBtn.addEventListener('click', () => {
     let maxQuestionsLength = 0;
     let maxTotalPointsPossible = 0;
 
-    // We assume the first student's detail holds the correct metadata for this subset
     exportData.forEach(r => {
         if (r.details && r.details.length > maxQuestionsLength) {
             maxQuestionsLength = r.details.length;
@@ -965,39 +1339,62 @@ exportExcelBtn.addEventListener('click', () => {
     const currentYear = new Date().getFullYear();
     const currentDateStr = new Date().toLocaleDateString('uz-UZ');
 
+    let testTypeStr = "BSB/CHSB";
+    if (currentTeacherSession && subjectTestTypesDatabase && subjectTestTypesDatabase[currentTeacherSession.subject] && subjectTestTypesDatabase[currentTeacherSession.subject][targetQuarter]) {
+        testTypeStr = subjectTestTypesDatabase[currentTeacherSession.subject][targetQuarter];
+    }
+
     // Prepare Sheet Data Array
     let wsData = [];
 
     // Rows 1-3: Headers (Merged later)
     wsData.push([`Qaraqalpaqstan Respublikası Xojeyli rayonı qánigelestirilgen mektebiniń ${classText} klass, ${currentYear}-sherek`]);
-    wsData.push([`${subjText.toUpperCase()} páninen ótkerilgen I-SHSB NÁTIYJELERI`]);
+    wsData.push([`${subjText.toUpperCase()} páninen ótkerilgen ${testTypeStr} NÁTIYJELERI`]);
     wsData.push([""]); // Empty row 3
 
     // Row 4: Statistics
     let statRow = [""];
-    statRow[1] = `SHSB ótkerilgen sáne: ${currentDateStr} | Sorawlar sanı: ${maxQuestionsLength} | Max ball: ${maxTotalPointsPossible.toFixed(1)} | Oqıwshılar sanı: ${exportData.length}`;
+    statRow[1] = `${testTypeStr} ótkerilgen sáne: ${currentDateStr} | Sorawlar sanı: ${maxQuestionsLength} | Max ball: ${maxTotalPointsPossible.toFixed(1)} | Oqıwshılar sanı: ${exportData.length}`;
     wsData.push(statRow);
 
     // Row 5: Table Headers
     let headerRow = ["№", "Oqıwshınıń familiyası, atı"];
 
-    function getCognitiveType(idx, total) {
-        if (total === 0) return "Bilish";
-        let third = total / 3;
-        if (idx < Math.ceil(third)) return "Bilish";
-        if (idx < Math.ceil(2 * third)) return "Qo'llash";
-        return "Mulohaza qilish";
+    function getCognitiveType(idx, total, stDetails) {
+        let rawCog = "Bilish";
+        let isWritten = false;
+        if (stDetails && stDetails[idx] && stDetails[idx].cognitiveLevel) {
+            rawCog = stDetails[idx].cognitiveLevel;
+            if (stDetails[idx].type === 'open') {
+                isWritten = true;
+            }
+        } else {
+            let third = total / 3;
+            if (idx >= Math.ceil(third) && idx < Math.ceil(2 * third)) rawCog = "Qo'llash";
+            else if (idx >= Math.ceil(2 * third)) rawCog = "Mulohaza qilish";
+        }
+
+        let translatedCog = t('cogKnowing') || "Bilish";
+        if (rawCog === "Qo'llash") translatedCog = t('cogApp') || "Qo'llash";
+        if (rawCog === "Mulohaza qilish") translatedCog = t('cogReasoning') || "Mulohaza qilish";
+
+        if (isWritten) {
+            return (t('lblWritten') || "Yozma") + "/" + translatedCog;
+        }
+        return translatedCog;
     }
+
+    let firstStudentWithDetails = exportData.find(s => s.details && s.details.length === maxQuestionsLength);
 
     // Add question columns dynamically
     for (let i = 0; i < maxQuestionsLength; i++) {
-        let cogType = getCognitiveType(i, maxQuestionsLength);
+        let cogType = getCognitiveType(i, maxQuestionsLength, firstStudentWithDetails ? firstStudentWithDetails.details : null);
         headerRow.push(`${i + 1}-soraw (${cogType})`);
     }
 
-    headerRow.push("Bilish %");
-    headerRow.push("Qo'llash %");
-    headerRow.push("Mulohaza %");
+    headerRow.push(`${t('cogKnowing')} %`);
+    headerRow.push(`${t('cogApp')} %`);
+    headerRow.push(`${t('cogReasoning')} %`);
     headerRow.push("JÁMI (Ball)");
     headerRow.push("JÁMI %");
     wsData.push(headerRow);
@@ -1009,10 +1406,13 @@ exportExcelBtn.addEventListener('click', () => {
         let row = [index + 1, student.name];
 
         let totalScore = 0;
-        let counts = { "Bilish": { correct: 0, total: 0 }, "Qo'llash": { correct: 0, total: 0 }, "Mulohaza qilish": { correct: 0, total: 0 } };
+        let counts = {};
+        counts[t('cogKnowing')] = { correct: 0, total: 0 };
+        counts[t('cogApp')] = { correct: 0, total: 0 };
+        counts[t('cogReasoning')] = { correct: 0, total: 0 };
 
         for (let i = 0; i < maxQuestionsLength; i++) {
-            let cogType = getCognitiveType(i, maxQuestionsLength);
+            let cogType = getCognitiveType(i, maxQuestionsLength, student.details);
             counts[cogType].total++;
 
             if (student.details && student.details[i]) {
@@ -1027,7 +1427,7 @@ exportExcelBtn.addEventListener('click', () => {
         }
 
         // Calculate cognitive percentages
-        ["Bilish", "Qo'llash", "Mulohaza qilish"].forEach(type => {
+        [t('cogKnowing'), t('cogApp'), t('cogReasoning')].forEach(type => {
             if (counts[type].total > 0) {
                 row.push(((counts[type].correct / counts[type].total) * 100).toFixed(1) + '%');
             } else {
@@ -1088,84 +1488,144 @@ exportExcelBtn.addEventListener('click', () => {
     const fileName = `SHSB_${subjText.replace(/\s+/g, '_')}_${classText}_${currentDateStr}.xlsx`;
     XLSX.writeFile(wb, fileName);
     showToast(`Excel fayl yuklandi: ${fileName}`);
-});
+    saveResults();
+}
 
 // --- Gemini API Call logic ---
-geminiAnalyzeBtn.addEventListener('click', async () => {
-    if (!geminiApiKey) {
-        alert(t('alertGeminiKey') || "API kilit sozlanmagan!");
-        return;
-    }
+const geminiAnalyzeBtn = document.getElementById('gemini-analyze-btn');
+const geminiOverlay = document.getElementById('gemini-overlay');
+const geminiLoading = document.getElementById('gemini-loading');
+const geminiAnalysisOutput = document.getElementById('gemini-analysis-output');
+const closeGeminiBtn = document.getElementById('close-gemini-btn');
 
-    if (results.length === 0) {
-        alert("Natijalar mavjud emas!");
-        return;
-    }
+if (closeGeminiBtn) {
+    closeGeminiBtn.addEventListener('click', () => {
+        geminiOverlay.classList.add('hidden');
+    });
+}
 
-    geminiAnalyzeBtn.disabled = true;
-    geminiAnalyzeBtn.textContent = t('analyzingAI') || "Tahlil qilinmoqda...";
-    geminiAnalysisOutput.textContent = "";
-
-    try {
-        const statsStr = JSON.stringify(results.map(r => ({
-            name: r.name, class: r.class, subject: r.subject, score: r.score, percentage: r.percentage
-        })));
-
-        const prompt = `Men o'qituvchiman. Quyida mening o'quvchilarimning test natijalari ro'yxati berilgan. Iltimos, ushbu natijalarni tahlil qilib, o'quvchilarning umumiy o'zlashtirish darajasi, oqsiyotgan mavzular (yoki past ball olganlar) va ularga qanday pedagogik yondashish kerakligi haqida chuqur, kasbiy va ilhomlantiruvchi xulosa yozib bering. Xulosani Markdown formatida, chiroyli sarlavhalar va ro'yxatlar bilan O'zbek tilida tayyorlang.\nNatijalar:\n${statsStr}`;
-
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
-            })
-        });
-
-        const data = await response.json();
-        if (data.error) {
-            throw new Error(data.error.message);
+if (geminiAnalyzeBtn) {
+    geminiAnalyzeBtn.addEventListener('click', async () => {
+        if (!GEMINI_API_KEY || GEMINI_API_KEY === "Sizning_API_Kalitingiz") {
+            alert(t('alertGeminiKey') || "API kilit sozlanmagan! script.js faylida kalitni kiriting.");
+            return;
         }
 
-        const mdText = data.candidates[0].content.parts[0].text;
-        geminiAnalysisOutput.innerHTML = parseMarkdownToHtml(mdText);
+        let exportData = results;
+        const filterCls = filterClass.value;
+        const filterQ = document.getElementById('filter-quarter') ? document.getElementById('filter-quarter').value : 'all';
 
-    } catch (error) {
-        geminiAnalysisOutput.textContent = "Xatolik yuz berdi: " + error.message;
-    } finally {
-        geminiAnalyzeBtn.disabled = false;
-        geminiAnalyzeBtn.textContent = t('btnAnalyzeAI') || "AI Xulosasini Olish";
-    }
-});
+        if (filterCls !== 'all') {
+            exportData = exportData.filter(r => r.class === filterCls);
+        }
+
+        let targetQuarter = filterQ;
+        if (targetQuarter === 'all' && currentTeacherSession) {
+            targetQuarter = teacherSubjectQuarter.value || "1";
+        } else if (targetQuarter === 'all') {
+            targetQuarter = "1";
+        }
+        exportData = exportData.filter(r => r.quarter === targetQuarter);
+
+        if (currentTeacherSession) {
+            exportData = exportData.filter(r => r.subject === currentTeacherSession.subject);
+        }
+
+        if (exportData.length === 0) {
+            alert(t('alertNoQuestions') || "Natijalar mavjud emas!");
+            return;
+        }
+
+        geminiOverlay.classList.remove('hidden');
+        geminiLoading.style.display = 'flex';
+        geminiAnalysisOutput.style.display = 'none';
+        geminiAnalysisOutput.innerHTML = "";
+
+        try {
+            const statsStr = JSON.stringify(exportData.map(r => ({
+                ism: r.name,
+                ball: r.score,
+                foiz: r.percentage + '%',
+                savollar: r.details.map(d => ({ tur: d.cognitiveLevel, holat: d.status }))
+            })));
+
+            let testTypeStr = "BSB/CHSB";
+            if (currentTeacherSession && subjectTestTypesDatabase && subjectTestTypesDatabase[currentTeacherSession.subject] && subjectTestTypesDatabase[currentTeacherSession.subject][targetQuarter]) {
+                testTypeStr = subjectTestTypesDatabase[currentTeacherSession.subject][targetQuarter];
+            }
+
+            const prompt = `Siz maktab psixologi va professional pedagogsiz. Quyida ko'rsatilgan sinf o'quvchilarining ${testTypeStr} test natijalari va ularning kognitiv darajalar (Bilish, Qo'llash, Mulohaza qilish) bo'yicha tahlili berilgan. Iltimos, ushbu ma'lumotlarni chuqur tahlil qilib, o'zbek tilida:
+1. Sinfning umumiy o'zlashtirish darajasiga pedagogik tashxis qo'ying.
+2. Qaysi kognitiv sohada (masalan, mulohaza qilishda yoki qo'llashda) o'quvchilarda oqsoqlik va kamchiliklar borligini aniqlang.
+3. O'qituvchiga dars sifatini oshirish, o'quvchilar motivatsiyasini ko'tarish va bo'shliqlar bilan ishlash bo'yicha aniq amaliy va psixologik tavsiyalar bering.
+Natijalar:
+${statsStr}`;
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            });
+
+            const data = await response.json();
+            if (data.error) {
+                throw new Error(data.error.message);
+            }
+
+            const mdText = data.candidates[0].content.parts[0].text;
+            geminiLoading.style.display = 'none';
+            geminiAnalysisOutput.style.display = 'block';
+            geminiAnalysisOutput.innerHTML = parseMarkdownToHtml(mdText);
+
+        } catch (error) {
+            geminiLoading.style.display = 'none';
+            geminiAnalysisOutput.style.display = 'block';
+            geminiAnalysisOutput.textContent = "Xatolik yuz berdi: " + error.message;
+        }
+    });
+}
 
 // --- Quiz Start Logic ---
 startBtn.addEventListener('click', () => {
     studentName = studentNameInput.value.trim();
     studentClass = studentClassInput.value;
     studentSubject = studentSubjectInput.value;
-    studentQuarter = subjectQuarters[studentSubject] || "1";
     const pin = quizPinInput.value.trim();
 
-    if (!studentName || !studentClass || !studentSubject) {
-        alert(t('alertDetails') || "Barcha ma'lumotlarni to'ldiring!");
+    if (!studentName || !studentClass || !studentSubject || !pin) {
+        alert(t('alertDetails') || "Barcha ma'lumotlarni (shu jumladan maxsus kodni) to'ldiring!");
         return;
     }
 
-    // Verify PIN globally
-    const expectedPin = subjectPins[studentSubject];
-    if (expectedPin && expectedPin !== "" && pin !== expectedPin) {
-        alert(t('alertWrongPin') || "Maxsus kod noto'g'ri kiritildi!");
+    // Verify PIN globally across quarters for the chosen subject
+    let matchedQuarter = null;
+    const subjectPinObj = subjectPinsDatabase[studentSubject];
+
+    if (subjectPinObj) {
+        for (let q in subjectPinObj) {
+            if (subjectPinObj[q] === pin && pin !== "") {
+                matchedQuarter = q;
+                break;
+            }
+        }
+    }
+
+    if (!matchedQuarter) {
+        alert(t('alertWrongPin') || "Maxsus kod noto'g'ri kiritildi yoki bunday chorak faol emas!");
         return;
     }
 
-    currentQuizQuestions = questions.filter(q => q.subject === studentSubject);
+    studentQuarter = matchedQuarter;
+    currentQuizQuestions = questionsDatabase[studentQuarter].filter(q => q.subject === studentSubject);
 
     if (currentQuizQuestions.length === 0) {
         alert(t('alertNoQuestions'));
         return;
     }
 
-    // Fetch dynamic duration for this subject
-    let activeDuration = subjectDurations[studentSubject] || quizDuration;
+    testTimeLimitSeconds = (subjectDurationsDatabase[studentSubject][studentQuarter] || 20) * 60;
 
     // Shuffle
     currentQuizQuestions.sort(() => Math.random() - 0.5);
@@ -1178,23 +1638,40 @@ startBtn.addEventListener('click', () => {
     isLocked = false;
     blockCount = 0;
     timeElapsedSeconds = 0;
+    let activeDuration = subjectDurationsDatabase[studentSubject][studentQuarter] || 20;
     testTimeLimitSeconds = activeDuration * 60;
 
+    // Show Instruction Screen instead of starting immediately
+    const testType = subjectTestTypesDatabase && subjectTestTypesDatabase[studentSubject] && subjectTestTypesDatabase[studentSubject][studentQuarter]
+        ? subjectTestTypesDatabase[studentSubject][studentQuarter]
+        : "BSB";
+
+    if (instTitle) instTitle.textContent = `${studentSubject} - ${testType}`;
+    if (instTime) instTime.textContent = (t('lblTime') || "Vaqt:") + ` ${activeDuration} daqiqa`;
+    if (instCount) instCount.textContent = (t('lblCount') || "Savollar soni:") + ` ${currentQuizQuestions.length} ta`;
+
     authScreen.classList.add('hidden');
-    quizScreen.classList.remove('hidden');
-
-    document.documentElement.requestFullscreen().catch(e => console.log('Fullscreen blocked', e));
-
-    playSound('start');
-    startTimer();
-    loadQuestion();
-
-    studentDisplay.innerHTML = `<strong>${studentName}</strong> (${studentClass}) - <span class="subject-badge">${studentSubject}</span>`;
-
-    // Anti-cheat Listeners specific to Quiz
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    instructionScreen.classList.remove('hidden');
 });
+
+if (beginTestBtn) {
+    beginTestBtn.addEventListener('click', () => {
+        instructionScreen.classList.add('hidden');
+        quizScreen.classList.remove('hidden');
+
+        document.documentElement.requestFullscreen().catch(e => console.log('Fullscreen blocked', e));
+
+        playSound('start');
+        startTimer();
+        loadQuestion();
+
+        studentDisplay.innerHTML = `<strong>${studentName}</strong> (${studentClass}) - <span class="subject-badge">${studentSubject}</span>`;
+
+        // Anti-cheat Listeners specific to Quiz
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+    });
+}
 
 // --- Timer ---
 function startTimer() {
@@ -1241,22 +1718,61 @@ function loadQuestion() {
 
     questionText.innerHTML = parseMarkdownToHtml(q.question);
 
+    if (q.image) {
+        const imgEl = document.createElement('img');
+        imgEl.src = q.image;
+        imgEl.style.maxWidth = '100%';
+        imgEl.style.borderRadius = '10px';
+        imgEl.style.marginTop = '15px';
+        questionText.appendChild(imgEl);
+    }
+
     optionsContainer.innerHTML = '';
 
-    q.options.forEach((opt, index) => {
-        const div = document.createElement('div');
-        div.className = 'option fade-in';
-        div.innerHTML = parseMarkdownToHtml(opt);
-        // Clean inner P tags if any from md
-        div.innerHTML = div.innerHTML.replace(/<p>/g, '').replace(/<\/p>/g, '');
+    if (q.type === 'open') {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'open-answer-input';
+        input.className = 'fade-in';
+        input.style.width = '100%';
+        input.style.padding = '15px';
+        input.style.fontSize = '18px';
+        input.style.borderRadius = '10px';
+        input.style.background = 'rgba(255, 255, 255, 0.1)';
+        input.style.border = '2px solid rgba(255, 255, 255, 0.2)';
+        input.style.color = 'white';
+        input.placeholder = t('phOpenAnswer') || "Javobingizni kiriting...";
 
-        if (studentAnswers[currentQuestionIndex] === index) {
-            div.classList.add('selected');
+        if (studentAnswers[currentQuestionIndex] !== null) {
+            input.value = studentAnswers[currentQuestionIndex];
         }
 
-        div.addEventListener('click', () => selectOption(index));
-        optionsContainer.appendChild(div);
-    });
+        input.addEventListener('input', (e) => {
+            studentAnswers[currentQuestionIndex] = e.target.value;
+            if (e.target.value.trim() !== '') {
+                nextBtn.classList.remove('hidden');
+            } else {
+                nextBtn.classList.add('hidden');
+            }
+        });
+
+        optionsContainer.appendChild(input);
+    } else {
+        q.options.forEach((opt, index) => {
+            const div = document.createElement('div');
+            div.className = 'option fade-in';
+            div.innerHTML = parseMarkdownToHtml(opt);
+            // Clean inner P tags if any from md
+            div.innerHTML = div.innerHTML.replace(/<p>/g, '').replace(/<\/p>/g, '');
+
+            if (studentAnswers[currentQuestionIndex] === index) {
+                div.classList.add('selected');
+            }
+
+            div.addEventListener('click', () => selectOption(index));
+            optionsContainer.appendChild(div);
+        });
+    }
 
     if (currentQuestionIndex === currentQuizQuestions.length - 1) {
         nextBtn.textContent = t('btnFinishQuiz') || "Yakunlash";
@@ -1290,7 +1806,21 @@ nextBtn.addEventListener('click', () => {
     if (isLocked || studentAnswers[currentQuestionIndex] === null) return;
 
     const q = currentQuizQuestions[currentQuestionIndex];
-    if (studentAnswers[currentQuestionIndex] === q.correct) {
+    let isCorrect = false;
+
+    if (q.type === 'open') {
+        const studentAnsStr = String(studentAnswers[currentQuestionIndex]).toLowerCase().trim();
+        const correctAnsStr = String(q.openAnswer || "").toLowerCase().trim();
+        if (studentAnsStr === correctAnsStr && studentAnsStr !== "") {
+            isCorrect = true;
+        }
+    } else {
+        if (studentAnswers[currentQuestionIndex] === q.correct) {
+            isCorrect = true;
+        }
+    }
+
+    if (isCorrect) {
         earnedPoints[currentQuestionIndex] = q.points;
         playSound('correct');
     } else {
@@ -1326,7 +1856,9 @@ function finishQuiz(timeOut = false) {
         maxPoints: q.points,
         earnedPoints: earnedPoints[i],
         userAnswerIndex: studentAnswers[i],
-        correctIndex: q.correct
+        correctIndex: q.correct,
+        cognitiveLevel: q.cognitiveLevel || "Bilish",
+        type: q.type || "closed"
     }));
 
     const resultObj = {
@@ -1404,9 +1936,16 @@ function renderErrorReview(details) {
     mistakes.forEach(m => {
         const div = document.createElement('div');
         div.className = 'review-item';
+        const qRef = currentQuizQuestions.find(q => q.question === m.question);
+        let correctStr = "";
+        if (m.type === 'open') {
+            correctStr = qRef ? qRef.openAnswer : "";
+        } else {
+            correctStr = qRef ? qRef.options[m.correctIndex] : "";
+        }
         div.innerHTML = `
             <div class="review-q">${m.question}</div>
-            <div class="review-correct-ans">Tog'ri javob: ${currentQuizQuestions.find(q => q.question === m.question).options[m.correctIndex]}</div>
+            <div class="review-correct-ans">Tog'ri javob: ${correctStr}</div>
         `;
         errorReviewList.appendChild(div);
     });

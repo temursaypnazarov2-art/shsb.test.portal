@@ -6,6 +6,7 @@
     <title>SHSB - Ixtisoslashtirilgan Maktablar</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div id="toast" class="toast hidden"></div>
@@ -38,7 +39,7 @@
                     </div>
                     <div class="input-group">
                         <select id="student-class">
-                            <option value="" disabled selected data-i18n="classPlaceholder">Sinfni tanlang</option>
+                            <option value="" disabled selected data-i18n="selClass">Sinfni tanlang</option>
                             <option value="5-A">5-A</option>
                             <option value="5-B">5-B</option>
                             <option value="6-A">6-A</option>
@@ -154,12 +155,19 @@
                                 <input type="number" id="teacher-subject-duration" placeholder="20" style="width: 100%; padding: 10px; border-radius: 8px;">
                             </div>
                             <div style="flex: 1; min-width: 200px;">
-                                <label style="display: block; margin-bottom: 5px; color: var(--text-secondary);" data-i18n="lblFilterQuarter">Chorak:</label>
+                                <label style="display: block; margin-bottom: 5px; color: var(--text-secondary);" data-i18n="selQuarter">Chorakni tanlang:</label>
                                 <select id="teacher-subject-quarter" style="width: 100%; padding: 10px; border-radius: 8px;">
                                     <option value="1" data-i18n="q1">1-chorak</option>
                                     <option value="2" data-i18n="q2">2-chorak</option>
                                     <option value="3" data-i18n="q3">3-chorak</option>
                                     <option value="4" data-i18n="q4">4-chorak</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1; min-width: 200px;">
+                                <label style="display: block; margin-bottom: 5px; color: var(--text-secondary);" data-i18n="lblTestType">Test turi:</label>
+                                <select id="teacher-subject-test-type" style="width: 100%; padding: 10px; border-radius: 8px;">
+                                    <option value="BSB" data-i18n="testTypeBSB">BSB</option>
+                                    <option value="CHSB" data-i18n="testTypeCHSB">CHSB</option>
                                 </select>
                             </div>
                         </div>
@@ -182,15 +190,36 @@
                                     <option value="Informatika" data-i18n="subjInformatika">Informatika</option>
                                 </select>
                             </div>
-                            <input type="text" id="new-q-text" placeholder="Savol matni..." data-i18n-placeholder="qTextPlaceholder">
-                            <div class="options-inputs">
-                                <input type="text" id="new-q-opt0" placeholder="Variant A">
-                                <input type="text" id="new-q-opt1" placeholder="Variant B">
-                                <input type="text" id="new-q-opt2" placeholder="Variant C">
-                                <input type="text" id="new-q-opt3" placeholder="Variant D">
+                            
+                            <div class="question-format-selection" style="margin-bottom: 15px;">
+                                <label data-i18n="lblQFormat">Savol formati:</label>
+                                <select id="new-q-type" style="width: 100%; padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white;" onchange="toggleQuestionFormat()">
+                                    <option value="closed" data-i18n="fmtClosed">Yopiq test (A,B,C,D)</option>
+                                    <option value="open" data-i18n="fmtOpen">Ochiq savol (Yozma)</option>
+                                </select>
                             </div>
+
+                            <div style="margin-bottom: 15px;">
+                                <label data-i18n="lblUploadImage" style="display: block; margin-bottom: 5px; color: var(--text-secondary);">Rasm yuklash (Ixtiyoriy):</label>
+                                <input type="file" id="new-q-image" accept="image/*" style="width: 100%; padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white;">
+                            </div>
+
+                            <textarea id="new-q-text" placeholder="Savol matnini bu yerga yozing..." data-i18n-placeholder="phQuestionText"></textarea>
+                            
+                            <div id="closed-format-inputs">
+                                <div class="options-inputs">
+                                    <input type="text" id="new-q-opt0" placeholder="A varianti..." data-i18n-placeholder="phOptA">
+                                    <input type="text" id="new-q-opt1" placeholder="B varianti..." data-i18n-placeholder="phOptB">
+                                    <input type="text" id="new-q-opt2" placeholder="C varianti..." data-i18n-placeholder="phOptC">
+                                    <input type="text" id="new-q-opt3" placeholder="D varianti..." data-i18n-placeholder="phOptD">
+                                </div>
+                            </div>
+                            <div id="open-format-inputs" style="display: none; margin-bottom: 15px;">
+                                <input type="text" id="new-q-open-answer" placeholder="Javob kalitini kiriting..." data-i18n-placeholder="phOpenAnswer" style="width: 100%; padding: 12px; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white;">
+                            </div>
+                            
                             <div class="question-meta-inputs">
-                                <div class="correct-selection">
+                                <div class="correct-selection" id="correct-selection-group">
                                     <label data-i18n="lblCorrectAns">To'g'ri:</label>
                                     <select id="new-q-correct">
                                         <option value="0">A</option>
@@ -202,6 +231,14 @@
                                 <div class="points-input-group">
                                     <label data-i18n="lblPoints">Ball:</label>
                                     <input type="number" id="new-q-points" value="1" step="0.1" min="0.1">
+                                </div>
+                                <div class="cognitive-selection">
+                                    <label data-i18n="lblCognitive">Kognitiv daraja:</label>
+                                    <select id="new-q-cognitive" style="width: 100%; padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white;">
+                                        <option value="Bilish" data-i18n="cogKnowing">Bilish</option>
+                                        <option value="Qo'llash" data-i18n="cogApp">Qo'llash</option>
+                                        <option value="Mulohaza qilish" data-i18n="cogReasoning">Mulohaza qilish</option>
+                                    </select>
                                 </div>
                             </div>
                             <button id="add-q-btn" class="primary-btn" data-i18n="btnAddQuestion">Savolni Qo'shish</button>
@@ -256,7 +293,7 @@
 
                             <label for="filter-quarter" data-i18n="lblFilterQuarter">Chorak:</label>
                             <select id="filter-quarter">
-                                <option value="all" data-i18n="filterAll">Barchasi</option>
+                                <option value="all" data-i18n="qAll">Barcha choraklar</option>
                                 <option value="1" data-i18n="q1">1-chorak</option>
                                 <option value="2" data-i18n="q2">2-chorak</option>
                                 <option value="3" data-i18n="q3">3-chorak</option>
@@ -266,9 +303,18 @@
                         <div class="results-buttons">
                             <button id="clear-results-btn" class="danger-btn" data-i18n="btnClearResults">Natijalarni tozalash</button>
                             <button id="export-excel-btn" class="success-btn" data-i18n="btnExportExcel">Excelga yuklash (SHSB Maxsus Format)</button>
+                            <button id="gemini-analyze-btn" class="primary-btn" data-i18n="btnAnalyzeAI" style="background: linear-gradient(135deg, #6366f1, #a855f7); border: none; box-shadow: 0 4px 15px rgba(99,102,241,0.4);">Gemini AI tahlili ✨</button>
                         </div>
                     </div>
                     
+                    <!-- Analytics Dashboard -->
+                    <div id="analytics-dashboard" class="analytics-dashboard" style="margin-top: 20px; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; align-items: center;">
+                        <h3 data-i18n="analyticsTitle" style="color: white; margin-bottom: 15px; text-align: center;">Choraklik Tahlil (Kognitiv darajalar)</h3>
+                        <div style="width: 100%; max-width: 600px;">
+                            <canvas id="analytics-chart"></canvas>
+                        </div>
+                    </div>
+
                     <!-- Comparison Section -->
                     <div class="comparison-section" id="comparison-panel" style="margin-top: 20px;">
                         <h3 data-i18n="comparisonTitle" style="color: white; margin-bottom: 15px; text-align: center;">Ikki chorakni o'zaro tahlil qilish</h3>
@@ -422,32 +468,14 @@
                 <!-- Security & API Tab -->
                 <div id="tab-security" class="tab-content hidden">
                     
-                    <div class="settings-card" style="border: 1px solid var(--accent-color); margin-bottom: 20px;">
-                        <h3 style="color: var(--accent-color); margin-bottom: 10px;" data-i18n="secAnswersTitle">Javoblarni ko'rsatish boshqaruvi</h3>
-                        <p class="settings-hint" data-i18n="secAnswersHint">Agar ushbu funksiya yoqilgan bo'lsa, o'quvchi testni tugatgandan so'ng xatolari ustida ishlashi uchun barcha to'g'ri javoblarni ko'ra oladi.</p>
-                        
-                        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px;">
+                    <div class="settings-card">
+                        <h3 data-i18n="secAnswersTitle">Test Javoblari (O'quvchiga)</h3>
+                        <div class="settings-group" style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
                             <span style="font-weight: 600;" data-i18n="secAnswersLabel">Test yakunida to'g'ri javoblarni o'quvchiga ko'rsatish:</span>
                             <label class="switch" style="position: relative; display: inline-block; width: 60px; height: 34px;">
                                 <input type="checkbox" id="toggle-show-answers" style="opacity: 0; width: 0; height: 0;">
                                 <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px;"></span>
                             </label>
-                        </div>
-                    </div>
-
-                    <div class="settings-card">
-                        <h3 data-i18n="apiGeminiTitle">Gemini AI Integratsiyasi (Ixtiyoriy)</h3>
-                        <p class="settings-hint" data-i18n="apiGeminiHint">Sayt statistikasi bo'yicha sun'iy intellekt xulosasini olish uchun Google Gemini API kalitini kiriting.</p>
-                        <div class="settings-group">
-                            <label data-i18n="lblGeminiKey">Gemini API Key:</label>
-                            <input type="password" id="gemini-api-key" placeholder="AIzaSy...">
-                        </div>
-                        <button id="save-api-btn" class="primary-btn" style="margin-bottom: 20px;" data-i18n="btnSaveAPI">Kilitni Saqlash</button>
-                        
-                        <div class="ai-analysis-box" style="background: rgba(15, 23, 42, 0.5); padding: 20px; border-radius: 12px; border: 1px solid var(--accent-color);">
-                            <h4 style="color: var(--accent-color); margin-bottom: 10px;" data-i18n="aiAnalysisTitle">Umumiy Natijalar Tahlili</h4>
-                            <button id="gemini-analyze-btn" class="secondary-btn" data-i18n="btnAnalyzeAI">AI Xulosasini Olish</button>
-                            <div id="gemini-analysis-output" style="margin-top: 15px; font-size: 0.95rem; line-height: 1.5; color: #e2e8f0; white-space: pre-wrap;"></div>
                         </div>
                     </div>
                 </div>
@@ -462,6 +490,29 @@
                     <div>
                         <button id="download-qr-btn" class="primary-btn" style="max-width: 300px;" data-i18n="btnDownloadQR">QR Kodni Yuklab Olish (PNG)</button>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Instruction Screen (Yo'riqnoma) -->
+        <section id="instruction-screen" class="screen hidden">
+            <div class="landing-container">
+                <div class="glass-card instruction-card fade-in" style="max-width: 600px; width: 100%; text-align: left;">
+                    <h2 id="inst-title" style="color: var(--accent-color); margin-bottom: 20px; font-size: 1.8rem; text-align: center;">Fan Nomi - BSB</h2>
+                    
+                    <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between;">
+                        <span style="font-weight: bold; color: white;" id="inst-time">Vaqt: 45 daqiqa</span>
+                        <span style="font-weight: bold; color: white;" id="inst-count">Savollar soni: 25 ta</span>
+                    </div>
+
+                    <h3 data-i18n="instructionRules" style="color: white; margin-bottom: 15px; font-size: 1.2rem;">Test ishlash qoidalari:</h3>
+                    <ul style="color: var(--text-secondary); line-height: 1.8; margin-bottom: 30px; padding-left: 20px;">
+                        <li data-i18n="rule1">Testni boshlagandan so'ng vaqt ortga hisoblana boshlaydi.</li>
+                        <li data-i18n="rule2">Sahifani yangilash (Refresh) yoki yopish taqiqlanadi (natija yo'qolishi mumkin).</li>
+                        <li data-i18n="rule3">Yopiq testlarda faqat bitta to'g'ri javobni belgilang, ochiq savollarda esa javobni klaviaturada qo'lda yozing.</li>
+                    </ul>
+
+                    <button id="begin-test-btn" class="primary-btn" style="width: 100%; font-size: 1.2rem; padding: 15px; background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);" data-i18n="btnBeginTest">Testni boshlash</button>
                 </div>
             </div>
         </section>
@@ -555,5 +606,25 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
     <script src="lang.js"></script>
     <script src="script.js"></script>
+
+    <!-- Gemini AI Overlay -->
+    <div id="gemini-overlay" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+        <div style="background: var(--bg-secondary); padding: 30px; border-radius: 16px; width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto; border: 1px solid var(--accent-color); box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative;">
+            <h2 style="color: white; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;" data-i18n="aiAnalysisTitle">
+                <span style="font-size: 24px;">✨</span> Gemini AI Tahlili
+            </h2>
+            
+            <div id="gemini-loading" style="display: flex; flex-direction: column; align-items: center; padding: 40px 0;">
+                <div class="spinner" style="width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.1); border-left-color: var(--accent-color); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+                <p style="color: var(--text-secondary); font-size: 16px; text-align: center;" data-i18n="aiAnalyzing">Gemini AI sinf natijalari va kognitiv darajalarni tahlil qilmoqda...</p>
+            </div>
+            
+            <div id="gemini-analysis-output" style="color: white; line-height: 1.6; font-size: 15px; display: none;"></div>
+            
+            <div style="text-align: right; margin-top: 30px;">
+                <button id="close-gemini-btn" class="secondary-btn" data-i18n="btnCloseAI">Natijani yopish</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
