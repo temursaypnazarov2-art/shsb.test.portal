@@ -783,7 +783,7 @@ function renderQuestionsList() {
         div.innerHTML = `
             <div class="q-info">
                 <div class="q-text">${realIndex + 1}. ${q.question} <span class="subject-badge">${q.subject}</span></div>
-                <div class="q-answer-check">✅ To'g'ri: ${q.options[q.correct]} (${q.points} ball)</div>
+                <div class="q-answer-check">✅ To'g'ri: ${q.type === 'open' ? q.openAnswer : q.options[q.correct]} (${q.points} ball)</div>
             </div>
             <button class="danger-btn" onclick="deleteQuestion(${realIndex})">${t('btnDelete') || "O'chirish"}</button>
         `;
