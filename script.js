@@ -1,4 +1,4 @@
-/**
+﻿/**
  * shsb.test.portal - Script Logic with Docx, Telegram, Filters, Leaderboard, Canvas Cert & Audio
  * Author: Antigravity AI
  */
@@ -216,7 +216,7 @@ let questions = questionsDatabase[adminActiveQuarter];
 let teacherTokens = JSON.parse(localStorage.getItem('quiz_teacher_tokens')) || [];
 let showAnswersToStudent = localStorage.getItem('quiz_show_answers') === 'true';
 let geminiApiKey = localStorage.getItem('gemini_api_key') || "";
-let currentTeacherSession = null; 
+let currentTeacherSession = null;
 let currentScreen = 'auth';
 let isTestActive = false;
 
@@ -287,7 +287,7 @@ let studentClass = "";
 let studentSubject = "";
 let studentQuarter = "";
 let currentQuizQuestions = [];
-let studentAnswers = []; 
+let studentAnswers = [];
 let earnedPoints = [];
 let isLocked = false;
 let blockCount = 0;
@@ -446,7 +446,7 @@ const unlockError = document.getElementById('unlock-error');
 const qrCanvas = document.getElementById('qr-canvas');
 const downloadQrBtn = document.getElementById('download-qr-btn');
 
-    function init() {
+function init() {
     seedDefaultQuestions();
     seedDefaultPins();
     if (totalQuestionsSpan) totalQuestionsSpan.textContent = questions.length;
@@ -883,7 +883,7 @@ function renderTeacherTokens() {
         const validTokens = teacherTokens.filter(t => t.expireAt > now);
         if (validTokens.length > 0) {
             const latest = validTokens[validTokens.length - 1];
-            const dateStr = `${new Date(latest.expireAt).getFullYear()}-${String(new Date(latest.expireAt).getMonth()+1).padStart(2, '0')}-${String(new Date(latest.expireAt).getDate()).padStart(2, '0')} ${String(new Date(latest.expireAt).getHours()).padStart(2, '0')}:${String(new Date(latest.expireAt).getMinutes()).padStart(2, '0')}`;
+            const dateStr = `${new Date(latest.expireAt).getFullYear()}-${String(new Date(latest.expireAt).getMonth() + 1).padStart(2, '0')}-${String(new Date(latest.expireAt).getDate()).padStart(2, '0')} ${String(new Date(latest.expireAt).getHours()).padStart(2, '0')}:${String(new Date(latest.expireAt).getMinutes()).padStart(2, '0')}`;
             activeDisplay.innerHTML = `<span data-i18n="currentActiveToken">${t('currentActiveToken') || 'Joriy vaqtinchalik parol:'}</span> <strong style="font-family:monospace; color:var(--text-color);">${latest.token}</strong> | <span data-i18n="thExpireDate">${t('thExpireDate') || 'Amal qilish muddati:'}</span> ${dateStr}`;
         } else {
             activeDisplay.innerHTML = `<span data-i18n="noActiveToken">${t('noActiveToken') || 'Faol vaqtinchalik parol mavjud emas'}</span>`;
@@ -1107,7 +1107,7 @@ function showStudentDetails(result) {
             const qList = (questionsDatabase[qtr] || []).filter(q => q.subject === result.subject);
             if (qList[i]?.options?.[ans]) ansText = qList[i].options[ans];
         }
-        
+
         html += `
         <div style="padding: 10px; background: rgba(0,0,0,0.2); border-left: 4px solid ${color}; border-radius: 4px;">
             <div style="font-weight:bold; margin-bottom: 5px;">Savol ${i + 1} <span style="float:right; color: ${color};">${status} (${earned} ball)</span></div>
@@ -1115,7 +1115,7 @@ function showStudentDetails(result) {
         </div>`;
     });
     html += '</div>';
-    
+
     content.innerHTML = html;
     overlay.classList.remove('hidden');
 }
@@ -1193,7 +1193,14 @@ if (beginTestBtn) {
         document.addEventListener('visibilitychange', handleCheating);
         window.addEventListener('blur', handleCheating);
         document.addEventListener('fullscreenchange', handleCheating);
-        document.documentElement.requestFullscreen().catch(e => e);
+        document.addEventListener('webkitfullscreenchange', handleCheating);
+        document.addEventListener('mozfullscreenchange', handleCheating);
+        document.addEventListener('MSFullscreenChange', handleCheating);
+        const docElm = document.documentElement;
+        if (docElm.requestFullscreen) docElm.requestFullscreen().catch(e => e);
+        else if (docElm.webkitRequestFullscreen) docElm.webkitRequestFullscreen();
+        else if (docElm.mozRequestFullScreen) docElm.mozRequestFullScreen();
+        else if (docElm.msRequestFullscreen) docElm.msRequestFullscreen();
         startTimer();
         loadQuestion();
     });
@@ -1267,8 +1274,11 @@ function finishQuiz() {
     document.removeEventListener('visibilitychange', handleCheating);
     window.removeEventListener('blur', handleCheating);
     document.removeEventListener('fullscreenchange', handleCheating);
+    document.removeEventListener('webkitfullscreenchange', handleCheating);
+    document.removeEventListener('mozfullscreenchange', handleCheating);
+    document.removeEventListener('MSFullscreenChange', handleCheating);
     clearInterval(timerInterval);
-    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
     quizScreen.classList.add('hidden');
     resultScreen.classList.remove('hidden');
     currentScreen = 'result';
@@ -1374,7 +1384,11 @@ if (unlockBtn) unlockBtn.addEventListener('click', () => {
     if (pass === requiredPin || btoa(pass) === HASHED_ADMIN_PASS) {
         isLocked = false;
         lockScreen.classList.add('hidden');
-        document.documentElement.requestFullscreen().catch(e => e);
+        const docElm = document.documentElement;
+        if (docElm.requestFullscreen) docElm.requestFullscreen().catch(e => e);
+        else if (docElm.webkitRequestFullscreen) docElm.webkitRequestFullscreen();
+        else if (docElm.mozRequestFullScreen) docElm.mozRequestFullScreen();
+        else if (docElm.msRequestFullscreen) docElm.msRequestFullscreen();
         startTimer();
     } else {
         unlockError.classList.remove('hidden');
@@ -1386,75 +1400,75 @@ if (downloadCertBtn) {
         const canvas = document.createElement('canvas');
         canvas.width = 1000;
         canvas.height = 700;
-    const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d');
 
-    // Background Gradient
-    const grd = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    grd.addColorStop(0, "#0f172a");
-    grd.addColorStop(1, "#1e293b");
-    ctx.fillStyle = grd;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Background Gradient
+        const grd = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        grd.addColorStop(0, "#0f172a");
+        grd.addColorStop(1, "#1e293b");
+        ctx.fillStyle = grd;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Border
-    ctx.strokeStyle = "#38bdf8";
-    ctx.lineWidth = 15;
-    ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+        // Border
+        ctx.strokeStyle = "#38bdf8";
+        ctx.lineWidth = 15;
+        ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
 
-    // Inner gold border
-    ctx.strokeStyle = "#f59e0b";
-    ctx.lineWidth = 5;
-    ctx.strokeRect(40, 40, canvas.width - 80, canvas.height - 80);
+        // Inner gold border
+        ctx.strokeStyle = "#f59e0b";
+        ctx.lineWidth = 5;
+        ctx.strokeRect(40, 40, canvas.width - 80, canvas.height - 80);
 
-    // Text Header
-    ctx.fillStyle = "#38bdf8";
-    ctx.font = "bold 50px Outfit, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("FAXRIIY YORLIQ", canvas.width / 2, 120);
+        // Text Header
+        ctx.fillStyle = "#38bdf8";
+        ctx.font = "bold 50px Outfit, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("FAXRIIY YORLIQ", canvas.width / 2, 120);
 
-    // School Name
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "30px Outfit, sans-serif";
-    ctx.fillText("Xo'jayli tumani Ixtisoslashtirilgan Maktabi", canvas.width / 2, 180);
+        // School Name
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "30px Outfit, sans-serif";
+        ctx.fillText("Xo'jayli tumani Ixtisoslashtirilgan Maktabi", canvas.width / 2, 180);
 
-    // Awarded to
-    ctx.fillStyle = "white";
-    ctx.font = "24px Outfit, sans-serif";
-    ctx.fillText("Ushbu sertifikat topshiriladi:", canvas.width / 2, 280);
+        // Awarded to
+        ctx.fillStyle = "white";
+        ctx.font = "24px Outfit, sans-serif";
+        ctx.fillText("Ushbu sertifikat topshiriladi:", canvas.width / 2, 280);
 
-    // Student Name
-    ctx.fillStyle = "#f59e0b";
-    ctx.font = "bold 60px Outfit, sans-serif";
-    ctx.fillText(studentName, canvas.width / 2, 360);
+        // Student Name
+        ctx.fillStyle = "#f59e0b";
+        ctx.font = "bold 60px Outfit, sans-serif";
+        ctx.fillText(studentName, canvas.width / 2, 360);
 
-    // Description
-    ctx.fillStyle = "white";
-    ctx.font = "26px Outfit, sans-serif";
-    ctx.fillText(`${studentClass}-sinf o'quvchisi, ${studentSubject} fanidan`, canvas.width / 2, 450);
-    ctx.fillText(`Ichki SHSB sinovida a'lo natija (${totalUserPoints.toFixed(1)} ball) ko'rsatganligi uchun.`, canvas.width / 2, 500);
+        // Description
+        ctx.fillStyle = "white";
+        ctx.font = "26px Outfit, sans-serif";
+        ctx.fillText(`${studentClass}-sinf o'quvchisi, ${studentSubject} fanidan`, canvas.width / 2, 450);
+        ctx.fillText(`Ichki SHSB sinovida a'lo natija (${totalUserPoints.toFixed(1)} ball) ko'rsatganligi uchun.`, canvas.width / 2, 500);
 
-    // Date and Signatures
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "20px Courier New, monospace";
-    ctx.fillText(`Sana: ${new Date().toLocaleDateString()}`, 200, 620);
-    ctx.fillText("Maktab ma'muriyati", 800, 620);
+        // Date and Signatures
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "20px Courier New, monospace";
+        ctx.fillText(`Sana: ${new Date().toLocaleDateString()}`, 200, 620);
+        ctx.fillText("Maktab ma'muriyati", 800, 620);
 
-    // Line for signatures
-    ctx.beginPath();
-    ctx.moveTo(120, 590);
-    ctx.lineTo(280, 590);
-    ctx.stroke();
+        // Line for signatures
+        ctx.beginPath();
+        ctx.moveTo(120, 590);
+        ctx.lineTo(280, 590);
+        ctx.stroke();
 
-    ctx.beginPath();
-    ctx.moveTo(700, 590);
-    ctx.lineTo(900, 590);
-    ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(700, 590);
+        ctx.lineTo(900, 590);
+        ctx.stroke();
 
-    // Trigger Download
-    const link = document.createElement('a');
-    link.download = `Sertifikat_${studentName.replace(/\s+/g, '_')}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-});
+        // Trigger Download
+        const link = document.createElement('a');
+        link.download = `Sertifikat_${studentName.replace(/\s+/g, '_')}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
 }
 
 // --- QR Code Generator (QRious) ---
@@ -1871,8 +1885,11 @@ function handleCheating(e) {
     if (isTestActive && !isLocked) {
         if (document.hidden || (e && e.type === 'blur')) {
             triggerLock();
-        } else if (e && e.type === 'fullscreenchange' && !document.fullscreenElement) {
-            triggerLock();
+        } else if (e && e.type.includes('fullscreenchange')) {
+            const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+            if (!isFullscreen) {
+                triggerLock();
+            }
         }
     }
 }
