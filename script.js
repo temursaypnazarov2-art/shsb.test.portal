@@ -218,6 +218,7 @@ let showAnswersToStudent = localStorage.getItem('quiz_show_answers') === 'true';
 let geminiApiKey = localStorage.getItem('gemini_api_key') || "";
 let currentTeacherSession = null; 
 let currentScreen = 'auth';
+let isTestActive = false;
 
 ensureSubjectQuarterMaps();
 
@@ -1258,6 +1259,9 @@ if (nextBtn) nextBtn.addEventListener('click', () => {
 });
 
 function finishQuiz() {
+    isTestActive = false;
+    document.removeEventListener('visibilitychange', handleCheating);
+    window.removeEventListener('blur', handleCheating);
     clearInterval(timerInterval);
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     quizScreen.classList.add('hidden');
@@ -1344,6 +1348,7 @@ function finishQuiz() {
 function triggerLock() {
     blockCount++;
     isLocked = true;
+    clearInterval(timerInterval);
     lockScreen.classList.remove('hidden');
     playSound('wrong');
     unlockError.classList.add('hidden');
@@ -1353,18 +1358,6 @@ function triggerLock() {
         teacherUnlockInput.focus();
     }
 }
-
-document.addEventListener('visibilitychange', () => {
-    if (document.hidden && currentScreen === 'quiz' && !isLocked) {
-        triggerLock();
-    }
-});
-
-window.addEventListener('blur', () => {
-    if (currentScreen === 'quiz' && !isLocked) {
-        triggerLock();
-    }
-});
 
 if (unlockBtn) unlockBtn.addEventListener('click', () => {
     const teacherUnlockInput = document.getElementById('teacherUnlockInput');
@@ -1377,6 +1370,7 @@ if (unlockBtn) unlockBtn.addEventListener('click', () => {
         isLocked = false;
         lockScreen.classList.add('hidden');
         document.documentElement.requestFullscreen().catch(e => e);
+        startTimer();
     } else {
         unlockError.classList.remove('hidden');
     }
@@ -1866,3 +1860,18 @@ init();
 
 
 
+
+
+function handleCheating(e) {
+    if (isTestActive && (document.hidden || (e && e.type === 'blur')) && !isLocked) {
+        triggerLock();
+    }
+}
+
+window.addEventListener('beforeunload', function (e) {
+    if (isTestActive && !isLocked) {
+        e.preventDefault();
+        e.returnValue = "Siz testni tark etmoqchimisiz? Natijangiz saqlanmaydi yoki bloklanadi!";
+        return e.returnValue;
+    }
+});
