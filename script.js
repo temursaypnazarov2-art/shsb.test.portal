@@ -1189,6 +1189,10 @@ if (beginTestBtn) {
         instructionScreen.classList.add('hidden');
         quizScreen.classList.remove('hidden');
         currentScreen = 'quiz';
+        isTestActive = true;
+        document.addEventListener('visibilitychange', handleCheating);
+        window.addEventListener('blur', handleCheating);
+        document.addEventListener('fullscreenchange', handleCheating);
         document.documentElement.requestFullscreen().catch(e => e);
         startTimer();
         loadQuestion();
@@ -1262,6 +1266,7 @@ function finishQuiz() {
     isTestActive = false;
     document.removeEventListener('visibilitychange', handleCheating);
     window.removeEventListener('blur', handleCheating);
+    document.removeEventListener('fullscreenchange', handleCheating);
     clearInterval(timerInterval);
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     quizScreen.classList.add('hidden');
@@ -1863,8 +1868,12 @@ init();
 
 
 function handleCheating(e) {
-    if (isTestActive && (document.hidden || (e && e.type === 'blur')) && !isLocked) {
-        triggerLock();
+    if (isTestActive && !isLocked) {
+        if (document.hidden || (e && e.type === 'blur')) {
+            triggerLock();
+        } else if (e && e.type === 'fullscreenchange' && !document.fullscreenElement) {
+            triggerLock();
+        }
     }
 }
 
