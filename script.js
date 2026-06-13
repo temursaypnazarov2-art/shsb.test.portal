@@ -484,14 +484,14 @@ const downloadQrBtn = document.getElementById('download-qr-btn');
     }
 
     if (adminSettingsQuarter) {
-        adminSettingsQuarter.addEventListener('change', (e) => {
+        if (adminSettingsQuarter) adminSettingsQuarter.addEventListener('change', (e) => {
             const quarter = e.target.value;
             setAdminActiveQuarter(quarter, true);
             loadAdminPinFields(quarter);
         });
     }
     if (adminQuestionsQuarter) {
-        adminQuestionsQuarter.addEventListener('change', (e) => {
+        if (adminQuestionsQuarter) adminQuestionsQuarter.addEventListener('change', (e) => {
             const quarter = e.target.value;
             setAdminActiveQuarter(quarter, true);
             renderQuestionsList();
@@ -565,7 +565,7 @@ function playSound(type) {
     }
 }
 
-adminLoginBtn.addEventListener('click', () => {
+if (adminLoginBtn) adminLoginBtn.addEventListener('click', () => {
     studentLoginSection.classList.add('hidden');
     adminLoginSection.classList.remove('hidden');
     adminPortalPassInput.value = "";
@@ -573,13 +573,13 @@ adminLoginBtn.addEventListener('click', () => {
     adminPortalPassInput.focus();
 });
 
-backToStudentBtn.addEventListener('click', () => {
+if (backToStudentBtn) backToStudentBtn.addEventListener('click', () => {
     adminLoginSection.classList.add('hidden');
     studentLoginSection.classList.remove('hidden');
 });
 
-adminAuthSubmit.addEventListener('click', handleAdminAuth);
-adminPortalPassInput.addEventListener('keypress', (e) => {
+if (adminAuthSubmit) adminAuthSubmit.addEventListener('click', handleAdminAuth);
+if (adminPortalPassInput) adminPortalPassInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') handleAdminAuth();
 });
 
@@ -724,7 +724,7 @@ function updateTeacherTimer() {
     teacherTimerText.textContent = `${minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
 }
 
-adminLogoutBtn.addEventListener('click', () => {
+if (adminLogoutBtn) adminLogoutBtn.addEventListener('click', () => {
     adminPanel.classList.add('hidden');
     authScreen.classList.remove('hidden');
     adminLoginSection.classList.add('hidden');
@@ -735,7 +735,7 @@ adminLogoutBtn.addEventListener('click', () => {
     renderLeaderboard();
 });
 
-saveTeacherPinBtn.addEventListener('click', () => {
+if (saveTeacherPinBtn) saveTeacherPinBtn.addEventListener('click', () => {
     if (!currentTeacherSession) return;
     const pin = teacherSubjectPin.value.trim();
     const dur = parseInt(teacherSubjectDuration.value) || 20;
@@ -778,7 +778,7 @@ saveTeacherPinBtn.addEventListener('click', () => {
     renderQuestionsList();
 });
 
-teacherSubjectQuarter.addEventListener('change', () => {
+if (teacherSubjectQuarter) teacherSubjectQuarter.addEventListener('change', () => {
     if (!currentTeacherSession) return;
     const qtr = teacherSubjectQuarter.value;
     const subj = currentTeacherSession.subject;
@@ -819,7 +819,7 @@ Object.keys({
     });
 });
 
-saveSettingsBtn.addEventListener('click', () => {
+if (saveSettingsBtn) saveSettingsBtn.addEventListener('click', () => {
     const dur = parseInt(testDurationInput.value);
     const token = tgBotTokenInput.value.trim();
     const chatId = tgChatIdInput.value.trim();
@@ -842,7 +842,7 @@ function generateRandomString(length) {
     return result;
 }
 
-generateTokenBtn.addEventListener('click', () => {
+if (generateTokenBtn) generateTokenBtn.addEventListener('click', () => {
     const tName = teacherNameInput.value.trim();
     const tSubj = teacherSubjectSelect.value;
     const expiryVal = tempPasswordExpiry.value;
@@ -941,7 +941,7 @@ function renderQuestionsList() {
     });
 }
 
-addQBtn.addEventListener('click', () => {
+if (addQBtn) addQBtn.addEventListener('click', () => {
     const text = newQText.value.trim();
     const pts = parseFloat(newQPoints.value);
     const typeElement = document.getElementById('new-q-type');
@@ -1073,7 +1073,7 @@ function renderResultsTable() {
 
 const closeDetailsBtn = document.getElementById('close-details-btn');
 if (closeDetailsBtn) {
-    closeDetailsBtn.addEventListener('click', () => {
+    if (closeDetailsBtn) closeDetailsBtn.addEventListener('click', () => {
         const overlay = document.getElementById('student-details-overlay');
         if (overlay) overlay.classList.add('hidden');
     });
@@ -1119,10 +1119,10 @@ function showStudentDetails(result) {
     overlay.classList.remove('hidden');
 }
 
-filterClass.addEventListener('change', renderResultsTable);
+if (filterClass) filterClass.addEventListener('change', renderResultsTable);
 if (filterQuarter) filterQuarter.addEventListener('change', renderResultsTable);
 
-startBtn.addEventListener('click', () => {
+if (startBtn) startBtn.addEventListener('click', () => {
     studentName = studentNameInput.value.trim();
     studentClass = studentClassInput.value;
     studentSubject = studentSubjectInput.value;
@@ -1184,7 +1184,7 @@ startBtn.addEventListener('click', () => {
 });
 
 if (beginTestBtn) {
-    beginTestBtn.addEventListener('click', () => {
+    if (beginTestBtn) beginTestBtn.addEventListener('click', () => {
         instructionScreen.classList.add('hidden');
         quizScreen.classList.remove('hidden');
         currentScreen = 'quiz';
@@ -1251,7 +1251,7 @@ function loadQuestion() {
     }
 }
 
-nextBtn.addEventListener('click', () => {
+if (nextBtn) nextBtn.addEventListener('click', () => {
     currentQuestionIndex++;
     if (currentQuestionIndex < currentQuizQuestions.length) loadQuestion();
     else finishQuiz();
@@ -1366,7 +1366,7 @@ window.addEventListener('blur', () => {
     }
 });
 
-unlockBtn.addEventListener('click', () => {
+if (unlockBtn) unlockBtn.addEventListener('click', () => {
     const teacherUnlockInput = document.getElementById('teacherUnlockInput');
     const pass = teacherUnlockInput ? teacherUnlockInput.value.trim() : "";
     let requiredPin = "admin123";
@@ -1383,7 +1383,7 @@ unlockBtn.addEventListener('click', () => {
 });
 
 if (downloadCertBtn) {
-    downloadCertBtn.addEventListener('click', () => {
+    if (downloadCertBtn) downloadCertBtn.addEventListener('click', () => {
         const canvas = document.createElement('canvas');
         canvas.width = 1000;
         canvas.height = 700;
@@ -1471,7 +1471,7 @@ function generateQR() {
     });
 }
 
-downloadQrBtn.addEventListener('click', () => {
+if (downloadQrBtn) downloadQrBtn.addEventListener('click', () => {
     const link = document.createElement('a');
     link.download = 'QR_Kod_SHSB.png';
     link.href = qrCanvas.toDataURL('image/png');
@@ -1827,7 +1827,7 @@ if (analyzeBtn) analyzeBtn.addEventListener('click', compareQuarters);
 
 const viewDetailsBtn = document.getElementById('view-details-btn');
 if (viewDetailsBtn) {
-    viewDetailsBtn.addEventListener('click', () => {
+    if (viewDetailsBtn) viewDetailsBtn.addEventListener('click', () => {
         const studentSelect = document.getElementById('studentSelect');
         const filterCls = filterClass?.value || 'all';
         const filterQ = filterQuarter?.value || 'all';
