@@ -50,13 +50,15 @@ function saveAdminPinFields(quarter) {
         if (el) subjectPinsDatabase[subj][quarter] = el.value.trim();
         if (durEl) subjectDurationsDatabase[subj][quarter] = parseInt(durEl.value, 10) || 20;
     });
-    localStorage.setItem('quiz_subject_pins_db', JSON.stringify(subjectPinsDatabase));
-    localStorage.setItem('quiz_subject_durations_db', JSON.stringify(subjectDurationsDatabase));
+    if (database) {
+        database.ref('subjectPinsDatabase').set(subjectPinsDatabase);
+        database.ref('subjectDurationsDatabase').set(subjectDurationsDatabase);
+    }
 }
 
 function setAdminActiveQuarter(quarter, syncSelectors = true) {
     adminActiveQuarter = quarter;
-    localStorage.setItem('quiz_admin_quarter', quarter);
+    if (database) database.ref('adminActiveQuarter').set(quarter);
     if (!questionsDatabase[quarter]) questionsDatabase[quarter] = [];
     questions = questionsDatabase[quarter];
     if (syncSelectors) {
@@ -104,120 +106,113 @@ const defaultSavollar = [
     { subject: "Informatika", question: "19-bob. HTML qanday til hisoblanadi?", options: ["Dasturlash tili", "Hypertext Markup Language", "Ma'lumotlar bazasi tili", "Operatsion tizim"], correct: 1, points: 2.0 }
 ];
 
-// Load from LocalStorage
-let questionsDatabase = {
-    "1": JSON.parse(localStorage.getItem('questions_q1')) || [],
-    "2": JSON.parse(localStorage.getItem('questions_q2')) || [],
-    "3": JSON.parse(localStorage.getItem('questions_q3')) || [],
-    "4": JSON.parse(localStorage.getItem('questions_q4')) || []
+// --- Firebase Configuration ---
+const firebaseConfig = {
+    apiKey: "AIzaSyD8CslmUKi6d-QODM6oOxC1CulrOh9Icvc",
+    authDomain: "shsbtestportal.firebaseapp.com",
+    projectId: "shsbtestportal",
+    storageBucket: "shsbtestportal.firebasestorage.app",
+    messagingSenderId: "371730937594",
+    appId: "1:371730937594:web:32fd072b4bc3e007237b43",
+    measurementId: "G-432GG1SSCR",
+    databaseURL: "https://shsbtestportal-default-rtdb.firebaseio.com"
 };
 
-let resultsDatabase = {
-    "1": JSON.parse(localStorage.getItem('results_q1')) || [],
-    "2": JSON.parse(localStorage.getItem('results_q2')) || [],
-    "3": JSON.parse(localStorage.getItem('results_q3')) || [],
-    "4": JSON.parse(localStorage.getItem('results_q4')) || []
-};
-
-(function migrateOldResults() {
-    const oldResults = localStorage.getItem('quiz_results_db');
-    if (!oldResults) return;
-    try {
-        const parsed = JSON.parse(oldResults);
-        QUARTERS.forEach(q => {
-            if (Array.isArray(parsed[q]) && parsed[q].length && !resultsDatabase[q].length) {
-                resultsDatabase[q] = parsed[q];
-            }
-        });
-        QUARTERS.forEach(q => localStorage.setItem(`results_q${q}`, JSON.stringify(resultsDatabase[q] || [])));
-        localStorage.removeItem('quiz_results_db');
-    } catch (e) { /* ignore */ }
-})();
-let quizDuration = parseInt(localStorage.getItem('quiz_duration')) || 20; // Default 20 mins
-let tgBotToken = localStorage.getItem('tg_bot_token') || "";
-let tgChatId = localStorage.getItem('tg_chat_id') || "";
-
-// New isolated storage for pins and durations
-let subjectPinsDatabase = JSON.parse(localStorage.getItem('quiz_subject_pins_db'));
-let subjectDurationsDatabase = JSON.parse(localStorage.getItem('quiz_subject_durations_db'));
-let subjectTestTypesDatabase = JSON.parse(localStorage.getItem('quiz_subject_test_types_db'));
-let subjectUnblockPinsDatabase = JSON.parse(localStorage.getItem('quiz_subject_unblock_pins_db'));
-let subjectClassesDatabase = JSON.parse(localStorage.getItem('quiz_subject_classes_db'));
-
-// Migration for pins and durations
-if (!subjectPinsDatabase) {
-    let oldPins = JSON.parse(localStorage.getItem('quiz_subject_pins')) || {};
-    subjectPinsDatabase = {
-        "Ona tili": { "1": oldPins["Ona tili"] || "", "2": "", "3": "", "4": "" },
-        "Matematika": { "1": oldPins["Matematika"] || "", "2": "", "3": "", "4": "" },
-        "Fizika": { "1": oldPins["Fizika"] || "", "2": "", "3": "", "4": "" },
-        "Kimyo": { "1": oldPins["Kimyo"] || "", "2": "", "3": "", "4": "" },
-        "Biologiya": { "1": oldPins["Biologiya"] || "", "2": "", "3": "", "4": "" },
-        "Tarix": { "1": oldPins["Tarix"] || "", "2": "", "3": "", "4": "" },
-        "Huquq": { "1": oldPins["Huquq"] || "", "2": "", "3": "", "4": "" },
-        "Informatika": { "1": oldPins["Informatika"] || "", "2": "", "3": "", "4": "" }
-    };
-    localStorage.setItem('quiz_subject_pins_db', JSON.stringify(subjectPinsDatabase));
+let app, database;
+try {
+    app = firebase.initializeApp(firebaseConfig);
+    database = firebase.database();
+} catch (e) {
+    console.error("Firebase init error", e);
 }
 
-if (!subjectDurationsDatabase) {
-    let oldDurations = JSON.parse(localStorage.getItem('quiz_subject_durations')) || {};
-    subjectDurationsDatabase = {
-        "Ona tili": { "1": oldDurations["Ona tili"] || 20, "2": 20, "3": 20, "4": 20 },
-        "Matematika": { "1": oldDurations["Matematika"] || 20, "2": 20, "3": 20, "4": 20 },
-        "Fizika": { "1": oldDurations["Fizika"] || 20, "2": 20, "3": 20, "4": 20 },
-        "Kimyo": { "1": oldDurations["Kimyo"] || 20, "2": 20, "3": 20, "4": 20 },
-        "Biologiya": { "1": oldDurations["Biologiya"] || 20, "2": 20, "3": 20, "4": 20 },
-        "Tarix": { "1": oldDurations["Tarix"] || 20, "2": 20, "3": 20, "4": 20 },
-        "Huquq": { "1": oldDurations["Huquq"] || 20, "2": 20, "3": 20, "4": 20 },
-        "Informatika": { "1": oldDurations["Informatika"] || 20, "2": 20, "3": 20, "4": 20 }
-    };
-    localStorage.setItem('quiz_subject_durations_db', JSON.stringify(subjectDurationsDatabase));
-}
-
-if (!subjectTestTypesDatabase) {
-    subjectTestTypesDatabase = {
-        "Ona tili": { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" },
-        "Matematika": { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" },
-        "Fizika": { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" },
-        "Kimyo": { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" },
-        "Biologiya": { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" },
-        "Tarix": { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" },
-        "Huquq": { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" },
-        "Informatika": { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" }
-    };
-    localStorage.setItem('quiz_subject_test_types_db', JSON.stringify(subjectTestTypesDatabase));
-}
-
-if (!subjectUnblockPinsDatabase) {
-    subjectUnblockPinsDatabase = {};
-    SUBJECTS.forEach(subj => {
-        subjectUnblockPinsDatabase[subj] = { "1": "admin123", "2": "admin123", "3": "admin123", "4": "admin123" };
-    });
-    localStorage.setItem('quiz_subject_unblock_pins_db', JSON.stringify(subjectUnblockPinsDatabase));
-}
-
-if (!subjectClassesDatabase) {
-    subjectClassesDatabase = {};
-    SUBJECTS.forEach(subj => {
-        subjectClassesDatabase[subj] = { "1": "all", "2": "all", "3": "all", "4": "all" };
-    });
-    localStorage.setItem('quiz_subject_classes_db', JSON.stringify(subjectClassesDatabase));
-}
-
-let subjectQuarters = JSON.parse(localStorage.getItem('quiz_subject_quarters')) || {
-    "Ona tili": "1", "Matematika": "1", "Fizika": "1", "Kimyo": "1",
-    "Biologiya": "1", "Tarix": "1", "Huquq": "1", "Informatika": "1"
-};
-
-let adminActiveQuarter = localStorage.getItem('quiz_admin_quarter') || "1";
-if (!questionsDatabase[adminActiveQuarter]) questionsDatabase[adminActiveQuarter] = [];
-let questions = questionsDatabase[adminActiveQuarter];
-let teacherTokens = JSON.parse(localStorage.getItem('quiz_teacher_tokens')) || [];
-let showAnswersToStudent = localStorage.getItem('quiz_show_answers') === 'true';
-let geminiApiKey = localStorage.getItem('gemini_api_key') || "";
+// Global Variables
+let questionsDatabase = { "1": [], "2": [], "3": [], "4": [] };
+let resultsDatabase = { "1": [], "2": [], "3": [], "4": [] };
+let quizDuration = 20;
+let tgBotToken = "";
+let tgChatId = "";
+let subjectPinsDatabase = {};
+let subjectDurationsDatabase = {};
+let subjectTestTypesDatabase = {};
+let subjectUnblockPinsDatabase = {};
+let subjectClassesDatabase = {};
+let subjectQuarters = {};
+let adminActiveQuarter = "1";
+let teacherTokens = [];
+let showAnswersToStudent = false;
+let geminiApiKey = localStorage.getItem('gemini_api_key') || ""; // Keep AI key local for privacy
 let currentTeacherSession = null;
 let currentScreen = 'auth';
+
+// --- Firebase Sync Logic ---
+function syncFromFirebase() {
+    if (!database) return;
+    database.ref('/').on('value', snapshot => {
+        const data = snapshot.val();
+        if (data) {
+            if (data.questionsDatabase) questionsDatabase = data.questionsDatabase;
+            if (data.resultsDatabase) resultsDatabase = data.resultsDatabase;
+            if (data.quizDuration !== undefined) quizDuration = data.quizDuration;
+            if (data.tgBotToken) tgBotToken = data.tgBotToken;
+            if (data.tgChatId) tgChatId = data.tgChatId;
+            if (data.subjectPinsDatabase) subjectPinsDatabase = data.subjectPinsDatabase;
+            if (data.subjectDurationsDatabase) subjectDurationsDatabase = data.subjectDurationsDatabase;
+            if (data.subjectTestTypesDatabase) subjectTestTypesDatabase = data.subjectTestTypesDatabase;
+            if (data.subjectUnblockPinsDatabase) subjectUnblockPinsDatabase = data.subjectUnblockPinsDatabase;
+            if (data.subjectClassesDatabase) subjectClassesDatabase = data.subjectClassesDatabase;
+            if (data.subjectQuarters) subjectQuarters = data.subjectQuarters;
+            if (data.adminActiveQuarter) adminActiveQuarter = data.adminActiveQuarter;
+            if (data.teacherTokens) teacherTokens = data.teacherTokens || [];
+            if (data.showAnswersToStudent !== undefined) showAnswersToStudent = data.showAnswersToStudent;
+
+            ensureSubjectQuarterMaps();
+            questions = questionsDatabase[adminActiveQuarter] || [];
+
+            // Re-render UI based on current screen
+            if (currentScreen === 'admin') {
+                populateClassFilters();
+                renderResultsTable();
+                renderQuestions();
+                checkActiveToken();
+                loadAdminPinFields(adminActiveQuarter);
+
+                const showAnsToggle = document.getElementById('showAnswersToggle');
+                if (showAnsToggle) showAnsToggle.checked = showAnswersToStudent;
+                const setQ = document.getElementById('admin-settings-quarter');
+                if (setQ) setQ.value = adminActiveQuarter;
+            } else if (currentScreen === 'leaderboard') {
+                renderLeaderboard();
+            }
+        } else {
+            // Initial seed if Firebase is empty
+            ensureSubjectQuarterMaps();
+            seedDefaultQuestions();
+            saveAllToFirebase();
+        }
+    });
+}
+
+function saveAllToFirebase() {
+    if (!database) return;
+    database.ref('/').set({
+        questionsDatabase,
+        resultsDatabase,
+        quizDuration,
+        tgBotToken,
+        tgChatId,
+        subjectPinsDatabase,
+        subjectDurationsDatabase,
+        subjectTestTypesDatabase,
+        subjectUnblockPinsDatabase,
+        subjectClassesDatabase,
+        subjectQuarters,
+        adminActiveQuarter,
+        teacherTokens,
+        showAnswersToStudent
+    });
+}
+
 let isTestActive = false;
 
 ensureSubjectQuarterMaps();
@@ -227,16 +222,10 @@ const staticTeacherPasswords = {
 };
 
 function saveQuestions() {
-    localStorage.setItem('questions_q1', JSON.stringify(questionsDatabase["1"] || []));
-    localStorage.setItem('questions_q2', JSON.stringify(questionsDatabase["2"] || []));
-    localStorage.setItem('questions_q3', JSON.stringify(questionsDatabase["3"] || []));
-    localStorage.setItem('questions_q4', JSON.stringify(questionsDatabase["4"] || []));
+    if (database) database.ref('questionsDatabase').set(questionsDatabase);
 }
 function saveResults() {
-    localStorage.setItem('results_q1', JSON.stringify(resultsDatabase["1"] || []));
-    localStorage.setItem('results_q2', JSON.stringify(resultsDatabase["2"] || []));
-    localStorage.setItem('results_q3', JSON.stringify(resultsDatabase["3"] || []));
-    localStorage.setItem('results_q4', JSON.stringify(resultsDatabase["4"] || []));
+    if (database) database.ref('resultsDatabase').set(resultsDatabase);
 }
 
 function getResultsArray(filterQ) {
@@ -255,9 +244,11 @@ function saveSettings(duration, token, chatId) {
     quizDuration = duration;
     tgBotToken = token;
     tgChatId = chatId;
-    localStorage.setItem('quiz_duration', quizDuration.toString());
-    localStorage.setItem('tg_bot_token', tgBotToken);
-    localStorage.setItem('tg_chat_id', tgChatId);
+    if (database) {
+        database.ref('quizDuration').set(quizDuration);
+        database.ref('tgBotToken').set(tgBotToken);
+        database.ref('tgChatId').set(tgChatId);
+    }
 
     const quarterEl = document.getElementById('admin-settings-quarter');
     const quarter = quarterEl ? quarterEl.value : adminActiveQuarter;
@@ -273,11 +264,11 @@ function saveSettings(duration, token, chatId) {
     const toggleEl = document.getElementById('toggle-show-answers');
     if (toggleEl) {
         showAnswersToStudent = toggleEl.checked;
-        localStorage.setItem('quiz_show_answers', showAnswersToStudent);
+        if (database) database.ref('showAnswersToStudent').set(showAnswersToStudent);
     }
 }
 function saveTeacherTokens() {
-    localStorage.setItem('quiz_teacher_tokens', JSON.stringify(teacherTokens));
+    if (database) database.ref('teacherTokens').set(teacherTokens);
 }
 
 let currentQuestionIndex = 0;
@@ -325,7 +316,7 @@ function seedDefaultPins() {
     SUBJECTS.forEach(subj => {
         subjectPinsDatabase[subj]["1"] = "SHSB1";
     });
-    localStorage.setItem('quiz_subject_pins_db', JSON.stringify(subjectPinsDatabase));
+    if (database) database.ref('subjectPinsDatabase').set(subjectPinsDatabase);
 }
 
 const authScreen = document.getElementById('auth-screen');
@@ -447,7 +438,7 @@ const qrCanvas = document.getElementById('qr-canvas');
 const downloadQrBtn = document.getElementById('download-qr-btn');
 
 function init() {
-    seedDefaultQuestions();
+    syncFromFirebase();
     seedDefaultPins();
     if (totalQuestionsSpan) totalQuestionsSpan.textContent = questions.length;
     if (testDurationInput) testDurationInput.value = quizDuration;
@@ -473,7 +464,7 @@ function init() {
 
         toggleBtn.addEventListener('click', () => {
             showAnswersToStudent = !showAnswersToStudent;
-            localStorage.setItem('quiz_show_answers', showAnswersToStudent);
+            if (database) database.ref('showAnswersToStudent').set(showAnswersToStudent);
             if (showAnswersToStudent) {
                 toggleBtn.style.backgroundColor = '#10b981';
                 toggleBtn.textContent = t('btnShowAnswersOn') || "Javoblarni ko'rsatish: YOQILGAN";
@@ -761,12 +752,14 @@ if (saveTeacherPinBtn) saveTeacherPinBtn.addEventListener('click', () => {
     subjectClassesDatabase[subj][qtr] = targetClass;
     subjectQuarters[subj] = qtr;
 
-    localStorage.setItem('quiz_subject_pins_db', JSON.stringify(subjectPinsDatabase));
-    localStorage.setItem('quiz_subject_durations_db', JSON.stringify(subjectDurationsDatabase));
-    localStorage.setItem('quiz_subject_test_types_db', JSON.stringify(subjectTestTypesDatabase));
-    localStorage.setItem('quiz_subject_unblock_pins_db', JSON.stringify(subjectUnblockPinsDatabase));
-    localStorage.setItem('quiz_subject_classes_db', JSON.stringify(subjectClassesDatabase));
-    localStorage.setItem('quiz_subject_quarters', JSON.stringify(subjectQuarters));
+    if (database) {
+        database.ref('subjectPinsDatabase').set(subjectPinsDatabase);
+        database.ref('subjectDurationsDatabase').set(subjectDurationsDatabase);
+        database.ref('subjectTestTypesDatabase').set(subjectTestTypesDatabase);
+        database.ref('subjectUnblockPinsDatabase').set(subjectUnblockPinsDatabase);
+        database.ref('subjectClassesDatabase').set(subjectClassesDatabase);
+        database.ref('subjectQuarters').set(subjectQuarters);
+    }
 
     alert("Faningiz uchun sozlamalar muvaffaqiyatli saqlandi!");
     questions = questionsDatabase[qtr];
@@ -1765,18 +1758,18 @@ function exportResultsToExcel() {
     const yearStr = new Date().getFullYear();
     const sherekStr = filterQ === 'all' ? yearStr + '-sherek' : filterQ + '-sherek';
     const classStr = filterCls === 'all' ? 'Barcha sinflar' : filterCls;
-    
+
     aoa.push([`Qaraqalpaqstan Respublikası Xojeyli rayonı qánigelestirilgen mektebiniń ${classStr} klass, ${yearStr}-sherek`]);
     aoa.push(["BARCHA FANLAR páninen ótkerilgen BSB/CHSB NÁTIYJELERI"]);
     aoa.push([]);
     aoa.push([`BSB/CHSB ótkerilgen sáne: ${new Date().toLocaleDateString('en-GB')} | Sorawlar sanı: ${numQuestions} | Max ball: ${data[0].maxScore || 0} | Oqıwshılar sanı: ${data.length}`]);
 
     const headers = ["№", "Oqıwshınıń familiyası, atı"];
-    
+
     const firstR = data[0];
     const qtr = firstR.quarter || '1';
     const subjectQs = (questionsDatabase[qtr] || []).filter(q => q.subject === firstR.subject);
-    
+
     for (let i = 0; i < numQuestions; i++) {
         let cat = 'Biliw';
         if (subjectQs[i] && subjectQs[i].cognitive) {
@@ -1791,74 +1784,74 @@ function exportResultsToExcel() {
 
     data.forEach((r, idx) => {
         const row = [idx + 1, r.name];
-        
+
         let biliwTotal = 0, qollawTotal = 0, pikirlewTotal = 0;
         let biliwMax = 0, qollawMax = 0, pikirlewMax = 0;
-        
+
         const currentQs = (questionsDatabase[r.quarter || '1'] || []).filter(q => q.subject === r.subject);
-        
+
         for (let i = 0; i < numQuestions; i++) {
             const earned = (r.earnedPoints && r.earnedPoints[i] !== undefined) ? r.earnedPoints[i] : 0;
             const q = currentQs[i];
             const max = q ? (q.points || 1) : 1;
-            
+
             let cat = 'Biliw';
             if (q && q.cognitive) {
                 let c = q.cognitive.toLowerCase();
                 if (c.includes('qollaw') || c.includes('qollash') || c.includes("qo'llash")) cat = 'Qollaw';
                 else if (c.includes('pikirlew') || c.includes('mulohaza')) cat = 'Pikirlew';
             }
-            
+
             if (cat === 'Biliw') { biliwTotal += earned; biliwMax += max; }
             else if (cat === 'Qollaw') { qollawTotal += earned; qollawMax += max; }
             else { pikirlewTotal += earned; pikirlewMax += max; }
-            
+
             if (r.earnedPoints && r.earnedPoints[i] !== undefined) {
                 row.push(earned > 0 ? "+" : "-");
             } else {
                 row.push("");
             }
         }
-        
+
         row.push(biliwMax > 0 ? (biliwTotal / biliwMax * 100).toFixed(1) + '%' : '-');
         row.push(qollawMax > 0 ? (qollawTotal / qollawMax * 100).toFixed(1) + '%' : '-');
         row.push(pikirlewMax > 0 ? (pikirlewTotal / pikirlewMax * 100).toFixed(1) + '%' : '-');
         row.push(r.score || 0);
         row.push((r.percentage || 0) + '%');
-        
+
         aoa.push(row);
     });
 
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     const totalCols = headers.length;
-    
+
     ws['!merges'] = [
         { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } },
         { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } },
         { s: { r: 3, c: 0 }, e: { r: 3, c: totalCols - 1 } }
     ];
-    
+
     try {
         const titleStyle = { font: { bold: true, sz: 12 }, alignment: { horizontal: "center" } };
         const subtitleStyle = { font: { bold: true, sz: 14, color: { rgb: "0000FF" } }, alignment: { horizontal: "center" } };
         const infoStyle = { font: { bold: true, sz: 11 }, alignment: { horizontal: "center" } };
         const headerStyle = { font: { bold: true, sz: 11 }, alignment: { horizontal: "center", vertical: "center" } };
-        
+
         if (ws['A1']) ws['A1'].s = titleStyle;
         if (ws['A2']) ws['A2'].s = subtitleStyle;
         if (ws['A4']) ws['A4'].s = infoStyle;
-        
+
         for (let c = 0; c < totalCols; c++) {
             const cellRef = XLSX.utils.encode_cell({ r: 4, c: c });
             if (ws[cellRef]) ws[cellRef].s = headerStyle;
         }
-    } catch(e) {
+    } catch (e) {
         console.warn("Styling issue", e);
     }
-    
-    const wscols = [{wch: 5}, {wch: 30}];
-    for(let i=0; i<numQuestions; i++) wscols.push({wch: 15});
-    wscols.push({wch: 12}, {wch: 12}, {wch: 12}, {wch: 15}, {wch: 10});
+
+    const wscols = [{ wch: 5 }, { wch: 30 }];
+    for (let i = 0; i < numQuestions; i++) wscols.push({ wch: 15 });
+    wscols.push({ wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 15 }, { wch: 10 });
     ws['!cols'] = wscols;
 
     const wb = XLSX.utils.book_new();
