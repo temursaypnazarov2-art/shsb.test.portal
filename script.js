@@ -1,4 +1,4 @@
-﻿/**
+/**
  * shsb.test.portal - Script Logic with Docx, Telegram, Filters, Leaderboard, Canvas Cert & Audio
  * Author: Antigravity AI
  */
@@ -177,8 +177,16 @@ function syncFromFirebase() {
                 checkActiveToken();
                 loadAdminPinFields(adminActiveQuarter);
 
-                const showAnsToggle = document.getElementById('showAnswersToggle');
-                if (showAnsToggle) showAnsToggle.checked = showAnswersToStudent;
+                const toggleBtn = document.getElementById('toggleShowAnswersBtn');
+                if (toggleBtn) {
+                    if (showAnswersToStudent) {
+                        toggleBtn.style.backgroundColor = '#10b981';
+                        toggleBtn.textContent = typeof t === 'function' ? (t('btnShowAnswersOn') || "Javoblarni ko'rsatish: YOQILGAN") : "Javoblarni ko'rsatish: YOQILGAN";
+                    } else {
+                        toggleBtn.style.backgroundColor = '#ef4444';
+                        toggleBtn.textContent = typeof t === 'function' ? (t('btnShowAnswersOff') || "Javoblarni ko'rsatish: O'CHIRILGAN") : "Javoblarni ko'rsatish: O'CHIRILGAN";
+                    }
+                }
                 const setQ = document.getElementById('admin-settings-quarter');
                 if (setQ) setQ.value = adminActiveQuarter;
             } else if (currentScreen === 'leaderboard') {
@@ -456,10 +464,12 @@ function init() {
         // Initial state
         if (showAnswersToStudent) {
             toggleBtn.style.backgroundColor = '#10b981';
-            toggleBtn.textContent = t('btnShowAnswersOn') || "Javoblarni ko'rsatish: YOQILGAN";
+            toggleBtn.setAttribute('data-i18n', 'btnShowAnswersOn');
+            toggleBtn.textContent = typeof t === 'function' ? (t('btnShowAnswersOn') || "Javoblarni ko'rsatish: YOQILGAN") : "Javoblarni ko'rsatish: YOQILGAN";
         } else {
             toggleBtn.style.backgroundColor = '#ef4444';
-            toggleBtn.textContent = t('btnShowAnswersOff') || "Javoblarni ko'rsatish: O'CHIRILGAN";
+            toggleBtn.setAttribute('data-i18n', 'btnShowAnswersOff');
+            toggleBtn.textContent = typeof t === 'function' ? (t('btnShowAnswersOff') || "Javoblarni ko'rsatish: O'CHIRILGAN") : "Javoblarni ko'rsatish: O'CHIRILGAN";
         }
 
         toggleBtn.addEventListener('click', () => {
@@ -467,10 +477,12 @@ function init() {
             if (database) database.ref('showAnswersToStudent').set(showAnswersToStudent);
             if (showAnswersToStudent) {
                 toggleBtn.style.backgroundColor = '#10b981';
-                toggleBtn.textContent = t('btnShowAnswersOn') || "Javoblarni ko'rsatish: YOQILGAN";
+                toggleBtn.setAttribute('data-i18n', 'btnShowAnswersOn');
+                toggleBtn.textContent = typeof t === 'function' ? (t('btnShowAnswersOn') || "Javoblarni ko'rsatish: YOQILGAN") : "Javoblarni ko'rsatish: YOQILGAN";
             } else {
                 toggleBtn.style.backgroundColor = '#ef4444';
-                toggleBtn.textContent = t('btnShowAnswersOff') || "Javoblarni ko'rsatish: O'CHIRILGAN";
+                toggleBtn.setAttribute('data-i18n', 'btnShowAnswersOff');
+                toggleBtn.textContent = typeof t === 'function' ? (t('btnShowAnswersOff') || "Javoblarni ko'rsatish: O'CHIRILGAN") : "Javoblarni ko'rsatish: O'CHIRILGAN";
             }
         });
     }
