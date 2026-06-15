@@ -716,6 +716,47 @@ function openAdminPanelUI() {
 
     renderQuestionsList();
     renderResultsTable();
+    
+    startAdminLicenseTimer();
+}
+
+function startAdminLicenseTimer() {
+    let banner = document.getElementById('admin-license-banner');
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'admin-license-banner';
+        banner.style.cssText = 'width: 100%; max-width: 1000px; background: rgba(56, 189, 248, 0.2); border: 1px solid #38bdf8; border-radius: 12px; padding: 15px; margin-bottom: 20px; text-align: center; color: white; display: flex; justify-content: center; align-items: center; gap: 10px; font-size: 1.1rem;';
+        
+        const adminPanelContent = document.querySelector('#admin-panel');
+        if (adminPanelContent) {
+            adminPanelContent.insertBefore(banner, adminPanelContent.firstChild);
+        }
+    }
+    
+    if (window.adminLicenseInterval) clearInterval(window.adminLicenseInterval);
+    
+    const targetDate = new Date("2026-06-30T23:59:59").getTime();
+    
+    function updateTimer() {
+        const now = new Date().getTime();
+        const distance = targetDate - now;
+        
+        if (distance < 0) {
+            banner.innerHTML = `<strong>Sizning adminlik huquqingiz muddati tugagan!</strong>`;
+            clearInterval(window.adminLicenseInterval);
+            return;
+        }
+        
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        
+        banner.innerHTML = `<span style="font-size: 1.5rem;">⏱</span> <strong>Sizning adminlik huquqingiz tugashiga <span style="color: #fef08a;">${days} kun, ${hours} soat, ${minutes} daqiqa, ${seconds} soniya</span> qoldi</strong>`;
+    }
+    
+    updateTimer();
+    window.adminLicenseInterval = setInterval(updateTimer, 1000);
 }
 
 function updateTeacherTimer() {
