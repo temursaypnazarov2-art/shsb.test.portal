@@ -249,6 +249,12 @@ function getResultsArray(filterQ) {
 }
 
 function saveSettings(duration, token, chatId) {
+    const gKeyEl = document.getElementById('gemini-api-key');
+    if (gKeyEl) {
+        geminiApiKey = gKeyEl.value.trim();
+        localStorage.setItem('gemini_api_key', geminiApiKey);
+    }
+
     quizDuration = duration;
     tgBotToken = token;
     tgChatId = chatId;
@@ -262,12 +268,6 @@ function saveSettings(duration, token, chatId) {
     const quarter = quarterEl ? quarterEl.value : adminActiveQuarter;
     saveAdminPinFields(quarter);
     setAdminActiveQuarter(quarter, true);
-
-    const gKeyEl = document.getElementById('gemini-api-key');
-    if (gKeyEl) {
-        geminiApiKey = gKeyEl.value.trim();
-        localStorage.setItem('gemini_api_key', geminiApiKey);
-    }
 
     const toggleEl = document.getElementById('toggle-show-answers');
     if (toggleEl) {
@@ -446,35 +446,23 @@ const qrCanvas = document.getElementById('qr-canvas');
 const downloadQrBtn = document.getElementById('download-qr-btn');
 
 function init() {
-    syncFromFirebase();
-    seedDefaultPins();
-    if (totalQuestionsSpan) totalQuestionsSpan.textContent = questions.length;
-    if (testDurationInput) testDurationInput.value = quizDuration;
-    if (tgBotTokenInput) tgBotTokenInput.value = tgBotToken;
-    if (tgChatIdInput) tgChatIdInput.value = tgChatId;
+    try {
+        syncFromFirebase();
+        seedDefaultPins();
+        if (totalQuestionsSpan) totalQuestionsSpan.textContent = questions.length;
+        if (testDurationInput) testDurationInput.value = quizDuration;
+        if (tgBotTokenInput) tgBotTokenInput.value = tgBotToken;
+        if (tgChatIdInput) tgChatIdInput.value = tgChatId;
 
-    setAdminActiveQuarter(adminActiveQuarter, true);
-    loadAdminPinFields(adminActiveQuarter);
+        setAdminActiveQuarter(adminActiveQuarter, true);
+        loadAdminPinFields(adminActiveQuarter);
 
-    const gKeyEl = document.getElementById('gemini-api-key');
-    if (gKeyEl) gKeyEl.value = geminiApiKey;
+        const gKeyEl = document.getElementById('gemini-api-key');
+        if (gKeyEl) gKeyEl.value = geminiApiKey;
 
-    const toggleBtn = document.getElementById('toggleShowAnswersBtn');
-    if (toggleBtn) {
-        // Initial state
-        if (showAnswersToStudent) {
-            toggleBtn.style.backgroundColor = '#10b981';
-            toggleBtn.setAttribute('data-i18n', 'btnShowAnswersOn');
-            toggleBtn.textContent = typeof t === 'function' ? (t('btnShowAnswersOn') || "Javoblarni ko'rsatish: YOQILGAN") : "Javoblarni ko'rsatish: YOQILGAN";
-        } else {
-            toggleBtn.style.backgroundColor = '#ef4444';
-            toggleBtn.setAttribute('data-i18n', 'btnShowAnswersOff');
-            toggleBtn.textContent = typeof t === 'function' ? (t('btnShowAnswersOff') || "Javoblarni ko'rsatish: O'CHIRILGAN") : "Javoblarni ko'rsatish: O'CHIRILGAN";
-        }
-
-        toggleBtn.addEventListener('click', () => {
-            showAnswersToStudent = !showAnswersToStudent;
-            if (database) database.ref('showAnswersToStudent').set(showAnswersToStudent);
+        const toggleBtn = document.getElementById('toggleShowAnswersBtn');
+        if (toggleBtn) {
+            // Initial state
             if (showAnswersToStudent) {
                 toggleBtn.style.backgroundColor = '#10b981';
                 toggleBtn.setAttribute('data-i18n', 'btnShowAnswersOn');
@@ -484,31 +472,48 @@ function init() {
                 toggleBtn.setAttribute('data-i18n', 'btnShowAnswersOff');
                 toggleBtn.textContent = typeof t === 'function' ? (t('btnShowAnswersOff') || "Javoblarni ko'rsatish: O'CHIRILGAN") : "Javoblarni ko'rsatish: O'CHIRILGAN";
             }
-        });
-    }
 
-    if (adminSettingsQuarter) {
-        if (adminSettingsQuarter) adminSettingsQuarter.addEventListener('change', (e) => {
-            const quarter = e.target.value;
-            setAdminActiveQuarter(quarter, true);
-            loadAdminPinFields(quarter);
-        });
-    }
-    if (adminQuestionsQuarter) {
-        if (adminQuestionsQuarter) adminQuestionsQuarter.addEventListener('change', (e) => {
-            const quarter = e.target.value;
-            setAdminActiveQuarter(quarter, true);
-            renderQuestionsList();
-        });
-    }
+            toggleBtn.addEventListener('click', () => {
+                showAnswersToStudent = !showAnswersToStudent;
+                if (database) database.ref('showAnswersToStudent').set(showAnswersToStudent);
+                if (showAnswersToStudent) {
+                    toggleBtn.style.backgroundColor = '#10b981';
+                    toggleBtn.setAttribute('data-i18n', 'btnShowAnswersOn');
+                    toggleBtn.textContent = typeof t === 'function' ? (t('btnShowAnswersOn') || "Javoblarni ko'rsatish: YOQILGAN") : "Javoblarni ko'rsatish: YOQILGAN";
+                } else {
+                    toggleBtn.style.backgroundColor = '#ef4444';
+                    toggleBtn.setAttribute('data-i18n', 'btnShowAnswersOff');
+                    toggleBtn.textContent = typeof t === 'function' ? (t('btnShowAnswersOff') || "Javoblarni ko'rsatish: O'CHIRILGAN") : "Javoblarni ko'rsatish: O'CHIRILGAN";
+                }
+            });
+        }
 
-    renderQuestionsList();
-    renderResultsTable();
-    renderTeacherTokens();
-    populateClassFilters();
-    renderLeaderboard();
-    setupAntiCheat();
-    if (typeof toggleQuestionFormat === 'function') toggleQuestionFormat();
+        if (adminSettingsQuarter) {
+            if (adminSettingsQuarter) adminSettingsQuarter.addEventListener('change', (e) => {
+                const quarter = e.target.value;
+                setAdminActiveQuarter(quarter, true);
+                loadAdminPinFields(quarter);
+            });
+        }
+        if (adminQuestionsQuarter) {
+            if (adminQuestionsQuarter) adminQuestionsQuarter.addEventListener('change', (e) => {
+                const quarter = e.target.value;
+                setAdminActiveQuarter(quarter, true);
+                renderQuestionsList();
+            });
+        }
+
+        renderQuestionsList();
+        renderResultsTable();
+        renderTeacherTokens();
+        populateClassFilters();
+        renderLeaderboard();
+        setupAntiCheat();
+        if (typeof toggleQuestionFormat === 'function') toggleQuestionFormat();
+    } catch (error) {
+        console.error("Init Error:", error);
+        alert("Dastur yuklanishida xatolik yuz berdi: " + error.message + " (" + error.stack + ")");
+    }
 }
 
 function setupAntiCheat() {
