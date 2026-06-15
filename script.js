@@ -826,17 +826,15 @@ Object.keys({
 });
 
 if (saveSettingsBtn) saveSettingsBtn.addEventListener('click', () => {
-    const dur = parseInt(testDurationInput.value);
+    let dur = parseInt(testDurationInput.value);
+    if (isNaN(dur) || dur < 1) {
+        dur = 20;
+    }
     const token = tgBotTokenInput.value.trim();
     const chatId = tgChatIdInput.value.trim();
 
-    if (isNaN(dur) || dur < 1) {
-        alert("Davomiylik xato!");
-        return;
-    }
-
     saveSettings(dur, token, chatId);
-    showToast("Sozlamalar saqlandi!");
+    alert(typeof t === 'function' ? (t('msgSettingsSaved') || "Sozlamalar saqlandi!") : "Sozlamalar saqlandi!");
 });
 
 function generateRandomString(length) {
