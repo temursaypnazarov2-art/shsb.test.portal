@@ -127,6 +127,7 @@ try {
 }
 
 // Global Variables
+let questions = [];
 let questionsDatabase = { "1": [], "2": [], "3": [], "4": [] };
 let resultsDatabase = { "1": [], "2": [], "3": [], "4": [] };
 let quizDuration = 20;
@@ -449,6 +450,7 @@ function init() {
     try {
         syncFromFirebase();
         seedDefaultPins();
+        if (!questions) questions = [];
         if (totalQuestionsSpan) totalQuestionsSpan.textContent = questions.length;
         if (testDurationInput) testDurationInput.value = quizDuration;
         if (tgBotTokenInput) tgBotTokenInput.value = tgBotToken;
