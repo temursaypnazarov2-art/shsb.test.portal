@@ -690,6 +690,8 @@ function openAdminPanelUI() {
         if (testTargetClass) testTargetClass.value = subjectClassesDatabase[subj][qtr] || "all";
 
         showToast(`Xush kelibsiz, ${currentTeacherSession.name || currentTeacherSession.subject}`);
+        
+        startAdminLicenseTimer();
     } else {
         tabSettingsBtn.classList.remove('hidden');
         tabQrcodeBtn.classList.remove('hidden');
@@ -711,13 +713,15 @@ function openAdminPanelUI() {
         setAdminActiveQuarter(adminActiveQuarter, true);
         loadAdminPinFields(adminActiveQuarter);
 
+        let banner = document.getElementById('admin-license-banner');
+        if (banner) banner.style.display = 'none';
+        if (window.adminLicenseInterval) clearInterval(window.adminLicenseInterval);
+
         showToast("Admin paneliga kirdingiz!");
     }
 
     renderQuestionsList();
     renderResultsTable();
-    
-    startAdminLicenseTimer();
 }
 
 function startAdminLicenseTimer() {
@@ -731,6 +735,8 @@ function startAdminLicenseTimer() {
         if (adminPanelContent) {
             adminPanelContent.insertBefore(banner, adminPanelContent.firstChild);
         }
+    } else {
+        banner.style.display = 'flex';
     }
     
     if (window.adminLicenseInterval) clearInterval(window.adminLicenseInterval);
