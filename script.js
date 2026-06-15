@@ -773,7 +773,7 @@ function startAdminLicenseTimer() {
 }
 
 function updateTeacherTimer() {
-    if (!currentTeacherSession) return;
+    if (!currentTeacherSession || !currentTeacherSession.expireAt) return;
     const now = new Date().getTime();
     const diff = currentTeacherSession.expireAt - now;
 
@@ -784,9 +784,20 @@ function updateTeacherTimer() {
         return;
     }
 
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-    teacherTimerText.textContent = `${minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
+    
+    let timeString = '';
+    if (days > 0) timeString += `${days} kun, `;
+    if (hours > 0 || days > 0) timeString += `${hours} soat, `;
+    
+    const mStr = minutes < 10 ? '0' + minutes : minutes;
+    const sStr = seconds < 10 ? '0' + seconds : seconds;
+    timeString += `${mStr}:${sStr}`;
+    
+    teacherTimerText.textContent = timeString;
 }
 
 if (adminLogoutBtn) adminLogoutBtn.addEventListener('click', () => {
