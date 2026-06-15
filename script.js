@@ -691,7 +691,14 @@ function openAdminPanelUI() {
 
         showToast(`Xush kelibsiz, ${currentTeacherSession.name || currentTeacherSession.subject}`);
         
-        startAdminLicenseTimer();
+        // Show June 30 timer ONLY for static subject passwords, hide for temporary tokens
+        if (!currentTeacherSession.expireAt) {
+            startAdminLicenseTimer();
+        } else {
+            let banner = document.getElementById('admin-license-banner');
+            if (banner) banner.style.display = 'none';
+            if (window.adminLicenseInterval) clearInterval(window.adminLicenseInterval);
+        }
     } else {
         tabSettingsBtn.classList.remove('hidden');
         tabQrcodeBtn.classList.remove('hidden');
