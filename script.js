@@ -2071,3 +2071,54 @@ window.addEventListener('beforeunload', function (e) {
         return e.returnValue;
     }
 });
+
+// Sinf bo'yicha o'rtacha o'zlashtirishni hisoblash
+(function() {
+    const filterClassEl = document.getElementById('filter-class');
+    const filterSection = filterClassEl ? filterClassEl.parentElement : null;
+    if (!filterSection) return;
+
+    const avgContainer = document.createElement('div');
+    avgContainer.id = 'average-percentage-display';
+    avgContainer.style.cssText = 'margin-top: 15px; padding: 10px; background: rgba(56, 189, 248, 0.1); border: 1px solid #38bdf8; border-radius: 8px; color: #38bdf8; font-weight: bold; text-align: center; display: none;';
+    
+    // Insert after the filter section
+    filterSection.parentNode.insertBefore(avgContainer, filterSection.nextSibling);
+
+    function calculateAndDisplayAverage() {
+        const filterCls = filterClassEl ? filterClassEl.value : 'all';
+        const rows = document.querySelectorAll('#results-table-body tr');
+        
+        let totalPercent = 0;
+        let count = 0;
+
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length > 5) {
+                const percentText = cells[5].textContent;
+                if (percentText && percentText.includes('%')) {
+                    totalPercent += parseFloat(percentText);
+                    count++;
+                }
+            }
+        });
+
+        if (count > 0 && filterCls !== 'all') {
+            const avg = (totalPercent / count).toFixed(1);
+            avgContainer.style.display = 'block';
+            avgContainer.textContent = `Tanlangan sinf bo'yicha o'rtacha o'zlashtirish: ${avg}% (${count} nafar o'quvchi)`;
+        } else {
+            avgContainer.style.display = 'none';
+        }
+    }
+
+    const observer = new MutationObserver(calculateAndDisplayAverage);
+    const tbody = document.getElementById('results-table-body');
+    if (tbody) {
+        observer.observe(tbody, { childList: true, subtree: true });
+    }
+    
+    if (filterClassEl) {
+        filterClassEl.addEventListener('change', () => setTimeout(calculateAndDisplayAverage, 100));
+    }
+})();
