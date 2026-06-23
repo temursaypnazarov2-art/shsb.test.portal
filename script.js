@@ -5,9 +5,9 @@
 
 // --- Constants & Database ---
 const HASHED_ADMIN_PASS = "YWRtaW4xMjNfc2hzYg==";
-const SUBJECTS = ["Ona tili", "Matematika", "Fizika", "Kimyo", "Biologiya", "Tarix", "Huquq", "Informatika"];
-const PIN_INPUT_IDS = ['pin-onatili', 'pin-matematika', 'pin-fizika', 'pin-kimyo', 'pin-biologiya', 'pin-tarix', 'pin-huquq', 'pin-informatika'];
-const DUR_INPUT_IDS = ['dur-onatili', 'dur-matematika', 'dur-fizika', 'dur-kimyo', 'dur-biologiya', 'dur-tarix', 'dur-huquq', 'dur-informatika'];
+const SUBJECTS = ["O'zbek tili", "San'at", "Rus tili", "Ingliz tili", "Tabiiy fan", "O'zbekiston tarixi", "Jahon tarixi", "Qoraqalpog'iston tarixi", "Adabiyot", "Geografiya", "Texnologiya", "Algebra", "Geometriya"];
+const PIN_INPUT_IDS = ['pin-ozbek', 'pin-sanat', 'pin-rus', 'pin-ingliz', 'pin-tabiiy', 'pin-ozbtarix', 'pin-jahontarix', 'pin-qortarix', 'pin-adabiyot', 'pin-geografiya', 'pin-texnologiya', 'pin-algebra', 'pin-geometriya'];
+const DUR_INPUT_IDS = ['dur-ozbek', 'dur-sanat', 'dur-rus', 'dur-ingliz', 'dur-tabiiy', 'dur-ozbtarix', 'dur-jahontarix', 'dur-qortarix', 'dur-adabiyot', 'dur-geografiya', 'dur-texnologiya', 'dur-algebra', 'dur-geometriya'];
 const QUARTERS = ["1", "2", "3", "4"];
 
 function getGeminiApiKey() {
