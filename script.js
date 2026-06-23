@@ -1244,7 +1244,11 @@ if (startBtn) startBtn.addEventListener('click', () => {
     }
 
     testTimeLimitSeconds = (subjectDurationsDatabase[studentSubject][studentQuarter] || 20) * 60;
-    currentQuizQuestions.sort(() => Math.random() - 0.5);
+    
+    const currentOrder = (window.subjectQuestionOrdersDatabase && window.subjectQuestionOrdersDatabase[studentSubject] && window.subjectQuestionOrdersDatabase[studentSubject][studentQuarter]) || "random";
+    if (currentOrder === "random") {
+        currentQuizQuestions.sort(() => Math.random() - 0.5);
+    }
 
     currentQuestionIndex = 0;
     studentAnswers = new Array(currentQuizQuestions.length).fill(null);
@@ -2120,5 +2124,80 @@ window.addEventListener('beforeunload', function (e) {
     
     if (filterClassEl) {
         filterClassEl.addEventListener('change', () => setTimeout(calculateAndDisplayAverage, 100));
+    }
+})();
+
+// Savollar ketma-ketligini (tasodifiy yoki tuzilgan tartibda) boshqarish
+(function() {
+    window.subjectQuestionOrdersDatabase = window.subjectQuestionOrdersDatabase || {};
+
+    // Firebase'dan yuklash
+    if (typeof database !== 'undefined' && database) {
+        database.ref('subjectQuestionOrdersDatabase').on('value', snap => {
+            if (snap.val()) {
+                window.subjectQuestionOrdersDatabase = snap.val();
+            }
+        });
+    }
+
+    // UI interfeysga "Savollar ketma-ketligi" opsiyasini qo'shish
+    const testTypeSelect = document.getElementById('teacher-subject-test-type');
+    if (testTypeSelect) {
+        const container = document.createElement('div');
+        container.style.cssText = 'flex: 1; min-width: 200px; margin-top: 10px;';
+        container.innerHTML = `
+            <label style="display: block; margin-bottom: 5px; color: var(--text-secondary);">Savollar ketma-ketligi:</label>
+            <select id="teacher-subject-question-order" style="width: 100%; padding: 10px; border-radius: 8px;">
+                <option value="random">Tasodifiy (Random)</option>
+                <option value="sequential">Tuzilgan tartibda</option>
+            </select>
+        `;
+        testTypeSelect.parentElement.insertAdjacentElement('afterend', container);
+    }
+
+    const saveBtn = document.getElementById('save-teacher-pin-btn');
+    const qtrSelect = document.getElementById('teacher-subject-quarter');
+
+    function loadOrderValue() {
+        if (!currentTeacherSession) return;
+        const subj = currentTeacherSession.subject;
+        const qtr = qtrSelect ? qtrSelect.value : '1';
+        const orderSelect = document.getElementById('teacher-subject-question-order');
+        if (orderSelect) {
+            orderSelect.value = (window.subjectQuestionOrdersDatabase[subj] && window.subjectQuestionOrdersDatabase[subj][qtr]) || "random";
+        }
+    }
+
+    function saveOrderValue() {
+        if (!currentTeacherSession) return;
+        const subj = currentTeacherSession.subject;
+        const qtr = qtrSelect ? qtrSelect.value : '1';
+        const orderSelect = document.getElementById('teacher-subject-question-order');
+        const val = orderSelect ? orderSelect.value : 'random';
+
+        if (!window.subjectQuestionOrdersDatabase[subj]) {
+            window.subjectQuestionOrdersDatabase[subj] = { "1": "random", "2": "random", "3": "random", "4": "random" };
+        }
+        window.subjectQuestionOrdersDatabase[subj][qtr] = val;
+
+        if (typeof database !== 'undefined' && database) {
+            database.ref('subjectQuestionOrdersDatabase').set(window.subjectQuestionOrdersDatabase);
+        }
+    }
+
+    if (saveBtn) {
+        saveBtn.addEventListener('click', saveOrderValue);
+    }
+    if (qtrSelect) {
+        qtrSelect.addEventListener('change', () => setTimeout(loadOrderValue, 100));
+    }
+
+    // openAdminPanelUI o'zgarganda qiymatni yuklash
+    if (typeof openAdminPanelUI === 'function') {
+        const originalOpen = openAdminPanelUI;
+        openAdminPanelUI = function() {
+            originalOpen.apply(this, arguments);
+            setTimeout(loadOrderValue, 100);
+        };
     }
 })();
