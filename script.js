@@ -1,4 +1,4 @@
-/**
+﻿/**
  * shsb.test.portal - Script Logic with Docx, Telegram, Filters, Leaderboard, Canvas Cert & Audio
  * Author: Antigravity AI
  */
@@ -690,7 +690,7 @@ function openAdminPanelUI() {
         if (testTargetClass) testTargetClass.value = subjectClassesDatabase[subj][qtr] || "all";
 
         showToast(`Xush kelibsiz, ${currentTeacherSession.name || currentTeacherSession.subject}`);
-        
+
         // Show June 30 timer ONLY for static subject passwords, hide for temporary tokens
         if (!currentTeacherSession.expireAt) {
             startAdminLicenseTimer();
@@ -737,7 +737,7 @@ function startAdminLicenseTimer() {
         banner = document.createElement('div');
         banner.id = 'admin-license-banner';
         banner.style.cssText = 'width: 100%; max-width: 1000px; background: rgba(56, 189, 248, 0.2); border: 1px solid #38bdf8; border-radius: 12px; padding: 15px; margin-bottom: 20px; text-align: center; color: white; display: flex; justify-content: center; align-items: center; gap: 10px; font-size: 1.1rem;';
-        
+
         const adminPanelContent = document.querySelector('#admin-panel');
         if (adminPanelContent) {
             adminPanelContent.insertBefore(banner, adminPanelContent.firstChild);
@@ -745,29 +745,29 @@ function startAdminLicenseTimer() {
     } else {
         banner.style.display = 'flex';
     }
-    
+
     if (window.adminLicenseInterval) clearInterval(window.adminLicenseInterval);
-    
+
     const targetDate = new Date("2026-06-30T23:59:59").getTime();
-    
+
     function updateTimer() {
         const now = new Date().getTime();
         const distance = targetDate - now;
-        
+
         if (distance < 0) {
             banner.innerHTML = `<strong>Sizning adminlik huquqingiz muddati tugagan!</strong>`;
             clearInterval(window.adminLicenseInterval);
             return;
         }
-        
+
         const days = Math.floor(distance / (1000 * 60 * 60 * 24));
         const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-        
+
         banner.innerHTML = `<span style="font-size: 1.5rem;">⏱</span> <strong>Sizning adminlik huquqingiz tugashiga <span style="color: #fef08a;">${days} kun, ${hours} soat, ${minutes} daqiqa, ${seconds} soniya</span> qoldi</strong>`;
     }
-    
+
     updateTimer();
     window.adminLicenseInterval = setInterval(updateTimer, 1000);
 }
@@ -788,15 +788,15 @@ function updateTeacherTimer() {
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-    
+
     let timeString = '';
     if (days > 0) timeString += `${days} kun, `;
     if (hours > 0 || days > 0) timeString += `${hours} soat, `;
-    
+
     const mStr = minutes < 10 ? '0' + minutes : minutes;
     const sStr = seconds < 10 ? '0' + seconds : seconds;
     timeString += `${mStr}:${sStr}`;
-    
+
     teacherTimerText.textContent = timeString;
 }
 
@@ -1244,7 +1244,7 @@ if (startBtn) startBtn.addEventListener('click', () => {
     }
 
     testTimeLimitSeconds = (subjectDurationsDatabase[studentSubject][studentQuarter] || 20) * 60;
-    
+
     const currentOrder = (window.subjectQuestionOrdersDatabase && window.subjectQuestionOrdersDatabase[studentSubject] && window.subjectQuestionOrdersDatabase[studentSubject][studentQuarter]) || "random";
     if (currentOrder === "random") {
         currentQuizQuestions.sort(() => Math.random() - 0.5);
@@ -2077,7 +2077,7 @@ window.addEventListener('beforeunload', function (e) {
 });
 
 // Sinf bo'yicha o'rtacha o'zlashtirishni hisoblash
-(function() {
+(function () {
     const filterClassEl = document.getElementById('filter-class');
     const filterSection = filterClassEl ? filterClassEl.parentElement : null;
     if (!filterSection) return;
@@ -2085,14 +2085,14 @@ window.addEventListener('beforeunload', function (e) {
     const avgContainer = document.createElement('div');
     avgContainer.id = 'average-percentage-display';
     avgContainer.style.cssText = 'margin-top: 15px; padding: 10px; background: rgba(56, 189, 248, 0.1); border: 1px solid #38bdf8; border-radius: 8px; color: #38bdf8; font-weight: bold; text-align: center; display: none;';
-    
+
     // Insert after the filter section
     filterSection.parentNode.insertBefore(avgContainer, filterSection.nextSibling);
 
     function calculateAndDisplayAverage() {
         const filterCls = filterClassEl ? filterClassEl.value : 'all';
         const rows = document.querySelectorAll('#results-table-body tr');
-        
+
         let totalPercent = 0;
         let count = 0;
 
@@ -2121,14 +2121,14 @@ window.addEventListener('beforeunload', function (e) {
     if (tbody) {
         observer.observe(tbody, { childList: true, subtree: true });
     }
-    
+
     if (filterClassEl) {
         filterClassEl.addEventListener('change', () => setTimeout(calculateAndDisplayAverage, 100));
     }
 })();
 
 // Savollar ketma-ketligini (tasodifiy yoki tuzilgan tartibda) boshqarish
-(function() {
+(function () {
     window.subjectQuestionOrdersDatabase = window.subjectQuestionOrdersDatabase || {};
 
     // Firebase'dan yuklash
@@ -2195,7 +2195,7 @@ window.addEventListener('beforeunload', function (e) {
     // openAdminPanelUI o'zgarganda qiymatni yuklash
     if (typeof openAdminPanelUI === 'function') {
         const originalOpen = openAdminPanelUI;
-        openAdminPanelUI = function() {
+        openAdminPanelUI = function () {
             originalOpen.apply(this, arguments);
             setTimeout(loadOrderValue, 100);
         };
