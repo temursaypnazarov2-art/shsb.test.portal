@@ -1,4 +1,4 @@
-﻿/**
+/**
  * shsb.test.portal - Script Logic with Docx, Telegram, Filters, Leaderboard, Canvas Cert & Audio
  * Author: Antigravity AI
  */
@@ -449,8 +449,7 @@ const downloadQrBtn = document.getElementById('download-qr-btn');
 function init() {
     try {
         syncFromFirebase();
-        seedDefaultPins();
-        if (!questions) questions = [];
+        if (typeof questions === 'undefined' || !questions) questions = [];
         if (totalQuestionsSpan) totalQuestionsSpan.textContent = questions.length;
         if (testDurationInput) testDurationInput.value = quizDuration;
         if (tgBotTokenInput) tgBotTokenInput.value = tgBotToken;
