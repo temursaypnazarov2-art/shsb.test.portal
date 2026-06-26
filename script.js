@@ -1,4 +1,4 @@
-﻿/**
+/**
  * shsb.test.portal - Script Logic with Docx, Telegram, Filters, Leaderboard, Canvas Cert & Audio
  * Author: Antigravity AI
  */
@@ -142,7 +142,7 @@ let subjectQuarters = {};
 let adminActiveQuarter = "1";
 let teacherTokens = [];
 let showAnswersToStudent = false;
-let isVoiceAntiCheatEnabled = false;
+let isVoiceAntiCheatEnabled = true;
 let geminiApiKey = localStorage.getItem('gemini_api_key') || ""; // Keep AI key local for privacy
 let currentTeacherSession = null;
 let currentScreen = 'auth';
@@ -1467,12 +1467,19 @@ if (unlockBtn) unlockBtn.addEventListener('click', () => {
     if (pass === requiredPin || btoa(pass) === HASHED_ADMIN_PASS) {
         isLocked = false;
         lockScreen.classList.add('hidden');
+        
+        // Reset the message just in case
+        const lockReasonText = document.getElementById('lockReasonText');
+        if (lockReasonText) lockReasonText.textContent = "";
+
         const docElm = document.documentElement;
         if (docElm.requestFullscreen) docElm.requestFullscreen().catch(e => e);
         else if (docElm.webkitRequestFullscreen) docElm.webkitRequestFullscreen();
         else if (docElm.mozRequestFullScreen) docElm.mozRequestFullScreen();
         else if (docElm.msRequestFullscreen) docElm.msRequestFullscreen();
         startTimer();
+        
+        if (isVoiceAntiCheatEnabled) startVoiceAntiCheat();
     } else {
         unlockError.classList.remove('hidden');
     }
@@ -2218,6 +2225,10 @@ function startVoiceAntiCheat() {
         return;
     }
 
+    try {
+        if (speechRecognitionObj) speechRecognitionObj.stop();
+    } catch(e) {}
+
     speechRecognitionObj = new SpeechRecognition();
     speechRecognitionObj.continuous = true;
     speechRecognitionObj.interimResults = true;
@@ -2269,30 +2280,35 @@ function triggerVoiceLock() {
         lockReasonText.textContent = "Ovoz aniqlandi! Test paytida gaplashish taqiqlanadi.";
     }
     if (lockScreen) lockScreen.classList.remove('hidden');
+    stopVoiceAntiCheat();
 }
 
 
 // Voice Anti-Cheat Toggle Logic
 const toggleVoiceAntiCheatBtn = document.getElementById('toggleVoiceAntiCheatBtn');
 
+const voiceAntiCheatStatusText = document.getElementById('voiceAntiCheatStatusText');
 function updateVoiceAntiCheatBtnUI() {
     if (!toggleVoiceAntiCheatBtn) return;
-    if (isVoiceAntiCheatEnabled) {
-        toggleVoiceAntiCheatBtn.style.backgroundColor = '#10b981';
-        toggleVoiceAntiCheatBtn.textContent = translations[currentLang] && translations[currentLang]['btnVoiceOn'] ? translations[currentLang]['btnVoiceOn'] : "Ovozli himoya: YONIQ";
-    } else {
-        toggleVoiceAntiCheatBtn.style.backgroundColor = '#ef4444';
-        toggleVoiceAntiCheatBtn.textContent = translations[currentLang] && translations[currentLang]['btnVoiceOff'] ? translations[currentLang]['btnVoiceOff'] : "Ovozli himoya: O'CHIRILGAN";
+    toggleVoiceAntiCheatBtn.checked = isVoiceAntiCheatEnabled;
+    if (voiceAntiCheatStatusText) {
+        if (isVoiceAntiCheatEnabled) {
+            voiceAntiCheatStatusText.style.color = '#10b981';
+            voiceAntiCheatStatusText.textContent = translations[currentLang] && translations[currentLang]['btnVoiceOn'] ? translations[currentLang]['btnVoiceOn'] : "Ovozli himoya: YONIQ";
+        } else {
+            voiceAntiCheatStatusText.style.color = '#ef4444';
+            voiceAntiCheatStatusText.textContent = translations[currentLang] && translations[currentLang]['btnVoiceOff'] ? translations[currentLang]['btnVoiceOff'] : "Ovozli himoya: O'CHIRILGAN";
+        }
     }
 }
 
 if (toggleVoiceAntiCheatBtn) {
-    toggleVoiceAntiCheatBtn.addEventListener('click', () => {
-        isVoiceAntiCheatEnabled = !isVoiceAntiCheatEnabled;
+    toggleVoiceAntiCheatBtn.addEventListener('change', (e) => {
+        isVoiceAntiCheatEnabled = e.target.checked;
         if (database) {
             database.ref('isVoiceAntiCheatEnabled').set(isVoiceAntiCheatEnabled);
         }
         updateVoiceAntiCheatBtnUI();
-        alert(isVoiceAntiCheatEnabled ? "Ovozli himoya tizimi yoqildi!" : "Ovozli himoya tizimi o'chirildi!");
+        console.log(isVoiceAntiCheatEnabled ? "Ovozli Anti-Cheat yoqildi" : "Ovozli Anti-Cheat o'chirildi");
     });
 }

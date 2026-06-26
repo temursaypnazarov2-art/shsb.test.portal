@@ -607,7 +607,22 @@
                     </div>
                 </div>
 
-                <!-- QR Code Tab -->
+                
+                      <div class="settings-card" style="margin-top: 20px;">
+                          <h3 data-i18n="secVoiceTitle">Ovozli Anti-Cheat Himoyasi (Mikrofon)</h3>
+                          <div class="settings-group" style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
+                                <span style="font-weight: 600;" data-i18n="secVoiceLabel">Test paytida gaplashishni aniqlash va bloklash:</span>
+                                <div style="display: flex; align-items: center;">
+                                    <span id="voiceAntiCheatStatusText" style="font-weight: bold; color: #ef4444;" data-i18n="btnVoiceOff">Ovozli himoya: O'CHIRILGAN</span>
+                                    <label class="premium-toggle">
+                                        <input type="checkbox" id="toggleVoiceAntiCheatBtn">
+                                        <span class="premium-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                      </div>
+
+                  <!-- QR Code Tab -->
                 <div id="tab-qrcode" class="tab-content hidden" style="text-align: center;">
                     <h3 style="margin-bottom: 20px;" data-i18n="qrCodeTitle">Platforma uchun QR Kod</h3>
                     <p style="color: var(--text-secondary); margin-bottom: 20px;" data-i18n="qrCodeHint">Ushbu QR kod orqali o'quvchilar testga tez va oson kirishlari mumkin.</p>
@@ -725,7 +740,49 @@
         .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider { background-color: var(--success-color); }
         input:checked + .slider:before { transform: translateX(26px); }
-    </style>
+    
+      .premium-toggle {
+          position: relative;
+          display: inline-block;
+          width: 50px;
+          height: 28px;
+          margin-left: 15px;
+      }
+      .premium-toggle input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+      }
+      .premium-slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: #ccc;
+          transition: .4s;
+          border-radius: 34px;
+      }
+      .premium-slider:before {
+          position: absolute;
+          content: "";
+          height: 20px;
+          width: 20px;
+          left: 4px;
+          bottom: 4px;
+          background-color: white;
+          transition: .4s;
+          border-radius: 50%;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      }
+      input:checked + .premium-slider {
+          background-color: #10b981;
+      }
+      input:checked + .premium-slider:before {
+          transform: translateX(22px);
+      }
+</style>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <!-- Include QR Code Library -->
