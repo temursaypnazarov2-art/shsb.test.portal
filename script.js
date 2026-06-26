@@ -142,6 +142,7 @@ let subjectQuarters = {};
 let adminActiveQuarter = "1";
 let teacherTokens = [];
 let showAnswersToStudent = false;
+let isVoiceAntiCheatEnabled = false;
 let geminiApiKey = localStorage.getItem('gemini_api_key') || ""; // Keep AI key local for privacy
 let currentTeacherSession = null;
 let currentScreen = 'auth';
@@ -166,6 +167,8 @@ function syncFromFirebase() {
             if (data.adminActiveQuarter) adminActiveQuarter = data.adminActiveQuarter;
             if (data.teacherTokens) teacherTokens = data.teacherTokens || [];
             if (data.showAnswersToStudent !== undefined) showAnswersToStudent = data.showAnswersToStudent;
+            if (data.isVoiceAntiCheatEnabled !== undefined) isVoiceAntiCheatEnabled = data.isVoiceAntiCheatEnabled;
+            updateVoiceAntiCheatBtnUI();
 
             ensureSubjectQuarterMaps();
             questions = questionsDatabase[adminActiveQuarter] || [];
@@ -1269,6 +1272,7 @@ if (beginTestBtn) {
         currentScreen = 'quiz';
         isTestActive = true;
         document.addEventListener('visibilitychange', handleCheating);
+        startVoiceAntiCheat();
         window.addEventListener('blur', handleCheating);
         document.addEventListener('fullscreenchange', handleCheating);
         document.addEventListener('webkitfullscreenchange', handleCheating);
@@ -1350,6 +1354,7 @@ if (nextBtn) nextBtn.addEventListener('click', () => {
 function finishQuiz() {
     isTestActive = false;
     document.removeEventListener('visibilitychange', handleCheating);
+    stopVoiceAntiCheat();
     window.removeEventListener('blur', handleCheating);
     document.removeEventListener('fullscreenchange', handleCheating);
     document.removeEventListener('webkitfullscreenchange', handleCheating);
@@ -2200,3 +2205,94 @@ window.addEventListener('beforeunload', function (e) {
         };
     }
 })();
+
+
+// Voice Anti-Cheat Logic
+let speechRecognitionObj = null;
+
+function startVoiceAntiCheat() {
+    if (!isVoiceAntiCheatEnabled) return;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        console.warn("SpeechRecognition API ishlamaydi (Balki Safari yoki eski brauzer).");
+        return;
+    }
+    
+    speechRecognitionObj = new SpeechRecognition();
+    speechRecognitionObj.continuous = true;
+    speechRecognitionObj.interimResults = true;
+    speechRecognitionObj.lang = 'uz-UZ';
+
+    speechRecognitionObj.onresult = (event) => {
+        if (isLocked) return;
+        
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            transcript += event.results[i][0].transcript;
+        }
+        
+        if (transcript.trim().length > 0) {
+            triggerVoiceLock();
+        }
+    };
+    
+    speechRecognitionObj.onerror = (event) => {
+        console.error("SpeechRecognition xatosi:", event.error);
+    };
+
+    speechRecognitionObj.onend = () => {
+        if (currentScreen === 'quiz' && !isLocked && isTestActive) {
+            try { speechRecognitionObj.start(); } catch(e) {}
+        }
+    };
+    
+    try {
+        speechRecognitionObj.start();
+    } catch(e) {
+        console.error("Mic start failed", e);
+    }
+}
+
+function stopVoiceAntiCheat() {
+    if (speechRecognitionObj) {
+        speechRecognitionObj.onend = null;
+        try { speechRecognitionObj.stop(); } catch(e) {}
+    }
+}
+
+function triggerVoiceLock() {
+    if (!isTestActive) return;
+    isLocked = true;
+    const lockScreen = document.getElementById('lock-screen');
+    const lockReasonText = document.getElementById('lockReasonText');
+    if (lockReasonText) {
+        lockReasonText.textContent = "Ovoz aniqlandi! Test paytida gaplashish taqiqlanadi.";
+    }
+    if (lockScreen) lockScreen.classList.remove('hidden');
+}
+
+
+// Voice Anti-Cheat Toggle Logic
+const toggleVoiceAntiCheatBtn = document.getElementById('toggleVoiceAntiCheatBtn');
+
+function updateVoiceAntiCheatBtnUI() {
+    if (!toggleVoiceAntiCheatBtn) return;
+    if (isVoiceAntiCheatEnabled) {
+        toggleVoiceAntiCheatBtn.style.backgroundColor = '#10b981';
+        toggleVoiceAntiCheatBtn.textContent = translations[currentLang] && translations[currentLang]['btnVoiceOn'] ? translations[currentLang]['btnVoiceOn'] : "Ovozli himoya: YONIQ";
+    } else {
+        toggleVoiceAntiCheatBtn.style.backgroundColor = '#ef4444';
+        toggleVoiceAntiCheatBtn.textContent = translations[currentLang] && translations[currentLang]['btnVoiceOff'] ? translations[currentLang]['btnVoiceOff'] : "Ovozli himoya: O'CHIRILGAN";
+    }
+}
+
+if (toggleVoiceAntiCheatBtn) {
+    toggleVoiceAntiCheatBtn.addEventListener('click', () => {
+        isVoiceAntiCheatEnabled = !isVoiceAntiCheatEnabled;
+        if (database) {
+            database.ref('isVoiceAntiCheatEnabled').set(isVoiceAntiCheatEnabled);
+        }
+        updateVoiceAntiCheatBtnUI();
+        alert(isVoiceAntiCheatEnabled ? "Ovozli himoya tizimi yoqildi!" : "Ovozli himoya tizimi o'chirildi!");
+    });
+}
