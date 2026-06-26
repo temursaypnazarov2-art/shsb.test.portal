@@ -1,4 +1,4 @@
-/**
+﻿/**
  * shsb.test.portal - Script Logic with Docx, Telegram, Filters, Leaderboard, Canvas Cert & Audio
  * Author: Antigravity AI
  */
@@ -2217,7 +2217,7 @@ function startVoiceAntiCheat() {
         console.warn("SpeechRecognition API ishlamaydi (Balki Safari yoki eski brauzer).");
         return;
     }
-    
+
     speechRecognitionObj = new SpeechRecognition();
     speechRecognitionObj.continuous = true;
     speechRecognitionObj.interimResults = true;
@@ -2225,30 +2225,30 @@ function startVoiceAntiCheat() {
 
     speechRecognitionObj.onresult = (event) => {
         if (isLocked) return;
-        
+
         let transcript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
             transcript += event.results[i][0].transcript;
         }
-        
+
         if (transcript.trim().length > 0) {
             triggerVoiceLock();
         }
     };
-    
+
     speechRecognitionObj.onerror = (event) => {
         console.error("SpeechRecognition xatosi:", event.error);
     };
 
     speechRecognitionObj.onend = () => {
         if (currentScreen === 'quiz' && !isLocked && isTestActive) {
-            try { speechRecognitionObj.start(); } catch(e) {}
+            try { speechRecognitionObj.start(); } catch (e) { }
         }
     };
-    
+
     try {
         speechRecognitionObj.start();
-    } catch(e) {
+    } catch (e) {
         console.error("Mic start failed", e);
     }
 }
@@ -2256,7 +2256,7 @@ function startVoiceAntiCheat() {
 function stopVoiceAntiCheat() {
     if (speechRecognitionObj) {
         speechRecognitionObj.onend = null;
-        try { speechRecognitionObj.stop(); } catch(e) {}
+        try { speechRecognitionObj.stop(); } catch (e) { }
     }
 }
 
