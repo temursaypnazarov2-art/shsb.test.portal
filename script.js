@@ -643,11 +643,16 @@ function openAdminPanelUI() {
     tabQuestionsBtn.classList.add('active');
     tabQuestions.classList.remove('hidden');
 
+    const adminQuarterSelector = document.getElementById('admin-quarter-selector');
+
     if (currentTeacherSession) {
         tabSettingsBtn.classList.add('hidden');
         tabQrcodeBtn.classList.add('hidden');
         tabSecurityBtn.classList.add('hidden');
+        const vacCard = document.getElementById('voice-anti-cheat-card');
+        if (vacCard) vacCard.style.display = 'none';
 
+        if (adminQuarterSelector) adminQuarterSelector.classList.add('hidden');
         document.querySelector('.admin-header h2').textContent = `O'qituvchi Paneli: ${currentTeacherSession.subject}`;
 
         const subjDropdown = document.getElementById('new-q-subject');
@@ -671,8 +676,6 @@ function openAdminPanelUI() {
 
         teacherTimerBanner.classList.remove('hidden');
         teacherPinSetter.classList.remove('hidden');
-        const adminQuarterSelector = document.getElementById('admin-quarter-selector');
-        if (adminQuarterSelector) adminQuarterSelector.classList.add('hidden');
         filterClass.value = 'all';
 
         clearInterval(teacherTimerInterval);
@@ -705,6 +708,10 @@ function openAdminPanelUI() {
         tabSettingsBtn.classList.remove('hidden');
         tabQrcodeBtn.classList.remove('hidden');
         tabSecurityBtn.classList.remove('hidden');
+        const vacCard = document.getElementById('voice-anti-cheat-card');
+        if (vacCard) vacCard.style.display = 'block';
+
+        if (adminQuarterSelector) adminQuarterSelector.classList.remove('hidden');
         document.querySelector('.admin-header h2').textContent = "Admin Panel";
 
         const subjDropdown = document.getElementById('new-q-subject');
