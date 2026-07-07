@@ -1,61 +1,18 @@
 import re
 
 with open('lang.js', 'r', encoding='utf-8') as f:
-    content = f.read()
+    lang = f.read()
 
-uz_subs = """        subjOzbek: "O'zbek tili",
-        subjSanat: "San'at",
-        subjRus: "Rus tili",
-        subjIngliz: "Ingliz tili",
-        subjTabiiy: "Tabiiy fan",
-        subjOzbTarix: "O'zbekiston tarixi",
-        subjJahonTarix: "Jahon tarixi",
-        subjQorTarix: "Qoraqalpog'iston tarixi",
-        subjAdabiyot: "Adabiyot",
-        subjGeografiya: "Geografiya",
-        subjTexnologiya: "Texnologiya",
-        subjAlgebra: "Algebra",
-        subjGeometriya: "Geometriya","""
+def insert_after(pattern, insertion, text):
+    return re.sub(f'({pattern})', r'\1' + '\n' + insertion, text)
 
-kaa_subs = """        subjOzbek: "Ózbek tili",
-        subjSanat: "ART",
-        subjRus: "Rus tili",
-        subjIngliz: "Inglis tili",
-        subjTabiiy: "Tábiiy pán",
-        subjOzbTarix: "Ózbekstan tariyxi",
-        subjJahonTarix: "Jahan tariyxi",
-        subjQorTarix: "Qaraqalpaqstan tariyxi",
-        subjAdabiyot: "Ádebiyat",
-        subjGeografiya: "Geografiya",
-        subjTexnologiya: "Texnologiya",
-        subjAlgebra: "Algebra",
-        subjGeometriya: "Geometriya","""
+lang = insert_after(r'btnCloseAI:\s*"Natijani yopish",', '        btnDownloadPdf: "PDF Yuklab Olish",\n        pdfTitle: "Pedagogik Tahlil va Tavsiyalar",\n        aiPromptUz: "Siz pedagogik tahlilchisiz. Quyidagi maktab test natijalarini o\'zbek tilida qisqa tahlil qiling va o\'qituvchiga tavsiyalar bering:\\n",', lang)
 
-en_subs = """        subjOzbek: "Uzbek Language",
-        subjSanat: "ART",
-        subjRus: "Russian Language",
-        subjIngliz: "English Language",
-        subjTabiiy: "Natural Science",
-        subjOzbTarix: "History of Uzbekistan",
-        subjJahonTarix: "World History",
-        subjQorTarix: "History of Karakalpakstan",
-        subjAdabiyot: "Literature",
-        subjGeografiya: "Geography",
-        subjTexnologiya: "Technology",
-        subjAlgebra: "Algebra",
-        subjGeometriya: "Geometry","""
+lang = insert_after(r'btnCloseAI:\s*"N.*tiyjeni jab.*?w",', '        btnDownloadPdf: "PDF Jüklep Alıw",\n        pdfTitle: "Pedagogikalıq Analiz hám Usınıslar",\n        aiPromptQq: "Siz pedagogikalıq analizshisiz. Tómendegi mektep test nátiyjelerin qaraqalpaq tilinde qısqa analiz etiń hám muallimge usınıslar beriń:\\n",', lang)
 
-pattern = re.compile(r'subjOnaTili:\s*".*?",\s*subjMatematika:\s*".*?",\s*subjFizika:\s*".*?",\s*subjKimyo:\s*".*?",\s*subjBiologiya:\s*".*?",\s*subjTarix:\s*".*?",\s*subjHuquq:\s*".*?",\s*subjInformatika:\s*".*?",?')
+lang = insert_after(r'btnCloseAI:\s*"Close Result",', '        btnDownloadPdf: "Download PDF",\n        pdfTitle: "Pedagogical Analysis & Recommendations",\n        aiPromptEn: "You are a pedagogical analyst. Please provide a brief pedagogical analysis and recommendations for the teacher in English based on the following school test results:\\n",', lang)
 
-# The pattern appears 3 times: uz, kaa, en
-matches = pattern.findall(content)
-if len(matches) == 3:
-    content = content.replace(matches[0], uz_subs)
-    content = content.replace(matches[1], kaa_subs)
-    content = content.replace(matches[2], en_subs)
-    
-    with open('lang.js', 'w', encoding='utf-8') as f:
-        f.write(content)
-    print("Updated lang.js")
-else:
-    print(f"Error: found {len(matches)} matches instead of 3")
+with open('lang.js', 'w', encoding='utf-8') as f:
+    f.write(lang)
+
+print("lang.js updated!")
