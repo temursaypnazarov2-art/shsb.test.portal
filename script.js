@@ -180,6 +180,7 @@ function syncFromFirebase() {
                 renderQuestions();
                 checkActiveToken();
                 loadAdminPinFields(adminActiveQuarter);
+                if (typeof renderTeacherTokens === 'function') renderTeacherTokens();
 
                 const toggleBtn = document.getElementById('toggleShowAnswersBtn');
                 if (toggleBtn) {
@@ -2017,13 +2018,24 @@ async function runGeminiAnalysis() {
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
         });
         const json = await res.json();
-        const text = json?.candidates?.[0]?.content?.parts?.[0]?.text || "Tahlil natijasi olinmadi.";
         if (geminiLoading) geminiLoading.style.display = 'none';
+        
+        if (json.error) {
+            if (geminiAnalysisOutput) {
+                geminiAnalysisOutput.style.display = 'block';
+                geminiAnalysisOutput.innerHTML = `<div style="color:red; font-weight:bold;">API Xatosi: ${json.error.message}</div>`;
+            }
+            return;
+        }
+
+        const text = json?.candidates?.[0]?.content?.parts?.[0]?.text || "Tahlil natijasi olinmadi.";
         if (geminiAnalysisOutput) {
             geminiAnalysisOutput.style.display = 'block';
             geminiAnalysisOutput.innerHTML = parseMarkdownToHtml(text);
         }
-        if (downloadGeminiPdfBtn) downloadGeminiPdfBtn.classList.remove('hidden');
+        if (downloadGeminiPdfBtn && json?.candidates?.[0]?.content?.parts?.[0]?.text) {
+            downloadGeminiPdfBtn.classList.remove('hidden');
+        }
     } catch (e) {
         if (geminiLoading) geminiLoading.style.display = 'none';
         if (geminiAnalysisOutput) {

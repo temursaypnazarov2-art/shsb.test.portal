@@ -1,4 +1,5 @@
-﻿"use strict";`n/**
+"use strict";
+/**
  * shsb.test.portal - Script Logic with Docx, Telegram, Filters, Leaderboard, Canvas Cert & Audio
  * Author: Antigravity AI
  */
@@ -72,7 +73,7 @@ const defaultSavollar = [
     { subject: "Ona tili", question: "20-bob. O'zlashtirma gap qanday qo'shtirnoq ichiga olinadi?", options: ["Sohibining so'zidan oldin", "Bosh harf bilan boshlanib qo'shtirnoqda beriladi", "Doim qavs ichida yoziladi", "Nuqtadan keyin ajratiladi"], correct: 1, points: 2.0 },
 
     // --- Matematika (5-11 sinf namunasi) ---
-    { subject: "Matematika", question: "18-bob. Uchburchakning ichki burchaklari yig'indisi nimaga teng?", options: ["90Р В РІР‚в„ўР вЂ™Р’В°", "180Р В РІР‚в„ўР вЂ™Р’В°", "360Р В РІР‚в„ўР вЂ™Р’В°", "270Р В РІР‚в„ўР вЂ™Р’В°"], correct: 1, points: 3.0 },
+    { subject: "Matematika", question: "18-bob. Uchburchakning ichki burchaklari yig'indisi nimaga teng?", options: ["90°", "180°", "360°", "270°"], correct: 1, points: 3.0 },
     { subject: "Matematika", question: "19-bob. Kvadrat tenglamaning diskriminanti qanday topiladi?", options: ["D = b - 4ac", "D = b^2 - 4ac", "D = a^2 - 4bc", "D = c^2 - 4ab"], correct: 1, points: 3.0 },
     { subject: "Matematika", question: "20-bob. Agar log_2(x) = 3 bo'lsa, x nechaga teng?", options: ["6", "9", "8", "16"], correct: 2, points: 4.0 },
 
@@ -190,7 +191,7 @@ let questions = questionsDatabase[adminActiveQuarter];
 let teacherTokens = JSON.parse(localStorage.getItem('quiz_teacher_tokens')) || [];
 let showAnswersToStudent = localStorage.getItem('quiz_show_answers') === 'true';
 let geminiApiKey = localStorage.getItem('gemini_api_key') || "";
-let currentTeacherSession = null; 
+let currentTeacherSession = null;
 let currentScreen = 'auth';
 
 ensureSubjectQuarterMaps();
@@ -260,7 +261,7 @@ let studentClass = "";
 let studentSubject = "";
 let studentQuarter = "";
 let currentQuizQuestions = [];
-let studentAnswers = []; 
+let studentAnswers = [];
 let earnedPoints = [];
 let isLocked = false;
 let blockCount = 0;
@@ -389,7 +390,7 @@ const unlockError = document.getElementById('unlock-error');
 const qrCanvas = document.getElementById('qr-canvas');
 const downloadQrBtn = document.getElementById('download-qr-btn');
 
-    function init() {
+function init() {
     if (totalQuestionsSpan) totalQuestionsSpan.textContent = questions.length;
     if (testDurationInput) testDurationInput.value = quizDuration;
     if (tgBotTokenInput) tgBotTokenInput.value = tgBotToken;
@@ -814,7 +815,7 @@ function renderTeacherTokens() {
         const validTokens = teacherTokens.filter(t => t.expireAt > now);
         if (validTokens.length > 0) {
             const latest = validTokens[validTokens.length - 1];
-            const dateStr = ${new Date(latest.expireAt).getFullYear()}-- :;
+            const dateStr = `${new Date(latest.expireAt).getFullYear()}-${String(new Date(latest.expireAt).getMonth() + 1).padStart(2, '0')}-${String(new Date(latest.expireAt).getDate()).padStart(2, '0')} ${String(new Date(latest.expireAt).getHours()).padStart(2, '0')}:${String(new Date(latest.expireAt).getMinutes()).padStart(2, '0')}`;
             activeDisplay.innerHTML = `<span data-i18n="currentActiveToken">${t('currentActiveToken') || 'Joriy vaqtinchalik parol:'}</span> <strong style="font-family:monospace; color:var(--text-color);">${latest.token}</strong> | <span data-i18n="thExpireDate">${t('thExpireDate') || 'Amal qilish muddati:'}</span> ${dateStr}`;
         } else {
             activeDisplay.innerHTML = `<span data-i18n="noActiveToken">${t('noActiveToken') || 'Faol vaqtinchalik parol mavjud emas'}</span>`;
@@ -865,7 +866,7 @@ function renderQuestionsList() {
         div.innerHTML = `
             <div class="q-info">
                 <div class="q-text">${realIndex + 1}. ${q.question} <span class="subject-badge">${q.subject}</span></div>
-                <div class="q-answer-check">Р В Р вЂ Р РЋРЎв„ўР Р†Р вЂљР’В¦ To'g'ri: ${q.type === 'open' ? q.openAnswer : q.options[q.correct]} (${q.points} ball)</div>
+                <div class="q-answer-check">✅ To'g'ri: ${q.type === 'open' ? q.openAnswer : q.options[q.correct]} (${q.points} ball)</div>
             </div>
             <button class="danger-btn" onclick="deleteQuestion(${realIndex})">O'chirish</button>
         `;
@@ -1102,7 +1103,7 @@ function finishQuiz() {
     const percentage = Math.round((totalUserPoints / maxPoints) * 100) || 0;
 
     const totalScoreEl = document.getElementById('total-score');
-    if(totalScoreEl) totalScoreEl.textContent = totalUserPoints.toFixed(1);
+    if (totalScoreEl) totalScoreEl.textContent = totalUserPoints.toFixed(1);
 
     const newResult = {
         name: studentName,
@@ -1193,75 +1194,75 @@ if (downloadCertBtn) {
         const canvas = document.createElement('canvas');
         canvas.width = 1000;
         canvas.height = 700;
-    const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d');
 
-    // Background Gradient
-    const grd = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    grd.addColorStop(0, "#0f172a");
-    grd.addColorStop(1, "#1e293b");
-    ctx.fillStyle = grd;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Background Gradient
+        const grd = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        grd.addColorStop(0, "#0f172a");
+        grd.addColorStop(1, "#1e293b");
+        ctx.fillStyle = grd;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Border
-    ctx.strokeStyle = "#38bdf8";
-    ctx.lineWidth = 15;
-    ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+        // Border
+        ctx.strokeStyle = "#38bdf8";
+        ctx.lineWidth = 15;
+        ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
 
-    // Inner gold border
-    ctx.strokeStyle = "#f59e0b";
-    ctx.lineWidth = 5;
-    ctx.strokeRect(40, 40, canvas.width - 80, canvas.height - 80);
+        // Inner gold border
+        ctx.strokeStyle = "#f59e0b";
+        ctx.lineWidth = 5;
+        ctx.strokeRect(40, 40, canvas.width - 80, canvas.height - 80);
 
-    // Text Header
-    ctx.fillStyle = "#38bdf8";
-    ctx.font = "bold 50px Outfit, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("FAXRIIY YORLIQ", canvas.width / 2, 120);
+        // Text Header
+        ctx.fillStyle = "#38bdf8";
+        ctx.font = "bold 50px Outfit, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("FAXRIIY YORLIQ", canvas.width / 2, 120);
 
-    // School Name
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "30px Outfit, sans-serif";
-    ctx.fillText("Xo'jayli tumani Ixtisoslashtirilgan Maktabi", canvas.width / 2, 180);
+        // School Name
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "30px Outfit, sans-serif";
+        ctx.fillText("Xo'jayli tumani Ixtisoslashtirilgan Maktabi", canvas.width / 2, 180);
 
-    // Awarded to
-    ctx.fillStyle = "white";
-    ctx.font = "24px Outfit, sans-serif";
-    ctx.fillText("Ushbu sertifikat topshiriladi:", canvas.width / 2, 280);
+        // Awarded to
+        ctx.fillStyle = "white";
+        ctx.font = "24px Outfit, sans-serif";
+        ctx.fillText("Ushbu sertifikat topshiriladi:", canvas.width / 2, 280);
 
-    // Student Name
-    ctx.fillStyle = "#f59e0b";
-    ctx.font = "bold 60px Outfit, sans-serif";
-    ctx.fillText(studentName, canvas.width / 2, 360);
+        // Student Name
+        ctx.fillStyle = "#f59e0b";
+        ctx.font = "bold 60px Outfit, sans-serif";
+        ctx.fillText(studentName, canvas.width / 2, 360);
 
-    // Description
-    ctx.fillStyle = "white";
-    ctx.font = "26px Outfit, sans-serif";
-    ctx.fillText(`${studentClass}-sinf o'quvchisi, ${studentSubject} fanidan`, canvas.width / 2, 450);
-    ctx.fillText(`Ichki SHSB sinovida a'lo natija (${totalUserPoints.toFixed(1)} ball) ko'rsatganligi uchun.`, canvas.width / 2, 500);
+        // Description
+        ctx.fillStyle = "white";
+        ctx.font = "26px Outfit, sans-serif";
+        ctx.fillText(`${studentClass}-sinf o'quvchisi, ${studentSubject} fanidan`, canvas.width / 2, 450);
+        ctx.fillText(`Ichki SHSB sinovida a'lo natija (${totalUserPoints.toFixed(1)} ball) ko'rsatganligi uchun.`, canvas.width / 2, 500);
 
-    // Date and Signatures
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "20px Courier New, monospace";
-    ctx.fillText(`Sana: ${new Date().toLocaleDateString()}`, 200, 620);
-    ctx.fillText("Maktab ma'muriyati", 800, 620);
+        // Date and Signatures
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "20px Courier New, monospace";
+        ctx.fillText(`Sana: ${new Date().toLocaleDateString()}`, 200, 620);
+        ctx.fillText("Maktab ma'muriyati", 800, 620);
 
-    // Line for signatures
-    ctx.beginPath();
-    ctx.moveTo(120, 590);
-    ctx.lineTo(280, 590);
-    ctx.stroke();
+        // Line for signatures
+        ctx.beginPath();
+        ctx.moveTo(120, 590);
+        ctx.lineTo(280, 590);
+        ctx.stroke();
 
-    ctx.beginPath();
-    ctx.moveTo(700, 590);
-    ctx.lineTo(900, 590);
-    ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(700, 590);
+        ctx.lineTo(900, 590);
+        ctx.stroke();
 
-    // Trigger Download
-    const link = document.createElement('a');
-    link.download = `Sertifikat_${studentName.replace(/\s+/g, '_')}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-});
+        // Trigger Download
+        const link = document.createElement('a');
+        link.download = `Sertifikat_${studentName.replace(/\s+/g, '_')}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
 }
 
 // --- QR Code Generator (QRious) ---

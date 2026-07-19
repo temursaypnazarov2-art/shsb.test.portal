@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/esprima@4.0.1/dist/esprima.min.js"></script>
+</head>
+<body>
+    <script>
+        fetch('script_strict.js')
+            .then(res => res.text())
+            .then(code => {
+                try {
+                    esprima.parseScript(code, { tolerant: true, loc: true }, function(node, meta) {});
+                    console.log("SUCCESS: No syntax errors.");
+                    document.body.innerHTML = "SUCCESS: No syntax errors.";
+                } catch (e) {
+                    console.error("SYNTAX ERROR:", e.message, "at line", e.lineNumber);
+                    document.body.innerHTML = "ERROR: " + e.message + " at line " + e.lineNumber;
+                }
+            });
+    </script>
+</body>
+</html>

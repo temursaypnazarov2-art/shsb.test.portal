@@ -1,22 +1,26 @@
-import json
-import sys
+import re
 
-try:
-    import esprima
-except ImportError:
-    import subprocess
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "esprima"])
-    import esprima
+with open('script_strict.js', 'r', encoding='utf-8') as f:
+    text = f.read()
 
-def check_syntax(file_path):
-    with open(file_path, 'r', encoding='utf-8') as f:
-        content = f.read()
-    
-    try:
-        esprima.parseScript(content)
-        print("Syntax check passed.")
-    except Exception as e:
-        print(f"Syntax error: {e}")
+lines = text.split('\n')
 
-if __name__ == "__main__":
-    check_syntax('script.js')
+print("Single quote mismatches:")
+for i, line in enumerate(lines):
+    # Strip comments first
+    line_no_comment = line.split('//')[0]
+    count = line_no_comment.count("'")
+    if count % 2 != 0:
+        print(f"Line {i+1}: {line}")
+
+print("\nDouble quote mismatches:")
+for i, line in enumerate(lines):
+    line_no_comment = line.split('//')[0]
+    count = line_no_comment.count('"')
+    if count % 2 != 0:
+        print(f"Line {i+1}: {line}")
+        
+# Let's also check for garbled text that IDE might flag as error if it contains invisible characters
+for i, line in enumerate(lines):
+    if 'Р В РІР‚в„ўР вЂ™Р’В°' in line:
+        print(f"Garbled text at line {i+1}")
