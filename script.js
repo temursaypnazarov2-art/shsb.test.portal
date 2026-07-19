@@ -178,8 +178,7 @@ function syncFromFirebase() {
                 populateClassFilters();
                 renderResultsTable();
                 renderQuestions();
-                checkActiveToken();
-                loadAdminPinFields(adminActiveQuarter);
+                                loadAdminPinFields(adminActiveQuarter);
                 if (typeof renderTeacherTokens === 'function') renderTeacherTokens();
 
                 const toggleBtn = document.getElementById('toggleShowAnswersBtn');
@@ -740,6 +739,7 @@ function openAdminPanelUI() {
 
     renderQuestionsList();
     renderResultsTable();
+    renderTeacherTokens();
 }
 
 function startAdminLicenseTimer() {

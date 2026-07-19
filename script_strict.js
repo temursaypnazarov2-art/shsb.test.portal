@@ -645,6 +645,7 @@ function openAdminPanelUI() {
 
     renderQuestionsList();
     renderResultsTable();
+    renderTeacherTokens();
 }
 
 function updateTeacherTimer() {
