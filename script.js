@@ -2409,3 +2409,4 @@ function exportGeminiPDF() {
         downloadGeminiPdfBtn.disabled = false;
     });
 }
+
