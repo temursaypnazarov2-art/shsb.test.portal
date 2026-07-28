@@ -11,6 +11,31 @@ const PIN_INPUT_IDS = ['pin-onatili', 'pin-matematika', 'pin-fizika', 'pin-kimyo
 const DUR_INPUT_IDS = ['dur-onatili', 'dur-matematika', 'dur-fizika', 'dur-kimyo', 'dur-biologiya', 'dur-tarix', 'dur-huquq', 'dur-informatika'];
 const QUARTERS = ["1", "2", "3", "4"];
 
+// Migrate old DB format to new Quarter-based format
+try {
+    let oldDbRaw = localStorage.getItem('quiz_questions_db');
+    if (oldDbRaw) {
+        let oldDb = JSON.parse(oldDbRaw);
+        if (Array.isArray(oldDb) && oldDb.length > 0) {
+            let q1 = JSON.parse(localStorage.getItem('questions_q1')) || [];
+            if (q1.length === 0) {
+                localStorage.setItem('questions_q1', JSON.stringify(oldDb));
+                console.log('Migrated old array questions to q1.');
+            }
+        } else if (typeof oldDb === 'object' && !Array.isArray(oldDb)) {
+            for (let q in oldDb) {
+                let curr = JSON.parse(localStorage.getItem('questions_q' + q)) || [];
+                if (curr.length === 0 && Array.isArray(oldDb[q]) && oldDb[q].length > 0) {
+                    localStorage.setItem('questions_q' + q, JSON.stringify(oldDb[q]));
+                }
+            }
+        }
+        localStorage.removeItem('quiz_questions_db');
+    }
+} catch(e) {
+    console.error('Migration error:', e);
+}
+
 function getGeminiApiKey() {
     const key = (localStorage.getItem('gemini_api_key') || '').trim();
     return key && key !== 'Sizning_API_Kalitingiz' ? key : '';
@@ -633,7 +658,6 @@ function openAdminPanelUI() {
 
         teacherTimerBanner.classList.add('hidden');
         teacherPinSetter.classList.add('hidden');
-        const adminQuarterSelector = document.getElementById('admin-quarter-selector');
         if (adminQuarterSelector) adminQuarterSelector.classList.remove('hidden');
         clearInterval(teacherTimerInterval);
 
@@ -808,6 +832,10 @@ generateTokenBtn.addEventListener('click', () => {
 });
 
 function renderTeacherTokens() {
+    if (teacherTokens && !Array.isArray(teacherTokens)) {
+        teacherTokens = Object.values(teacherTokens);
+    }
+    if (!teacherTokens) teacherTokens = [];
     teacherTokensList.innerHTML = "";
     const now = new Date().getTime();
 

@@ -3658,6 +3658,7 @@ class Latex(Extra):
 
     def run(self, text: str):
         try:
+            # pyrefly: ignore [missing-import]
             import latex2mathml.converter
             self.converter = latex2mathml.converter
         except ImportError:
@@ -3890,7 +3891,7 @@ class MiddleWordEm(GFMItalicAndBoldProcessor):
 
     def sub(self, match: re.Match[str]):
         if match.re != self.middle_word_em_re:
-            return super().sub(match)
+            return match.group(0)
 
         syntax = match.group(1)
         return self.hash_table[syntax]
@@ -4241,7 +4242,7 @@ class Wavedrom(Extra):
 
         if embed_svg:
             try:
-                import wavedrom
+                import wavedrom  # type: ignore
                 waves = wavedrom.render(waves).tostring()
                 open_tag, close_tag = '<div>', '\n</div>'
             except ImportError:
@@ -4290,7 +4291,7 @@ class WikiTables(Extra):
             hlines.append((self.md.tab * indents) + line)
 
         def format_cell(text):
-            return self.md._run_span_gamut(re.sub(r"^\s*~", "", cell).strip(" "))
+            return self.md._run_span_gamut(re.sub(r"^\s*~", "", text).strip(" "))
 
         add_hline('<table%s>' % self.md._html_class_str_from_tag('table'))
         # Check if first cell of first row is a header cell. If so, assume the whole row is a header row.
@@ -4799,9 +4800,13 @@ def main(argv=None):
             test_dir = join(dirname(dirname(abspath(__file__))), "test")
             if exists(join(test_dir, "test_markdown2.py")):
                 sys.path.insert(0, test_dir)
-                from test_markdown2 import norm_html_from_html
-                norm_html = norm_html_from_html(html)
-                norm_perl_html = norm_html_from_html(perl_html)
+                try:
+                    from test_markdown2 import norm_html_from_html  # type: ignore
+                    norm_html = norm_html_from_html(html)
+                    norm_perl_html = norm_html_from_html(perl_html)
+                except ImportError:
+                    norm_html = html
+                    norm_perl_html = perl_html
             else:
                 norm_html = html
                 norm_perl_html = perl_html

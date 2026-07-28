@@ -177,7 +177,7 @@ function syncFromFirebase() {
             if (currentScreen === 'admin') {
                 populateClassFilters();
                 renderResultsTable();
-                renderQuestions();
+                renderQuestionsList();
                                 loadAdminPinFields(adminActiveQuarter);
                 if (typeof renderTeacherTokens === 'function') renderTeacherTokens();
 
@@ -723,7 +723,6 @@ function openAdminPanelUI() {
 
         teacherTimerBanner.classList.add('hidden');
         teacherPinSetter.classList.add('hidden');
-        const adminQuarterSelector = document.getElementById('admin-quarter-selector');
         if (adminQuarterSelector) adminQuarterSelector.classList.remove('hidden');
         clearInterval(teacherTimerInterval);
 
@@ -961,6 +960,10 @@ if (generateTokenBtn) generateTokenBtn.addEventListener('click', () => {
 });
 
 function renderTeacherTokens() {
+    if (teacherTokens && !Array.isArray(teacherTokens)) {
+        teacherTokens = Object.values(teacherTokens);
+    }
+    if (!teacherTokens) teacherTokens = [];
     teacherTokensList.innerHTML = "";
     const now = new Date().getTime();
 
