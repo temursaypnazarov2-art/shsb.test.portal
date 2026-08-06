@@ -6,9 +6,9 @@
 
 // --- Constants & Database ---
 const HASHED_ADMIN_PASS = "YWRtaW4xMjNfc2hzYg==";
-const SUBJECTS = ["Ona tili", "Matematika", "Fizika", "Kimyo", "Biologiya", "Tarix", "Huquq", "Informatika"];
-const PIN_INPUT_IDS = ['pin-onatili', 'pin-matematika', 'pin-fizika', 'pin-kimyo', 'pin-biologiya', 'pin-tarix', 'pin-huquq', 'pin-informatika'];
-const DUR_INPUT_IDS = ['dur-onatili', 'dur-matematika', 'dur-fizika', 'dur-kimyo', 'dur-biologiya', 'dur-tarix', 'dur-huquq', 'dur-informatika'];
+let SUBJECTS = ["Ona tili", "Matematika", "Fizika", "Kimyo", "Biologiya", "Tarix", "Huquq", "Informatika"];
+let PIN_INPUT_IDS = ['pin-onatili', 'pin-matematika', 'pin-fizika', 'pin-kimyo', 'pin-biologiya', 'pin-tarix', 'pin-huquq', 'pin-informatika'];
+let DUR_INPUT_IDS = ['dur-onatili', 'dur-matematika', 'dur-fizika', 'dur-kimyo', 'dur-biologiya', 'dur-tarix', 'dur-huquq', 'dur-informatika'];
 const QUARTERS = ["1", "2", "3", "4"];
 
 // Migrate old DB format to new Quarter-based format
@@ -213,6 +213,7 @@ let subjectQuarters = JSON.parse(localStorage.getItem('quiz_subject_quarters')) 
 let adminActiveQuarter = localStorage.getItem('quiz_admin_quarter') || "1";
 if (!questionsDatabase[adminActiveQuarter]) questionsDatabase[adminActiveQuarter] = [];
 let questions = questionsDatabase[adminActiveQuarter];
+let customSubjects = [];
 let teacherTokens = JSON.parse(localStorage.getItem('quiz_teacher_tokens')) || [];
 let showAnswersToStudent = localStorage.getItem('quiz_show_answers') === 'true';
 let geminiApiKey = localStorage.getItem('gemini_api_key') || "";
@@ -668,6 +669,7 @@ function openAdminPanelUI() {
     }
 
     renderQuestionsList();
+    populateClassFilters();
     renderResultsTable();
     renderTeacherTokens();
 }
@@ -1342,3 +1344,105 @@ init();
 
 
 
+
+
+// CUSTOM SUBJECTS LOGIC
+function generateSubjectId(name) {
+    return name.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function syncCustomSubjectsUI() {
+    // 1. Update SUBJECTS and PIN arrays
+    customSubjects.forEach(subj => {
+        if (!SUBJECTS.includes(subj)) {
+            SUBJECTS.push(subj);
+            PIN_INPUT_IDS.push('pin-custom-' + generateSubjectId(subj));
+            DUR_INPUT_IDS.push('dur-custom-' + generateSubjectId(subj));
+        }
+    });
+
+    // 2. Render Pin Fields for Custom Subjects
+    const container = document.getElementById('custom-subjects-container');
+    if (container) {
+        container.innerHTML = '';
+        customSubjects.forEach(subj => {
+            const safeId = generateSubjectId(subj);
+            const div = document.createElement('div');
+            div.style.display = 'flex';
+            div.style.gap = '10px';
+            div.style.alignItems = 'center';
+            div.innerHTML = `
+                <div style="flex: 1;"><label>${subj}:</label><input type="text" id="pin-custom-${safeId}"></div>
+                <div style="flex: 1;"><label>Vaqt (daqiqa):</label><input type="number" id="dur-custom-${safeId}"></div>
+                <button class="danger-btn" onclick="deleteCustomSubject('${subj}')" style="padding: 10px; height: 42px; margin-top: 22px;">O'chirish</button>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    // 3. Update Dropdowns
+    const dropdowns = ['teacher-subject-select', 'new-q-subject', 'filter-subject', 'testTargetSubject'];
+    dropdowns.forEach(id => {
+        const select = document.getElementById(id);
+        if (select) {
+            // Remove old custom options
+            Array.from(select.options).forEach(opt => {
+                if (opt.classList.contains('custom-subj-option')) opt.remove();
+            });
+            // Add new ones
+            customSubjects.forEach(subj => {
+                const option = document.createElement('option');
+                option.value = subj;
+                option.textContent = subj;
+                option.className = 'custom-subj-option';
+                select.appendChild(option);
+            });
+        }
+    });
+}
+
+function saveCustomSubjects() {
+    if (typeof database !== 'undefined' && database) {
+        database.ref('customSubjects').set(customSubjects);
+    } else {
+        localStorage.setItem('quiz_custom_subjects', JSON.stringify(customSubjects));
+    }
+}
+
+function deleteCustomSubject(subjName) {
+    if (confirm(`Rostdan ham "${subjName}" fanini o'chirmoqchimisiz?`)) {
+        customSubjects = customSubjects.filter(s => s !== subjName);
+        
+        // Remove from global arrays
+        const idx = SUBJECTS.indexOf(subjName);
+        if (idx > -1) {
+            SUBJECTS.splice(idx, 1);
+            PIN_INPUT_IDS.splice(idx, 1);
+            DUR_INPUT_IDS.splice(idx, 1);
+        }
+        
+        saveCustomSubjects();
+        syncCustomSubjectsUI();
+        if (typeof loadAdminPinFields === 'function') loadAdminPinFields(adminActiveQuarter);
+        showToast("Fan o'chirildi!");
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const btnAddCustom = document.getElementById('btn-add-custom-subject');
+    if (btnAddCustom) {
+        btnAddCustom.addEventListener('click', () => {
+            const input = document.getElementById('new-custom-subject-name');
+            const newName = input.value.trim();
+            if (!newName) return showToast("Fanning nomini kiriting!", "error");
+            if (SUBJECTS.includes(newName)) return showToast("Bu fan allaqachon mavjud!", "error");
+            
+            customSubjects.push(newName);
+            input.value = '';
+            saveCustomSubjects();
+            syncCustomSubjectsUI();
+            if (typeof loadAdminPinFields === 'function') loadAdminPinFields(adminActiveQuarter);
+            showToast("Yangi fan muvaffaqiyatli qo'shildi!");
+        });
+    }
+});

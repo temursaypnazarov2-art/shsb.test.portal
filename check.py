@@ -1,52 +1,26 @@
-﻿import sys
+import sys
 
 def check_brackets(filename):
     with open(filename, 'r', encoding='utf-8') as f:
-        lines = f.readlines()
+        text = f.read()
     
     stack = []
-    brackets = {'}': '{', ']': '[', ')': '('}
-    
-    for i, line in enumerate(lines):
-        # Very simple check, ignores strings and comments
-        in_string = False
-        string_char = ''
-        escape = False
-        
-        for j, char in enumerate(line):
-            if escape:
-                escape = False
-                continue
-                
-            if char == '\\':
-                escape = True
-                continue
-                
-            if char in ("'", '"', '`'):
-                if not in_string:
-                    in_string = True
-                    string_char = char
-                elif string_char == char:
-                    in_string = False
-                continue
-                
-            if in_string:
-                continue
-                
-            if char in "({[":
-                stack.append((char, i+1))
-            elif char in ")}]":
-                if not stack:
-                    print(f"Error: Unexpected closing bracket {char} on line {i+1}")
-                    return
-                top, line_num = stack.pop()
-                if top != brackets[char]:
-                    print(f"Error: Mismatched bracket {char} on line {i+1}. Expected closing for {top} from line {line_num}")
-                    return
-                    
+    line = 1
+    for i, c in enumerate(text):
+        if c == '\n': line += 1
+        if c in '{[(': stack.append((c, line))
+        elif c in '}])':
+            if not stack:
+                print(f"{filename}: Unmatched {c} at line {line}")
+                return
+            last_c, last_line = stack.pop()
+            if (last_c == '{' and c != '}') or (last_c == '[' and c != ']') or (last_c == '(' and c != ')'):
+                print(f"{filename}: Mismatched {last_c} at line {last_line} with {c} at line {line}")
+                return
     if stack:
-        print(f"Error: Unclosed brackets remaining: {[(c, l) for c, l in stack]}")
+        print(f"{filename}: Unclosed {stack[-1][0]} from line {stack[-1][1]}")
     else:
-        print("Brackets are balanced.")
+        print(f"{filename}: Brackets are balanced.")
 
 check_brackets('script.js')
+check_brackets('script_strict.js')
