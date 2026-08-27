@@ -905,7 +905,7 @@ function renderQuestionsList() {
     });
 }
 
-addQBtn.addEventListener('click', () => {
+addQBtn.addEventListener('click', async () => {
     const text = newQText.value.trim();
     const pts = parseFloat(newQPoints.value);
     const typeElement = document.getElementById('new-q-type');
@@ -926,6 +926,22 @@ addQBtn.addEventListener('click', () => {
         id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
         type: qType
     };
+
+    const imageInput = document.getElementById('new-q-image');
+    if (imageInput && imageInput.files && imageInput.files[0]) {
+        try {
+            questionObj.image = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(imageInput.files[0]);
+            });
+        } catch (e) {
+            console.error("Error reading image:", e);
+            showToast("Rasmni yuklashda xatolik yuz berdi!");
+            return;
+        }
+    }
 
     if (qType === 'open') {
         const openAns = document.getElementById('new-q-open-answer').value.trim();
@@ -951,6 +967,8 @@ addQBtn.addEventListener('click', () => {
     questions.push(questionObj);
     saveQuestions();
     renderQuestionsList();
+    const imageInputForClear = document.getElementById('new-q-image');
+    if (imageInputForClear) imageInputForClear.value = '';
     showToast("Savol qo'shildi!");
 });
 

@@ -1039,7 +1039,7 @@ function renderQuestionsList() {
     });
 }
 
-if (addQBtn) addQBtn.addEventListener('click', () => {
+if (addQBtn) addQBtn.addEventListener('click', async () => {
     const text = newQText.value.trim();
     const pts = parseFloat(newQPoints.value);
     const typeElement = document.getElementById('new-q-type');
@@ -1060,6 +1060,22 @@ if (addQBtn) addQBtn.addEventListener('click', () => {
         id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
         type: qType
     };
+
+    const imageInput = document.getElementById('new-q-image');
+    if (imageInput && imageInput.files && imageInput.files[0]) {
+        try {
+            questionObj.image = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(imageInput.files[0]);
+            });
+        } catch (e) {
+            console.error("Error reading image:", e);
+            showToast("Rasmni yuklashda xatolik yuz berdi!");
+            return;
+        }
+    }
 
     if (qType === 'open') {
         const openAns = document.getElementById('new-q-open-answer').value.trim();
@@ -1097,6 +1113,8 @@ if (addQBtn) addQBtn.addEventListener('click', () => {
     newQOpt3.value = '';
     const openAnsEl = document.getElementById('new-q-open-answer');
     if (openAnsEl) openAnsEl.value = '';
+    const imageInputForClear = document.getElementById('new-q-image');
+    if (imageInputForClear) imageInputForClear.value = '';
     showToast("Savol qo'shildi!");
 });
 
@@ -1283,6 +1301,7 @@ if (startBtn) startBtn.addEventListener('click', () => {
     authScreen.classList.add('hidden');
     instructionScreen.classList.remove('hidden');
     currentScreen = 'instruction';
+    startVoiceAntiCheat();
 });
 
 if (beginTestBtn) {
@@ -1292,7 +1311,6 @@ if (beginTestBtn) {
         currentScreen = 'quiz';
         isTestActive = true;
         document.addEventListener('visibilitychange', handleCheating);
-        startVoiceAntiCheat();
         window.addEventListener('blur', handleCheating);
         document.addEventListener('fullscreenchange', handleCheating);
         document.addEventListener('webkitfullscreenchange', handleCheating);
@@ -2278,7 +2296,7 @@ function startVoiceAntiCheat() {
     speechRecognitionObj.lang = 'uz-UZ';
 
     speechRecognitionObj.onresult = (event) => {
-        if (isLocked) return;
+        if (isLocked || !isTestActive) return;
 
         let transcript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
