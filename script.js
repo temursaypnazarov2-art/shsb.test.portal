@@ -1315,27 +1315,56 @@ if (generateTokenBtn) generateTokenBtn.addEventListener('click', async () => {
     }
 
     const expireTime = new Date(expiryVal).getTime();
+    const staffPayload = {
+        role: 'teacher',
+        name: tName,
+        email,
+        subject: tSubj,
+        expireAt: expireTime,
+        active: true,
+        updatedAt: Date.now()
+    };
+
     try {
         if (!secondaryAuthApp) {
             secondaryAuthApp = firebase.initializeApp(firebaseConfig, 'SecondaryTeacherCreate');
         }
         const secondaryAuth = secondaryAuthApp.auth();
-        const cred = await secondaryAuth.createUserWithEmailAndPassword(email, pass);
-        const uid = cred.user.uid;
-        await database.ref('staff/' + uid).set({
-            role: 'teacher',
-            name: tName,
-            email,
-            subject: tSubj,
-            expireAt: expireTime,
-            active: true,
-            createdAt: Date.now()
-        });
+        let uid = null;
+        let reactivated = false;
+
+        try {
+            const cred = await secondaryAuth.createUserWithEmailAndPassword(email, pass);
+            uid = cred.user.uid;
+            staffPayload.createdAt = Date.now();
+        } catch (createErr) {
+            // Email Auth'da allaqachon bor — qayta faollashtiramiz
+            if (createErr.code === 'auth/email-already-in-use') {
+                try {
+                    const cred = await secondaryAuth.signInWithEmailAndPassword(email, pass);
+                    uid = cred.user.uid;
+                    reactivated = true;
+                    // Yangi parol xohlasa (shu parol bilan kirgan), yangilab qo'yamiz
+                    try { await cred.user.updatePassword(pass); } catch (_) { /* ignore */ }
+                } catch (signErr) {
+                    console.error(signErr);
+                    showToast("Bu email allaqachon mavjud. Qayta ochish uchun o‘qituvchining ESKI parolini yozing. Bilmasangiz: Firebase → Authentication → Users dan o‘chiring.");
+                    try { await secondaryAuth.signOut(); } catch (_) {}
+                    return;
+                }
+            } else {
+                throw createErr;
+            }
+        }
+
+        await database.ref('staff/' + uid).set(staffPayload);
         await secondaryAuth.signOut();
         teacherNameInput.value = "";
         if (teacherEmailInput) teacherEmailInput.value = "";
         if (teacherPasswordInput) teacherPasswordInput.value = "";
-        showToast(`O‘qituvchi yaratildi: ${email}`);
+        showToast(reactivated
+            ? `O‘qituvchi qayta faollashtirildi: ${email}`
+            : `O‘qituvchi yaratildi: ${email}`);
         renderTeacherTokens();
     } catch (err) {
         console.error(err);
