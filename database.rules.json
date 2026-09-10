@@ -1,0 +1,100 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "meta": {
+      "setupComplete": {
+        ".read": true,
+        ".write": "auth != null"
+      }
+    },
+
+    "staff": {
+      ".read": "auth != null",
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!root.child('meta/setupComplete').val() && auth.uid === $uid || root.child('staff').child(auth.uid).child('role').val() === 'admin' || (auth.uid === $uid && !data.exists()))",
+        ".validate": "newData.hasChildren(['role', 'email']) && (newData.child('role').val() === 'admin' || newData.child('role').val() === 'teacher')"
+      }
+    },
+
+    "questionsDatabase": {
+      ".read": true,
+      ".write": "auth != null && root.child('staff').child(auth.uid).exists() && root.child('staff').child(auth.uid).child('active').val() !== false"
+    },
+
+    "resultsDatabase": {
+      ".read": true,
+      ".write": "auth != null && root.child('staff').child(auth.uid).exists()",
+      "$quarter": {
+        "$resultId": {
+          ".write": "!data.exists() || (auth != null && root.child('staff').child(auth.uid).exists())"
+        }
+      }
+    },
+
+    "subjectPinsDatabase": {
+      ".read": true,
+      ".write": "auth != null && root.child('staff').child(auth.uid).exists()"
+    },
+    "subjectDurationsDatabase": {
+      ".read": true,
+      ".write": "auth != null && root.child('staff').child(auth.uid).exists()"
+    },
+    "subjectTestTypesDatabase": {
+      ".read": true,
+      ".write": "auth != null && root.child('staff').child(auth.uid).exists()"
+    },
+    "subjectUnblockPinsDatabase": {
+      ".read": true,
+      ".write": "auth != null && root.child('staff').child(auth.uid).exists()"
+    },
+    "subjectClassesDatabase": {
+      ".read": true,
+      ".write": "auth != null && root.child('staff').child(auth.uid).exists()"
+    },
+    "subjectQuarters": {
+      ".read": true,
+      ".write": "auth != null && root.child('staff').child(auth.uid).exists()"
+    },
+    "subjectQuestionOrdersDatabase": {
+      ".read": true,
+      ".write": "auth != null && root.child('staff').child(auth.uid).exists()"
+    },
+    "adminActiveQuarter": {
+      ".read": true,
+      ".write": "auth != null && root.child('staff').child(auth.uid).child('role').val() === 'admin'"
+    },
+    "quizDuration": {
+      ".read": true,
+      ".write": "auth != null && root.child('staff').child(auth.uid).exists()"
+    },
+    "showAnswersToStudent": {
+      ".read": true,
+      ".write": "auth != null && root.child('staff').child(auth.uid).exists()"
+    },
+    "isVoiceAntiCheatEnabled": {
+      ".read": true,
+      ".write": "auth != null && root.child('staff').child(auth.uid).exists()"
+    },
+    "customSubjects": {
+      ".read": true,
+      ".write": "auth != null && root.child('staff').child(auth.uid).child('role').val() === 'admin'"
+    },
+
+    "tgBotToken": {
+      ".read": "auth != null && root.child('staff').child(auth.uid).child('role').val() === 'admin'",
+      ".write": "auth != null && root.child('staff').child(auth.uid).child('role').val() === 'admin'"
+    },
+    "tgChatId": {
+      ".read": "auth != null && root.child('staff').child(auth.uid).child('role').val() === 'admin'",
+      ".write": "auth != null && root.child('staff').child(auth.uid).child('role').val() === 'admin'"
+    },
+
+    "teacherTokens": {
+      ".read": "auth != null && root.child('staff').child(auth.uid).child('role').val() === 'admin'",
+      ".write": "auth != null && root.child('staff').child(auth.uid).child('role').val() === 'admin'"
+    }
+  }
+}

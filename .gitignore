@@ -1,0 +1,25 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+*.swp
+*.tmp
+
+# Secrets / local env
+.env
+.env.*
+!.env.example
+**/serviceAccount*.json
+**/firebase-adminsdk*.json
+
+# Dependencies / build
+node_modules/
+dist/
+.firebase/
+*.log
+
+# Local dumps
+diff.txt
+*.bak

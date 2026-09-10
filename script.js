@@ -4,7 +4,24 @@
  */
 
 // --- Constants & Database ---
-const HASHED_ADMIN_PASS = "YWRtaW4xMjNfc2hzYg==";
+const HASHED_ADMIN_PASS = "YWRtaW4xMjNfc2hzYg=="; // legacy Base64 (2-bosqichda Auth bilan almashtiriladi)
+const ADMIN_LOGIN_MAX_ATTEMPTS = 5;
+const ADMIN_LOGIN_LOCK_MS = 60 * 1000;
+let adminLoginAttempts = 0;
+let adminLoginLockedUntil = 0;
+
+async function sha256Hex(text) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** Admin parolini tekshirish (hozir legacy Base64; SHA-256 tayyor). */
+async function verifyAdminPassword(inputPass) {
+    if (!inputPass) return false;
+    // Legacy moslik — mavjud parol ishlashda davom etadi
+    if (btoa(inputPass) === HASHED_ADMIN_PASS) return true;
+    return false;
+}
 let SUBJECTS = ["O'zbek tili", "San'at", "Rus tili", "Ingliz tili", "Tabiiy fan", "O'zbekiston tarixi", "Jahon tarixi", "Qoraqalpog'iston tarixi", "Adabiyot", "Geografiya", "Texnologiya", "Algebra", "Geometriya", "Matematika", "Huquq", "Kimyo", "Informatika", "Ona tili", "Fizika", "Biologiya"];
 let PIN_INPUT_IDS = ['pin-ozbek', 'pin-sanat', 'pin-rus', 'pin-ingliz', 'pin-tabiiy', 'pin-ozbtarix', 'pin-jahontarix', 'pin-qortarix', 'pin-adabiyot', 'pin-geografiya', 'pin-texnologiya', 'pin-algebra', 'pin-geometriya', 'pin-matematika', 'pin-huquq', 'pin-kimyo', 'pin-informatika', 'pin-onatili', 'pin-fizika', 'pin-biologiya'];
 let DUR_INPUT_IDS = ['dur-ozbek', 'dur-sanat', 'dur-rus', 'dur-ingliz', 'dur-tabiiy', 'dur-ozbtarix', 'dur-jahontarix', 'dur-qortarix', 'dur-adabiyot', 'dur-geografiya', 'dur-texnologiya', 'dur-algebra', 'dur-geometriya', 'dur-matematika', 'dur-huquq', 'dur-kimyo', 'dur-informatika', 'dur-onatili', 'dur-fizika', 'dur-biologiya'];
@@ -60,7 +77,7 @@ ensureSubjectQuarterMaps();
 
 function setAdminActiveQuarter(quarter, syncSelectors = true) {
     adminActiveQuarter = quarter;
-    if (database) database.ref('adminActiveQuarter').set(quarter);
+    if (database && isAdminUser()) database.ref('adminActiveQuarter').set(quarter);
     if (!questionsDatabase[quarter]) questionsDatabase[quarter] = [];
     questions = questionsDatabase[quarter];
     if (syncSelectors) {
@@ -120,12 +137,86 @@ const firebaseConfig = {
     databaseURL: "https://shsbtestportal-default-rtdb.firebaseio.com"
 };
 
-let app, database;
+let app, database, auth, secondaryAuthApp;
+let currentStaff = null; // { uid, role, subject, name, email, expireAt, active }
+let setupComplete = false;
+let staffDirectory = {}; // uid -> profile (admin only usually)
+
 try {
     app = firebase.initializeApp(firebaseConfig);
     database = firebase.database();
+    auth = firebase.auth();
 } catch (e) {
     console.error("Firebase init error", e);
+}
+
+function normalizeList(val) {
+    if (!val) return [];
+    if (Array.isArray(val)) return val.filter(Boolean);
+    if (typeof val === 'object') return Object.keys(val).sort().map(k => val[k]).filter(Boolean);
+    return [];
+}
+
+function normalizeQuestionsDb(db) {
+    const out = { "1": [], "2": [], "3": [], "4": [] };
+    QUARTERS.forEach(q => { out[q] = normalizeList(db && db[q]); });
+    return out;
+}
+
+function normalizeResultsDb(db) {
+    const out = { "1": [], "2": [], "3": [], "4": [] };
+    QUARTERS.forEach(q => {
+        const raw = db && db[q];
+        if (!raw) { out[q] = []; return; }
+        if (Array.isArray(raw)) { out[q] = raw.filter(Boolean); return; }
+        out[q] = Object.keys(raw).map(id => {
+            const item = raw[id];
+            if (!item || typeof item !== 'object') return null;
+            return { ...item, id: item.id || id };
+        }).filter(Boolean);
+    });
+    return out;
+}
+
+function isStaffUser() {
+    return !!(auth && auth.currentUser && currentStaff && currentStaff.active !== false);
+}
+
+function isAdminUser() {
+    return isStaffUser() && currentStaff.role === 'admin';
+}
+
+function requireStaffAuth(actionLabel) {
+    if (!isStaffUser()) {
+        showToast((actionLabel || "Amal") + " uchun tizimga kiring (Firebase Auth).");
+        return false;
+    }
+    if (currentStaff.role === 'teacher' && currentStaff.expireAt && Date.now() > currentStaff.expireAt) {
+        showToast("Akkaunt muddati tugagan.");
+        return false;
+    }
+    return true;
+}
+
+async function loadStaffProfile(uid) {
+    if (!database || !uid) return null;
+    const snap = await database.ref('staff/' + uid).once('value');
+    return snap.val();
+}
+
+async function refreshSetupFlag() {
+    if (!database) return;
+    try {
+        const snap = await database.ref('meta/setupComplete').once('value');
+        setupComplete = !!snap.val();
+    } catch (e) {
+        setupComplete = false;
+    }
+    const regBtn = document.getElementById('admin-register-btn');
+    if (regBtn) {
+        if (!setupComplete) regBtn.classList.remove('hidden');
+        else regBtn.classList.add('hidden');
+    }
 }
 
 // Global Variables
@@ -151,73 +242,106 @@ let currentTeacherSession = null;
 let currentScreen = 'auth';
 
 // --- Firebase Sync Logic ---
+function applyPublicData(data) {
+    if (!data) return;
+    if (data.questionsDatabase) questionsDatabase = normalizeQuestionsDb(data.questionsDatabase);
+    if (data.resultsDatabase) resultsDatabase = normalizeResultsDb(data.resultsDatabase);
+    if (data.quizDuration !== undefined) quizDuration = data.quizDuration;
+    if (data.subjectPinsDatabase) subjectPinsDatabase = data.subjectPinsDatabase;
+    if (data.subjectDurationsDatabase) subjectDurationsDatabase = data.subjectDurationsDatabase;
+    if (data.subjectTestTypesDatabase) subjectTestTypesDatabase = data.subjectTestTypesDatabase;
+    if (data.subjectUnblockPinsDatabase) subjectUnblockPinsDatabase = data.subjectUnblockPinsDatabase;
+    if (data.subjectClassesDatabase) subjectClassesDatabase = data.subjectClassesDatabase;
+    if (data.subjectQuarters) subjectQuarters = data.subjectQuarters;
+    if (data.adminActiveQuarter) adminActiveQuarter = data.adminActiveQuarter;
+    if (data.showAnswersToStudent !== undefined) showAnswersToStudent = data.showAnswersToStudent;
+    if (data.isVoiceAntiCheatEnabled !== undefined) isVoiceAntiCheatEnabled = data.isVoiceAntiCheatEnabled;
+    updateVoiceAntiCheatBtnUI();
+    ensureSubjectQuarterMaps();
+    if (!questionsDatabase[adminActiveQuarter]) questionsDatabase[adminActiveQuarter] = [];
+    questions = questionsDatabase[adminActiveQuarter];
+    rerenderAfterSync();
+}
+
+function rerenderAfterSync() {
+    if (currentScreen === 'admin') {
+        populateClassFilters();
+        renderResultsTable();
+        renderQuestionsList();
+        loadAdminPinFields(adminActiveQuarter);
+        if (typeof renderTeacherTokens === 'function') renderTeacherTokens();
+        const toggleBtn = document.getElementById('toggleShowAnswersBtn');
+        if (toggleBtn) {
+            if (showAnswersToStudent) {
+                toggleBtn.style.backgroundColor = '#10b981';
+                toggleBtn.textContent = typeof t === 'function' ? (t('btnShowAnswersOn') || "Javoblarni ko'rsatish: YOQILGAN") : "Javoblarni ko'rsatish: YOQILGAN";
+            } else {
+                toggleBtn.style.backgroundColor = '#ef4444';
+                toggleBtn.textContent = typeof t === 'function' ? (t('btnShowAnswersOff') || "Javoblarni ko'rsatish: O'CHIRILGAN") : "Javoblarni ko'rsatish: O'CHIRILGAN";
+            }
+        }
+        const setQ = document.getElementById('admin-settings-quarter');
+        if (setQ) setQ.value = adminActiveQuarter;
+        if (tgBotTokenInput && tgBotToken) tgBotTokenInput.value = tgBotToken;
+        if (tgChatIdInput && tgChatId) tgChatIdInput.value = tgChatId;
+    } else if (currentScreen === 'leaderboard' || currentScreen === 'auth') {
+        renderLeaderboard();
+    }
+}
+
 function syncFromFirebase() {
     if (!database) return;
-    database.ref('/').on('value', snapshot => {
-        const data = snapshot.val();
-        if (data) {
-            if (data.questionsDatabase) questionsDatabase = data.questionsDatabase;
-            if (data.resultsDatabase) resultsDatabase = data.resultsDatabase;
-            if (data.quizDuration !== undefined) quizDuration = data.quizDuration;
-            if (data.tgBotToken) tgBotToken = data.tgBotToken;
-            if (data.tgChatId) tgChatId = data.tgChatId;
-            if (data.subjectPinsDatabase) subjectPinsDatabase = data.subjectPinsDatabase;
-            if (data.subjectDurationsDatabase) subjectDurationsDatabase = data.subjectDurationsDatabase;
-            if (data.subjectTestTypesDatabase) subjectTestTypesDatabase = data.subjectTestTypesDatabase;
-            if (data.subjectUnblockPinsDatabase) subjectUnblockPinsDatabase = data.subjectUnblockPinsDatabase;
-            if (data.subjectClassesDatabase) subjectClassesDatabase = data.subjectClassesDatabase;
-            if (data.subjectQuarters) subjectQuarters = data.subjectQuarters;
-            if (data.adminActiveQuarter) adminActiveQuarter = data.adminActiveQuarter;
-            if (data.teacherTokens) teacherTokens = data.teacherTokens || [];
-            if (data.showAnswersToStudent !== undefined) showAnswersToStudent = data.showAnswersToStudent;
-            if (data.isVoiceAntiCheatEnabled !== undefined) isVoiceAntiCheatEnabled = data.isVoiceAntiCheatEnabled;
-            updateVoiceAntiCheatBtnUI();
+    const publicPaths = [
+        'questionsDatabase', 'resultsDatabase', 'quizDuration',
+        'subjectPinsDatabase', 'subjectDurationsDatabase', 'subjectTestTypesDatabase',
+        'subjectUnblockPinsDatabase', 'subjectClassesDatabase', 'subjectQuarters',
+        'adminActiveQuarter', 'showAnswersToStudent', 'isVoiceAntiCheatEnabled',
+        'subjectQuestionOrdersDatabase', 'customSubjects'
+    ];
+    publicPaths.forEach(path => {
+        database.ref(path).on('value', snap => {
+            if (!snap.exists()) return;
+            applyPublicData({ [path]: snap.val() });
+        }, err => console.error('sync', path, err));
+    });
 
-            
-ensureSubjectQuarterMaps();
-            questions = questionsDatabase[adminActiveQuarter] || [];
+    database.ref('meta/setupComplete').on('value', snap => {
+        setupComplete = !!snap.val();
+        const regBtn = document.getElementById('admin-register-btn');
+        if (regBtn) {
+            if (!setupComplete) regBtn.classList.remove('hidden');
+            else regBtn.classList.add('hidden');
+        }
+    });
+}
 
-            // Re-render UI based on current screen
-            if (currentScreen === 'admin') {
-                populateClassFilters();
-                renderResultsTable();
-                renderQuestionsList();
-                                loadAdminPinFields(adminActiveQuarter);
-                if (typeof renderTeacherTokens === 'function') renderTeacherTokens();
+function syncPrivateStaffData() {
+    if (!database || !auth || !auth.currentUser) return;
+    database.ref('staff').on('value', snap => {
+        staffDirectory = snap.val() || {};
+        if (typeof renderTeacherTokens === 'function') renderTeacherTokens();
+    }, err => console.error('staff sync', err));
 
-                const toggleBtn = document.getElementById('toggleShowAnswersBtn');
-                if (toggleBtn) {
-                    if (showAnswersToStudent) {
-                        toggleBtn.style.backgroundColor = '#10b981';
-                        toggleBtn.textContent = typeof t === 'function' ? (t('btnShowAnswersOn') || "Javoblarni ko'rsatish: YOQILGAN") : "Javoblarni ko'rsatish: YOQILGAN";
-                    } else {
-                        toggleBtn.style.backgroundColor = '#ef4444';
-                        toggleBtn.textContent = typeof t === 'function' ? (t('btnShowAnswersOff') || "Javoblarni ko'rsatish: O'CHIRILGAN") : "Javoblarni ko'rsatish: O'CHIRILGAN";
-                    }
-                }
-                const setQ = document.getElementById('admin-settings-quarter');
-                if (setQ) setQ.value = adminActiveQuarter;
-            } else if (currentScreen === 'leaderboard') {
-                renderLeaderboard();
-            }
-        } else {
-            // Initial seed if Firebase is empty
-            
-ensureSubjectQuarterMaps();
-            seedDefaultQuestions();
-            saveAllToFirebase();
+    database.ref('tgBotToken').on('value', snap => {
+        if (snap.val() != null) {
+            tgBotToken = snap.val();
+            if (tgBotTokenInput) tgBotTokenInput.value = tgBotToken;
+        }
+    });
+    database.ref('tgChatId').on('value', snap => {
+        if (snap.val() != null) {
+            tgChatId = snap.val();
+            if (tgChatIdInput) tgChatIdInput.value = tgChatId;
         }
     });
 }
 
 function saveAllToFirebase() {
-    if (!database) return;
-    database.ref('/').set({
+    if (!database || !requireStaffAuth('Baza seed')) return;
+    database.ref('/').update({
         questionsDatabase,
         resultsDatabase,
         quizDuration,
-        tgBotToken,
-        tgChatId,
         subjectPinsDatabase,
         subjectDurationsDatabase,
         subjectTestTypesDatabase,
@@ -225,9 +349,8 @@ function saveAllToFirebase() {
         subjectClassesDatabase,
         subjectQuarters,
         adminActiveQuarter,
-        teacherTokens,
         showAnswersToStudent
-    });
+    }).catch(err => console.error('saveAllToFirebase', err));
 }
 
 let isTestActive = false;
@@ -240,10 +363,83 @@ const staticTeacherPasswords = {
 };
 
 function saveQuestions() {
-    if (database) database.ref('questionsDatabase').set(questionsDatabase);
+    if (!database) return Promise.resolve();
+    if (!requireStaffAuth('Savol saqlash')) return Promise.reject(new Error('auth'));
+    return database.ref('questionsDatabase').set(questionsDatabase).catch(err => {
+        console.error('Savollarni saqlashda xato:', err);
+        showToast("Savol Firebase'ga saqlanmadi. Auth yoki rasm hajmini tekshiring.");
+        throw err;
+    });
+}
+
+/** Rasmni siqib base64 qiladi (Firebase limitti uchun). */
+function compressImageFile(file, maxWidth = 1000, quality = 0.72) {
+    return new Promise((resolve, reject) => {
+        if (!file || !file.type.startsWith('image/')) {
+            reject(new Error('Faqat rasm fayli yuklash mumkin'));
+            return;
+        }
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('Rasm o‘qilmadi'));
+        reader.onload = () => {
+            const img = new Image();
+            img.onerror = () => reject(new Error('Rasm ochilmadi'));
+            img.onload = () => {
+                const scale = Math.min(1, maxWidth / img.width);
+                const w = Math.max(1, Math.round(img.width * scale));
+                const h = Math.max(1, Math.round(img.height * scale));
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                const mime = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+                let dataUrl = canvas.toDataURL(mime, quality);
+                // Juda katta bo'lsa qayta siqish
+                if (dataUrl.length > 900000 && mime === 'image/jpeg') {
+                    dataUrl = canvas.toDataURL('image/jpeg', 0.55);
+                }
+                if (dataUrl.length > 1200000) {
+                    reject(new Error('Rasm juda katta. Kichikroq rasm tanlang.'));
+                    return;
+                }
+                resolve(dataUrl);
+            };
+            img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+    });
 }
 function saveResults() {
-    if (database) database.ref('resultsDatabase').set(resultsDatabase);
+    if (!database) return Promise.resolve();
+    if (!requireStaffAuth('Natijalarni saqlash')) return Promise.reject(new Error('auth'));
+    // Staff bulk overwrite (tozalash / migratsiya)
+    const payload = {};
+    QUARTERS.forEach(q => {
+        payload[q] = {};
+        (resultsDatabase[q] || []).forEach((r, idx) => {
+            const id = r.id || (`r_${idx}_${r.timestamp || Date.now()}`);
+            payload[q][id] = { ...r, id };
+        });
+    });
+    return database.ref('resultsDatabase').set(payload).catch(err => {
+        console.error('Natijalarni saqlashda xato:', err);
+        showToast("Natija saqlanmadi. Internet yoki Firebase rules’ni tekshiring.");
+        throw err;
+    });
+}
+
+function appendStudentResult(quarter, result) {
+    if (!resultsDatabase[quarter]) resultsDatabase[quarter] = [];
+    const id = result.id || (`r_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+    const row = { ...result, id };
+    resultsDatabase[quarter].push(row);
+    if (!database) return Promise.resolve();
+    return database.ref(`resultsDatabase/${quarter}/${id}`).set(row).catch(err => {
+        console.error('Natija yozish xato:', err);
+        showToast("Natija bulutga yozilmadi.");
+        throw err;
+    });
 }
 
 function getResultsArray(filterQ) {
@@ -259,6 +455,7 @@ function getResultsArray(filterQ) {
 }
 
 function saveSettings(duration, token, chatId) {
+    if (!requireStaffAuth('Sozlamalar')) return;
     const gKeyEl = document.getElementById('gemini-api-key');
     if (gKeyEl) {
         geminiApiKey = gKeyEl.value.trim();
@@ -270,8 +467,10 @@ function saveSettings(duration, token, chatId) {
     tgChatId = chatId;
     if (database) {
         database.ref('quizDuration').set(quizDuration);
-        database.ref('tgBotToken').set(tgBotToken);
-        database.ref('tgChatId').set(tgChatId);
+        if (isAdminUser()) {
+            database.ref('tgBotToken').set(tgBotToken);
+            database.ref('tgChatId').set(tgChatId);
+        }
     }
 
     const quarterEl = document.getElementById('admin-settings-quarter');
@@ -286,7 +485,12 @@ function saveSettings(duration, token, chatId) {
     }
 }
 function saveTeacherTokens() {
-    if (database) database.ref('teacherTokens').set(teacherTokens);
+    if (!database) return Promise.resolve();
+    return database.ref('teacherTokens').set(teacherTokens).catch(err => {
+        console.error('Tokenlarni saqlashda xato:', err);
+        showToast("Token saqlanmadi.");
+        throw err;
+    });
 }
 
 let currentQuestionIndex = 0;
@@ -365,9 +569,13 @@ const startBtn = document.getElementById('start-btn');
 const adminLoginBtn = document.getElementById('admin-login-btn');
 const leaderboardBody = document.getElementById('leaderboard-body');
 
+const adminPortalEmailInput = document.getElementById('admin-portal-email');
 const adminPortalPassInput = document.getElementById('admin-portal-pass');
 const adminAuthSubmit = document.getElementById('admin-auth-submit');
+const adminRegisterBtn = document.getElementById('admin-register-btn');
 const adminAuthError = document.getElementById('admin-auth-error');
+const teacherEmailInput = document.getElementById('teacher-email-input');
+const teacherPasswordInput = document.getElementById('teacher-password-input');
 
 const adminLogoutBtn = document.getElementById('admin-logout-btn');
 const tabQuestionsBtn = document.getElementById('tab-questions-btn');
@@ -459,7 +667,9 @@ const downloadQrBtn = document.getElementById('download-qr-btn');
 
 function init() {
     try {
+        refreshSetupFlag();
         syncFromFirebase();
+        setupAuthListener();
         if (typeof questions === 'undefined' || !questions) questions = [];
         if (totalQuestionsSpan) totalQuestionsSpan.textContent = questions.length;
         if (testDurationInput) testDurationInput.value = quizDuration;
@@ -600,43 +810,183 @@ if (backToStudentBtn) backToStudentBtn.addEventListener('click', () => {
 });
 
 if (adminAuthSubmit) adminAuthSubmit.addEventListener('click', handleAdminAuth);
+if (adminRegisterBtn) adminRegisterBtn.addEventListener('click', handleAdminRegister);
 if (adminPortalPassInput) adminPortalPassInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') handleAdminAuth();
 });
+if (adminPortalEmailInput) adminPortalEmailInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') handleAdminAuth();
+});
 
-function handleAdminAuth() {
-    const inputPass = adminPortalPassInput.value.trim();
-    if (!inputPass) return;
-
-    if (btoa(inputPass) === HASHED_ADMIN_PASS) {
-        currentTeacherSession = null;
-        openAdminPanelUI();
-        return;
+function firebaseAuthErrorMessage(err) {
+    const code = err && err.code;
+    if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        return "Email yoki parol noto‘g‘ri.";
     }
-
-    if (staticTeacherPasswords[inputPass]) {
-        currentTeacherSession = { subject: staticTeacherPasswords[inputPass] };
-        openAdminPanelUI();
-        return;
+    if (code === 'auth/email-already-in-use') return "Bu email allaqachon ro‘yxatdan o‘tgan.";
+    if (code === 'auth/weak-password') return "Parol kamida 6 belgi bo‘lishi kerak.";
+    if (code === 'auth/invalid-email') return "Email formati noto‘g‘ri.";
+    if (code === 'auth/operation-not-allowed') {
+        return "Firebase Console’da Email/Password Auth yoqilmagan.";
     }
+    return (err && err.message) || "Kirishda xatolik.";
+}
 
-    const now = new Date().getTime();
-    const existingToken = teacherTokens.find(t => t.token === inputPass);
-    if (existingToken) {
-        if (existingToken.expireAt <= now) {
-            adminAuthError.textContent = t('tempPasswordExpired') || "Vaqtinchalik parol muddati tugagan!";
-            adminAuthError.classList.remove('hidden');
-            playSound('wrong');
+function setupAuthListener() {
+    if (!auth) return;
+    auth.onAuthStateChanged(async (user) => {
+        if (!user) {
+            currentStaff = null;
+            currentTeacherSession = null;
+            if (currentScreen === 'admin') {
+                adminPanel.classList.add('hidden');
+                authScreen.classList.remove('hidden');
+                currentScreen = 'auth';
+            }
             return;
         }
-        currentTeacherSession = existingToken;
-        openAdminPanelUI();
+        try {
+            const profile = await loadStaffProfile(user.uid);
+            if (!profile) {
+                await auth.signOut();
+                showToast("Bu foydalanuvchi staff ro‘yxatida yo‘q.");
+                return;
+            }
+            if (profile.active === false) {
+                await auth.signOut();
+                showToast("Akkaunt o‘chirilgan.");
+                return;
+            }
+            if (profile.role === 'teacher' && profile.expireAt && Date.now() > profile.expireAt) {
+                await auth.signOut();
+                showToast("O‘qituvchi akkaunti muddati tugagan.");
+                return;
+            }
+            currentStaff = { uid: user.uid, ...profile };
+            currentTeacherSession = profile.role === 'teacher'
+                ? { subject: profile.subject, name: profile.name, expireAt: profile.expireAt, uid: user.uid }
+                : null;
+            syncPrivateStaffData();
+            if (currentScreen !== 'admin' && (adminLoginSection && !adminLoginSection.classList.contains('hidden') || currentScreen === 'auth')) {
+                // faqat login jarayonidan keyin panel ochiladi — handleAdminAuth chaqiradi
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    });
+}
+
+async function enterPanelAfterAuth() {
+    const user = auth.currentUser;
+    if (!user) return false;
+    const profile = await loadStaffProfile(user.uid);
+    if (!profile || profile.active === false) {
+        adminAuthError.textContent = "Staff profili topilmadi. Admin sizni qo‘shishi kerak.";
+        adminAuthError.classList.remove('hidden');
+        await auth.signOut();
+        return false;
+    }
+    if (profile.role === 'teacher' && profile.expireAt && Date.now() > profile.expireAt) {
+        adminAuthError.textContent = "Akkaunt muddati tugagan.";
+        adminAuthError.classList.remove('hidden');
+        await auth.signOut();
+        return false;
+    }
+    currentStaff = { uid: user.uid, ...profile };
+    currentTeacherSession = profile.role === 'teacher'
+        ? { subject: profile.subject, name: profile.name, expireAt: profile.expireAt, uid: user.uid }
+        : null;
+    adminLoginAttempts = 0;
+    syncPrivateStaffData();
+    openAdminPanelUI();
+    return true;
+}
+
+async function handleAdminRegister() {
+    if (!auth || !database) return;
+    await refreshSetupFlag();
+    if (setupComplete) {
+        showToast("Admin allaqachon yaratilgan. Oddiy kirishdan foydalaning.");
+        return;
+    }
+    const email = (adminPortalEmailInput && adminPortalEmailInput.value.trim()) || '';
+    const pass = (adminPortalPassInput && adminPortalPassInput.value.trim()) || '';
+    if (!email || !pass) {
+        adminAuthError.textContent = "Email va parolni kiriting.";
+        adminAuthError.classList.remove('hidden');
+        return;
+    }
+    if (pass.length < 6) {
+        adminAuthError.textContent = "Parol kamida 6 belgi bo‘lsin.";
+        adminAuthError.classList.remove('hidden');
+        return;
+    }
+    try {
+        adminAuthError.classList.add('hidden');
+        const cred = await auth.createUserWithEmailAndPassword(email, pass);
+        await database.ref('staff/' + cred.user.uid).set({
+            role: 'admin',
+            email,
+            name: 'Admin',
+            active: true,
+            createdAt: Date.now()
+        });
+        await database.ref('meta/setupComplete').set(true);
+        setupComplete = true;
+        if (adminRegisterBtn) adminRegisterBtn.classList.add('hidden');
+        showToast("Admin yaratildi!");
+        await enterPanelAfterAuth();
+    } catch (err) {
+        console.error(err);
+        adminAuthError.textContent = firebaseAuthErrorMessage(err);
+        adminAuthError.classList.remove('hidden');
+        playSound('wrong');
+    }
+}
+
+async function handleAdminAuth() {
+    if (!auth) {
+        adminAuthError.textContent = "Firebase Auth yuklanmadi.";
+        adminAuthError.classList.remove('hidden');
+        return;
+    }
+    const email = (adminPortalEmailInput && adminPortalEmailInput.value.trim()) || '';
+    const inputPass = adminPortalPassInput ? adminPortalPassInput.value.trim() : '';
+    if (!email || !inputPass) {
+        adminAuthError.textContent = "Email va parolni kiriting.";
+        adminAuthError.classList.remove('hidden');
         return;
     }
 
-    adminAuthError.textContent = t('incorrectPass') || "Noto'g'ri parol!";
-    adminAuthError.classList.remove('hidden');
-    playSound('wrong');
+    const now = Date.now();
+    if (now < adminLoginLockedUntil) {
+        const sec = Math.ceil((adminLoginLockedUntil - now) / 1000);
+        adminAuthError.textContent = `Ko‘p noto‘g‘ri urinish. ${sec} soniyadan keyin qayta urinib ko‘ring.`;
+        adminAuthError.classList.remove('hidden');
+        return;
+    }
+
+    try {
+        adminAuthError.classList.add('hidden');
+        await auth.signInWithEmailAndPassword(email, inputPass);
+        const ok = await enterPanelAfterAuth();
+        if (!ok) {
+            adminLoginAttempts += 1;
+        }
+    } catch (err) {
+        console.error(err);
+        adminLoginAttempts += 1;
+        if (adminLoginAttempts >= ADMIN_LOGIN_MAX_ATTEMPTS) {
+            adminLoginLockedUntil = now + ADMIN_LOGIN_LOCK_MS;
+            adminLoginAttempts = 0;
+            adminAuthError.textContent = "5 marta noto‘g‘ri urinish. 1 daqiqa kutib turing.";
+        } else {
+            adminAuthError.textContent = firebaseAuthErrorMessage(err) +
+                ` (${adminLoginAttempts}/${ADMIN_LOGIN_MAX_ATTEMPTS})`;
+        }
+        adminAuthError.classList.remove('hidden');
+        playSound('wrong');
+    }
 }
 
 function openAdminPanelUI() {
@@ -818,19 +1168,23 @@ function updateTeacherTimer() {
     teacherTimerText.textContent = timeString;
 }
 
-if (adminLogoutBtn) adminLogoutBtn.addEventListener('click', () => {
+if (adminLogoutBtn) adminLogoutBtn.addEventListener('click', async () => {
+    clearInterval(teacherTimerInterval);
+    currentTeacherSession = null;
+    currentStaff = null;
+    currentScreen = 'auth';
     adminPanel.classList.add('hidden');
     authScreen.classList.remove('hidden');
     adminLoginSection.classList.add('hidden');
     studentLoginSection.classList.remove('hidden');
-    currentTeacherSession = null;
-    currentScreen = 'auth';
-    clearInterval(teacherTimerInterval);
+    try {
+        if (auth) await auth.signOut();
+    } catch (e) { console.error(e); }
     renderLeaderboard();
 });
 
 if (saveTeacherPinBtn) saveTeacherPinBtn.addEventListener('click', () => {
-    if (!currentTeacherSession) return;
+    if (!currentTeacherSession || !requireStaffAuth('PIN saqlash')) return;
     const pin = teacherSubjectPin.value.trim();
     const dur = parseInt(teacherSubjectDuration.value) || 20;
     const testType = teacherSubjectTestType ? teacherSubjectTestType.value : "BSB";
@@ -936,84 +1290,113 @@ function generateRandomString(length) {
     return result;
 }
 
-if (generateTokenBtn) generateTokenBtn.addEventListener('click', () => {
+if (generateTokenBtn) generateTokenBtn.addEventListener('click', async () => {
+    if (!isAdminUser()) {
+        showToast("Faqat admin o‘qituvchi akkaunti yarata oladi.");
+        return;
+    }
     const tName = teacherNameInput.value.trim();
     const tSubj = teacherSubjectSelect.value;
+    const email = teacherEmailInput ? teacherEmailInput.value.trim() : '';
+    const pass = teacherPasswordInput ? teacherPasswordInput.value.trim() : '';
     const expiryVal = tempPasswordExpiry.value;
 
-    if (!tName) {
-        showToast("Iltimos o'qituvchi ismini kiriting!");
+    if (!tName || !email || !pass) {
+        showToast("Ism, email va parolni to‘ldiring!");
+        return;
+    }
+    if (pass.length < 6) {
+        showToast("Parol kamida 6 belgi bo‘lsin.");
         return;
     }
     if (!expiryVal) {
-        showToast(t('tempPasswordExpired') || "Iltimos amal qilish muddatini tanlang!");
+        showToast("Amal qilish muddatini tanlang!");
         return;
     }
 
     const expireTime = new Date(expiryVal).getTime();
-    const newToken = {
-        id: Date.now(),
-        name: tName,
-        subject: tSubj,
-        token: generateRandomString(6),
-        expireAt: expireTime
-    };
-
-    teacherTokens.push(newToken);
-    saveTeacherTokens();
-    renderTeacherTokens();
-
-    teacherNameInput.value = "";
-    showToast(`Token yaratildi: ${newToken.token}`);
+    try {
+        if (!secondaryAuthApp) {
+            secondaryAuthApp = firebase.initializeApp(firebaseConfig, 'SecondaryTeacherCreate');
+        }
+        const secondaryAuth = secondaryAuthApp.auth();
+        const cred = await secondaryAuth.createUserWithEmailAndPassword(email, pass);
+        const uid = cred.user.uid;
+        await database.ref('staff/' + uid).set({
+            role: 'teacher',
+            name: tName,
+            email,
+            subject: tSubj,
+            expireAt: expireTime,
+            active: true,
+            createdAt: Date.now()
+        });
+        await secondaryAuth.signOut();
+        teacherNameInput.value = "";
+        if (teacherEmailInput) teacherEmailInput.value = "";
+        if (teacherPasswordInput) teacherPasswordInput.value = "";
+        showToast(`O‘qituvchi yaratildi: ${email}`);
+        renderTeacherTokens();
+    } catch (err) {
+        console.error(err);
+        showToast(firebaseAuthErrorMessage(err));
+    }
 });
 
 function renderTeacherTokens() {
-    if (teacherTokens && !Array.isArray(teacherTokens)) {
-        teacherTokens = Object.values(teacherTokens);
-    }
-    if (!teacherTokens) teacherTokens = [];
+    if (!teacherTokensList) return;
     teacherTokensList.innerHTML = "";
-    const now = new Date().getTime();
+    const now = Date.now();
+    const teachers = Object.keys(staffDirectory || {})
+        .map(uid => ({ uid, ...(staffDirectory[uid] || {}) }))
+        .filter(s => s.role === 'teacher');
 
     const activeDisplay = document.getElementById('activeTempPasswordDisplay');
     if (activeDisplay) {
-        const validTokens = teacherTokens.filter(t => t.expireAt > now);
-        if (validTokens.length > 0) {
-            const latest = validTokens[validTokens.length - 1];
-            const dateStr = `${new Date(latest.expireAt).getFullYear()}-${String(new Date(latest.expireAt).getMonth() + 1).padStart(2, '0')}-${String(new Date(latest.expireAt).getDate()).padStart(2, '0')} ${String(new Date(latest.expireAt).getHours()).padStart(2, '0')}:${String(new Date(latest.expireAt).getMinutes()).padStart(2, '0')}`;
-            activeDisplay.innerHTML = `<span data-i18n="currentActiveToken">${t('currentActiveToken') || 'Joriy vaqtinchalik parol:'}</span> <strong style="font-family:monospace; color:var(--text-color);">${latest.token}</strong> | <span data-i18n="thExpireDate">${t('thExpireDate') || 'Amal qilish muddati:'}</span> ${dateStr}`;
-        } else {
-            activeDisplay.innerHTML = `<span data-i18n="noActiveToken">${t('noActiveToken') || 'Faol vaqtinchalik parol mavjud emas'}</span>`;
-        }
+        const valid = teachers.filter(t => t.active !== false && (!t.expireAt || t.expireAt > now));
+        activeDisplay.innerHTML = valid.length
+            ? `Faol o‘qituvchi akkauntlari: <strong>${valid.length}</strong>`
+            : "Faol o‘qituvchi akkaunti yo‘q";
     }
 
-    if (teacherTokens.length === 0) {
-        teacherTokensList.innerHTML = "<tr><td colspan='5' style='text-align:center;'>Faol tokenlar yo'q</td></tr>";
+    if (!teachers.length) {
+        teacherTokensList.innerHTML = "<tr><td colspan='5' style='text-align:center;'>O‘qituvchilar yo‘q</td></tr>";
         return;
     }
 
-    teacherTokens.forEach(t => {
-        const isExpired = t.expireAt <= now;
-        const expDate = new Date(t.expireAt).toLocaleString();
+    teachers.forEach(t => {
         const tr = document.createElement('tr');
+        const dateStr = t.expireAt
+            ? new Date(t.expireAt).toLocaleString()
+            : '—';
+        const status = t.active === false ? ' (o‘chirilgan)' : (t.expireAt && t.expireAt <= now ? ' (muddati o‘tgan)' : '');
         tr.innerHTML = `
-            <td style="${isExpired ? 'text-decoration: line-through; color: #ef4444;' : ''}">${t.name}</td>
-            <td><span class="subject-badge">${t.subject}</span></td>
-            <td><strong style="color:var(--accent-color); font-family:monospace;">${t.token}</strong></td>
-            <td style="${isExpired ? 'color: #ef4444;' : ''}">${expDate} ${isExpired ? '(Eskirgan)' : ''}</td>
-            <td><button class="danger-btn" onclick="deleteTeacherToken(${t.id})" style="padding: 5px 10px; font-size: 0.8rem;">O'chirish</button></td>
+            <td>${t.name || ''}${status}</td>
+            <td>${t.subject || ''}</td>
+            <td>${t.email || ''}</td>
+            <td>${dateStr}</td>
+            <td><button class="danger-btn" onclick="deactivateTeacher('${t.uid}')">O‘chirish</button></td>
         `;
         teacherTokensList.appendChild(tr);
     });
 }
 
-function deleteTeacherToken(id) {
-    if (confirm("Ushbu tokenni o'chirmoqchimisiz?")) {
-        teacherTokens = teacherTokens.filter(t => t.id !== id);
-        saveTeacherTokens();
+window.deactivateTeacher = async function (uid) {
+    if (!isAdminUser()) return;
+    if (!confirm("O‘qituvchi akkauntini o‘chirilsinmi? (kirish yopiladi)")) return;
+    try {
+        await database.ref('staff/' + uid + '/active').set(false);
+        showToast("O‘qituvchi o‘chirildi");
         renderTeacherTokens();
-        showToast("Token o'chirildi");
+    } catch (e) {
+        console.error(e);
+        showToast("O‘chirishda xato");
     }
+};
+
+function deleteTeacherToken(id) {
+    // legacy no-op (Auth modelga o‘tdik)
+    deactivateTeacher(id);
 }
 
 function renderQuestionsList() {
@@ -1028,10 +1411,14 @@ function renderQuestionsList() {
         const realIndex = questions.indexOf(q);
         const div = document.createElement('div');
         div.className = 'q-item fade-in';
+        const thumb = q.image
+            ? `<img class="q-item-thumb" src="${q.image}" alt="Savol rasmi">`
+            : '';
         div.innerHTML = `
             <div class="q-info">
                 <div class="q-text">${realIndex + 1}. ${q.question} <span class="subject-badge">${q.subject}</span></div>
                 <div class="q-answer-check">To'g'ri: ${q.type === 'open' ? q.openAnswer : q.options[q.correct]} (${q.points} ball)</div>
+                ${thumb}
             </div>
             <button class="danger-btn" onclick="deleteQuestion(${realIndex})">O'chirish</button>
         `;
@@ -1053,6 +1440,10 @@ if (addQBtn) addQBtn.addEventListener('click', async () => {
         return;
     }
 
+    // questionsDatabase bilan bog'langan massivni kafolatlash
+    if (!questionsDatabase[adminActiveQuarter]) questionsDatabase[adminActiveQuarter] = [];
+    questions = questionsDatabase[adminActiveQuarter];
+
     let questionObj = {
         subject: subj,
         question: text,
@@ -1064,15 +1455,11 @@ if (addQBtn) addQBtn.addEventListener('click', async () => {
     const imageInput = document.getElementById('new-q-image');
     if (imageInput && imageInput.files && imageInput.files[0]) {
         try {
-            questionObj.image = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(imageInput.files[0]);
-            });
+            showToast("Rasm yuklanmoqda...");
+            questionObj.image = await compressImageFile(imageInput.files[0]);
         } catch (e) {
             console.error("Error reading image:", e);
-            showToast("Rasmni yuklashda xatolik yuz berdi!");
+            showToast(e.message || "Rasmni yuklashda xatolik yuz berdi!");
             return;
         }
     }
@@ -1104,18 +1491,23 @@ if (addQBtn) addQBtn.addEventListener('click', async () => {
     if (cognitiveEl) questionObj.cognitive = cognitiveEl.value;
 
     questions.push(questionObj);
-    saveQuestions();
-    renderQuestionsList();
-    newQText.value = '';
-    newQOpt0.value = '';
-    newQOpt1.value = '';
-    newQOpt2.value = '';
-    newQOpt3.value = '';
-    const openAnsEl = document.getElementById('new-q-open-answer');
-    if (openAnsEl) openAnsEl.value = '';
-    const imageInputForClear = document.getElementById('new-q-image');
-    if (imageInputForClear) imageInputForClear.value = '';
-    showToast("Savol qo'shildi!");
+    try {
+        await saveQuestions();
+        renderQuestionsList();
+        newQText.value = '';
+        newQOpt0.value = '';
+        newQOpt1.value = '';
+        newQOpt2.value = '';
+        newQOpt3.value = '';
+        const openAnsEl = document.getElementById('new-q-open-answer');
+        if (openAnsEl) openAnsEl.value = '';
+        const imageInputForClear = document.getElementById('new-q-image');
+        if (imageInputForClear) imageInputForClear.value = '';
+        showToast(questionObj.image ? "Savol rasmi bilan qo'shildi!" : "Savol qo'shildi!");
+    } catch (e) {
+        questions.pop();
+        showToast("Saqlash muvaffaqiyatsiz. Kichikroq rasm bilan qayta urinib ko'ring.");
+    }
 });
 
 window.deleteQuestion = (index) => {
@@ -1348,6 +1740,18 @@ function loadQuestion() {
     optionsContainer.innerHTML = '';
     nextBtn.classList.add('hidden');
 
+    const imageWrap = document.getElementById('question-image-wrap');
+    const imageEl = document.getElementById('question-image');
+    if (imageWrap && imageEl) {
+        if (q.image) {
+            imageEl.src = q.image;
+            imageWrap.classList.remove('hidden');
+        } else {
+            imageEl.removeAttribute('src');
+            imageWrap.classList.add('hidden');
+        }
+    }
+
     if (currentQuestionNum) currentQuestionNum.textContent = currentQuestionIndex + 1;
     if (totalQuestionsSpan) totalQuestionsSpan.textContent = currentQuizQuestions.length;
     if (questionPointsDisplay) questionPointsDisplay.textContent = q.points || 1;
@@ -1443,8 +1847,7 @@ function finishQuiz() {
     };
 
     if (!resultsDatabase[studentQuarter]) resultsDatabase[studentQuarter] = [];
-    resultsDatabase[studentQuarter].push(newResult);
-    saveResults();
+    appendStudentResult(studentQuarter, newResult).catch(() => {});
     populateClassFilters();
     renderLeaderboard();
 
@@ -1495,14 +1898,14 @@ function triggerLock() {
     }
 }
 
-if (unlockBtn) unlockBtn.addEventListener('click', () => {
+if (unlockBtn) unlockBtn.addEventListener('click', async () => {
     const teacherUnlockInput = document.getElementById('teacherUnlockInput');
     const pass = teacherUnlockInput ? teacherUnlockInput.value.trim() : "";
     let requiredPin = "admin123";
     if (studentSubject && studentQuarter && subjectUnblockPinsDatabase[studentSubject] && subjectUnblockPinsDatabase[studentSubject][studentQuarter]) {
         requiredPin = subjectUnblockPinsDatabase[studentSubject][studentQuarter];
     }
-    if (pass === requiredPin || btoa(pass) === HASHED_ADMIN_PASS) {
+    if (pass === requiredPin || await verifyAdminPassword(pass)) {
         isLocked = false;
         lockScreen.classList.add('hidden');
         

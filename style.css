@@ -568,6 +568,33 @@ select:focus {
     line-height: 1.4;
 }
 
+.question-image-wrap {
+    margin: 0 auto 20px;
+    max-width: 100%;
+    text-align: center;
+}
+
+.question-image {
+    max-width: 100%;
+    max-height: 360px;
+    width: auto;
+    height: auto;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    object-fit: contain;
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.q-item-thumb {
+    max-width: 120px;
+    max-height: 80px;
+    margin-top: 8px;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+    object-fit: contain;
+    display: block;
+}
+
 .options-grid {
     display: grid;
     gap: 12px;

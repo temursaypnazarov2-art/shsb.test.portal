@@ -9,6 +9,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Firebase App (the core Firebase SDK) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <!-- Firebase Auth -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <!-- Firebase Realtime Database -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
@@ -99,11 +101,16 @@
 
                 <!-- Admin Login Section (Hidden by default) -->
                 <div id="admin-login-section" class="login-section fade-in hidden">
-                    <h2 style="text-align: center; margin-bottom: 20px; color: var(--text-color);" data-i18n="adminModalTitle">Admin Tizimiga Kirish</h2>
+                    <h2 style="text-align: center; margin-bottom: 20px; color: var(--text-color);" data-i18n="adminModalTitle">Admin / O'qituvchi kirishi</h2>
+                    <p style="text-align:center; color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 12px;">Firebase email va parol orqali kiring</p>
                     <div class="input-group">
-                        <input type="password" id="admin-portal-pass" placeholder="Admin yoki O'qituvchi parolini kiriting" data-i18n-placeholder="adminPassPlaceholder">
+                        <input type="email" id="admin-portal-email" placeholder="Email" autocomplete="username">
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="admin-portal-pass" placeholder="Parol" autocomplete="current-password" data-i18n-placeholder="adminPassPlaceholder">
                     </div>
                     <button id="admin-auth-submit" class="primary-btn" data-i18n="adminModalSubmit">Kirish</button>
+                    <button id="admin-register-btn" class="text-link-btn hidden" style="margin-top: 10px;">Birinchi adminni yaratish</button>
                     <div class="admin-login-trigger" style="margin-top: 15px;">
                         <button id="back-to-student-btn" class="text-link-btn" data-i18n="backToStudentLogin">O'quvchi oynasiga qaytish</button>
                     </div>
@@ -465,12 +472,14 @@
                 <div id="tab-settings" class="tab-content hidden">
                     <!-- Teacher Authorizations Generator -->
                     <div class="settings-card" style="border: 1px solid var(--accent-color); background: rgba(56,189,248,0.05);">
-                        <h3 data-i18n="teacherTokensTitle" style="color: var(--accent-color);">O'qituvchilar uchun vaqtinchalik ruxsatnomalar</h3>
-                        <p class="settings-hint" data-i18n="teacherTokensHint">O'qituvchilarga faqat o'z fanini boshqarish huquqini beruvchi vaqtinchalik parollar (tokenlar) yarating.</p>
+                        <h3 data-i18n="teacherTokensTitle" style="color: var(--accent-color);">O'qituvchi akkauntlari (Firebase Auth)</h3>
+                        <p class="settings-hint" data-i18n="teacherTokensHint">O'qituvchiga email/parol bering — u faqat o'z fanini boshqaradi. Eski tokenlar o'rniga Auth ishlatiladi.</p>
                         
                         <div class="admin-dual-sections" style="grid-template-columns: 1fr; gap: 15px; margin-bottom: 15px;">
                             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                                <input type="text" id="teacher-name-input" placeholder="O'qituvchi F.I.SH" style="flex: 1; min-width: 200px; padding: 10px; border-radius: 8px;">
+                                <input type="text" id="teacher-name-input" placeholder="O'qituvchi F.I.SH" style="flex: 1; min-width: 180px; padding: 10px; border-radius: 8px;">
+                                <input type="email" id="teacher-email-input" placeholder="Email" style="flex: 1; min-width: 180px; padding: 10px; border-radius: 8px;">
+                                <input type="text" id="teacher-password-input" placeholder="Parol (min 6 belgi)" style="flex: 1; min-width: 150px; padding: 10px; border-radius: 8px;">
                                 <select id="teacher-subject-select" style="flex: 1; min-width: 150px; padding: 10px; border-radius: 8px;">
                                                                                                 <option value="O'zbek tili" data-i18n="subjOzbek">O'zbek tili</option>
                               <option value="San'at" data-i18n="subjSanat">San'at</option>
@@ -494,7 +503,7 @@
                               <option value="Biologiya" data-i18n="subjBiologiya">Biologiya</option>
                                 </select>
                                 <input type="datetime-local" id="tempPasswordExpiry" style="flex: 1; min-width: 150px; padding: 10px; border-radius: 8px;">
-                                <button id="generate-token-btn" class="primary-btn" style="flex: 1; min-width: 150px; padding: 10px;" data-i18n="btnGenerateToken">Parol yaratish</button>
+                                <button id="generate-token-btn" class="primary-btn" style="flex: 1; min-width: 150px; padding: 10px;" data-i18n="btnGenerateToken">Akkaunt yaratish</button>
                             </div>
                         </div>
 
@@ -506,13 +515,13 @@
                                     <tr>
                                         <th>F.I.SH</th>
                                         <th>Fan</th>
-                                        <th>Parol (Token)</th>
+                                        <th>Email</th>
                                         <th data-i18n="thExpireDate">Amal qilish muddati</th>
                                         <th>Harakat</th>
                                     </tr>
                                 </thead>
                                 <tbody id="teacher-tokens-list">
-                                    <!-- Tokens injected here -->
+                                    <!-- Staff teachers injected here -->
                                 </tbody>
                             </table>
                         </div>
@@ -676,6 +685,9 @@
                         (<span id="question-points-display">0</span> <span data-i18n="quizInfoPoints">ball</span>)
                     </div>
                     <h2 id="question-text">Savol yuklanmoqda...</h2>
+                    <div id="question-image-wrap" class="question-image-wrap hidden">
+                        <img id="question-image" class="question-image" alt="Savol rasmi">
+                    </div>
                     <div id="options-container" class="options-grid">
                         <!-- Options will be injected here -->
                     </div>
