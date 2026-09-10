@@ -201,23 +201,64 @@ input[type="text"]::placeholder {
     letter-spacing: 0.02em;
 }
 
-.admin-auth-field input[type="email"],
-.admin-auth-field input[type="password"] {
-    background: rgba(15, 23, 42, 0.75);
+/* Email va parol — bir xil dizayn */
+#admin-login-section .admin-auth-input,
+#admin-login-section input[type="email"],
+#admin-login-section input[type="password"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 15px 20px;
+    background-color: rgba(15, 23, 42, 0.75) !important;
+    background-image: none !important;
     border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 12px;
+    color: #f8fafc !important;
+    font-size: 1rem;
+    font-family: inherit;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    transition: border-color 0.3s, box-shadow 0.3s, background-color 0.3s;
+    caret-color: #38bdf8;
 }
 
-.admin-auth-field input[type="email"]:hover,
-.admin-auth-field input[type="password"]:hover {
+#admin-login-section .admin-auth-input::placeholder,
+#admin-login-section input[type="email"]::placeholder,
+#admin-login-section input[type="password"]::placeholder {
+    color: #64748b !important;
+    opacity: 1;
+}
+
+#admin-login-section .admin-auth-input:hover,
+#admin-login-section input[type="email"]:hover,
+#admin-login-section input[type="password"]:hover {
     border-color: rgba(56, 189, 248, 0.45);
 }
 
-.admin-auth-field input[type="email"]:focus,
-.admin-auth-field input[type="password"]:focus {
+#admin-login-section .admin-auth-input:focus,
+#admin-login-section input[type="email"]:focus,
+#admin-login-section input[type="password"]:focus {
+    outline: none;
     border-color: var(--accent-color);
     box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
-    background: rgba(15, 23, 42, 0.9);
+    background-color: rgba(15, 23, 42, 0.9) !important;
+}
+
+/* Chrome/Edge autofill oq fonni bekor qilish */
+#admin-login-section input.admin-auth-input:-webkit-autofill,
+#admin-login-section input.admin-auth-input:-webkit-autofill:hover,
+#admin-login-section input.admin-auth-input:-webkit-autofill:focus,
+#admin-login-section input[type="email"]:-webkit-autofill,
+#admin-login-section input[type="email"]:-webkit-autofill:hover,
+#admin-login-section input[type="email"]:-webkit-autofill:focus,
+#admin-login-section input[type="password"]:-webkit-autofill,
+#admin-login-section input[type="password"]:-webkit-autofill:hover,
+#admin-login-section input[type="password"]:-webkit-autofill:focus {
+    -webkit-text-fill-color: #f8fafc !important;
+    caret-color: #38bdf8;
+    box-shadow: 0 0 0 1000px rgba(15, 23, 42, 0.95) inset !important;
+    transition: background-color 99999s ease-out;
+    border: 1px solid rgba(56, 189, 248, 0.25);
 }
 
 /* Buttons */
