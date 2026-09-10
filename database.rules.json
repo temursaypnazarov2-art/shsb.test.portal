@@ -14,7 +14,7 @@
       ".read": "auth != null",
       "$uid": {
         ".read": "auth != null",
-        ".write": "auth != null && (!root.child('meta/setupComplete').val() && auth.uid === $uid || root.child('staff').child(auth.uid).child('role').val() === 'admin' || (auth.uid === $uid && !data.exists()))",
+        ".write": "auth != null && ((root.child('meta/setupComplete').val() !== true && auth.uid === $uid) || root.child('staff').child(auth.uid).child('role').val() === 'admin' || (auth.uid === $uid && !data.exists()))",
         ".validate": "newData.hasChildren(['role', 'email']) && (newData.child('role').val() === 'admin' || newData.child('role').val() === 'teacher')"
       }
     },

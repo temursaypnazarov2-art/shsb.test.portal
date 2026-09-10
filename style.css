@@ -149,6 +149,7 @@ body {
 }
 
 input[type="text"],
+input[type="email"],
 input[type="password"],
 input[type="number"],
 select {
@@ -159,7 +160,7 @@ select {
     border-radius: 12px;
     color: white;
     font-size: 1rem;
-    transition: border-color 0.3s;
+    transition: border-color 0.3s, box-shadow 0.3s, background 0.3s;
 }
 
 select option {
@@ -171,6 +172,52 @@ input:focus,
 select:focus {
     outline: none;
     border-color: var(--accent-color);
+}
+
+input[type="email"]::placeholder,
+input[type="password"]::placeholder,
+input[type="text"]::placeholder {
+    color: #64748b;
+}
+
+.admin-login-hint {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.45;
+    margin-bottom: 18px;
+}
+
+.admin-auth-field {
+    text-align: left;
+}
+
+.admin-auth-field label {
+    display: block;
+    margin-bottom: 8px;
+    color: #cbd5e1;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.admin-auth-field input[type="email"],
+.admin-auth-field input[type="password"] {
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.admin-auth-field input[type="email"]:hover,
+.admin-auth-field input[type="password"]:hover {
+    border-color: rgba(56, 189, 248, 0.45);
+}
+
+.admin-auth-field input[type="email"]:focus,
+.admin-auth-field input[type="password"]:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    background: rgba(15, 23, 42, 0.9);
 }
 
 /* Buttons */

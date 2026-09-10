@@ -102,15 +102,17 @@
                 <!-- Admin Login Section (Hidden by default) -->
                 <div id="admin-login-section" class="login-section fade-in hidden">
                     <h2 style="text-align: center; margin-bottom: 20px; color: var(--text-color);" data-i18n="adminModalTitle">Admin / O'qituvchi kirishi</h2>
-                    <p style="text-align:center; color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 12px;">Firebase email va parol orqali kiring</p>
-                    <div class="input-group">
-                        <input type="email" id="admin-portal-email" placeholder="Email" autocomplete="username">
+                    <p class="admin-login-hint" data-i18n="adminAuthHint">Gmail akkaunt (email) va parol orqali kiring</p>
+                    <div class="input-group admin-auth-field">
+                        <label for="admin-portal-email" data-i18n="adminEmailLabel">Gmail / Email</label>
+                        <input type="email" id="admin-portal-email" placeholder="masalan: ism@gmail.com" autocomplete="username" data-i18n-placeholder="adminEmailPlaceholder">
                     </div>
-                    <div class="input-group">
-                        <input type="password" id="admin-portal-pass" placeholder="Parol" autocomplete="current-password" data-i18n-placeholder="adminPassPlaceholder">
+                    <div class="input-group admin-auth-field">
+                        <label for="admin-portal-pass" data-i18n="adminPassLabel">Parol</label>
+                        <input type="password" id="admin-portal-pass" placeholder="Parolingizni kiriting" autocomplete="current-password" data-i18n-placeholder="adminPassPlaceholder">
                     </div>
                     <button id="admin-auth-submit" class="primary-btn" data-i18n="adminModalSubmit">Kirish</button>
-                    <button id="admin-register-btn" class="text-link-btn hidden" style="margin-top: 10px;">Birinchi adminni yaratish</button>
+                    <button id="admin-register-btn" class="text-link-btn hidden" style="margin-top: 10px;" data-i18n="adminRegisterBtn">Birinchi adminni yaratish</button>
                     <div class="admin-login-trigger" style="margin-top: 15px;">
                         <button id="back-to-student-btn" class="text-link-btn" data-i18n="backToStudentLogin">O'quvchi oynasiga qaytish</button>
                     </div>
