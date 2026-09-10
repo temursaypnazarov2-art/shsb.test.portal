@@ -1347,13 +1347,14 @@ function renderTeacherTokens() {
     if (!teacherTokensList) return;
     teacherTokensList.innerHTML = "";
     const now = Date.now();
+    // Faqat faol o'qituvchilar ko'rsatiladi (o'chirilganlar yashirin)
     const teachers = Object.keys(staffDirectory || {})
         .map(uid => ({ uid, ...(staffDirectory[uid] || {}) }))
-        .filter(s => s.role === 'teacher');
+        .filter(s => s.role === 'teacher' && s.active !== false);
 
     const activeDisplay = document.getElementById('activeTempPasswordDisplay');
     if (activeDisplay) {
-        const valid = teachers.filter(t => t.active !== false && (!t.expireAt || t.expireAt > now));
+        const valid = teachers.filter(t => !t.expireAt || t.expireAt > now);
         activeDisplay.innerHTML = valid.length
             ? `Faol o‘qituvchi akkauntlari: <strong>${valid.length}</strong>`
             : "Faol o‘qituvchi akkaunti yo‘q";
@@ -1369,9 +1370,9 @@ function renderTeacherTokens() {
         const dateStr = t.expireAt
             ? new Date(t.expireAt).toLocaleString()
             : '—';
-        const status = t.active === false ? ' (o‘chirilgan)' : (t.expireAt && t.expireAt <= now ? ' (muddati o‘tgan)' : '');
+        const expired = t.expireAt && t.expireAt <= now;
         tr.innerHTML = `
-            <td>${t.name || ''}${status}</td>
+            <td>${t.name || ''}${expired ? ' (muddati o‘tgan)' : ''}</td>
             <td>${t.subject || ''}</td>
             <td>${t.email || ''}</td>
             <td>${dateStr}</td>
@@ -1383,9 +1384,13 @@ function renderTeacherTokens() {
 
 window.deactivateTeacher = async function (uid) {
     if (!isAdminUser()) return;
-    if (!confirm("O‘qituvchi akkauntini o‘chirilsinmi? (kirish yopiladi)")) return;
+    if (!confirm("O‘qituvchi akkauntini o‘chirilsinmi? (kirish yopiladi, ro‘yxatdan yo‘qoladi)")) return;
     try {
-        await database.ref('staff/' + uid + '/active').set(false);
+        // Kirishni yopish + ro'yxatdan olib tashlash
+        await database.ref('staff/' + uid).update({ active: false, deletedAt: Date.now() });
+        if (staffDirectory[uid]) {
+            staffDirectory[uid].active = false;
+        }
         showToast("O‘qituvchi o‘chirildi");
         renderTeacherTokens();
     } catch (e) {
