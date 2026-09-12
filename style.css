@@ -96,6 +96,47 @@ body {
     top: 10px;
 }
 
+.network-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 10px 16px;
+    background: rgba(185, 28, 28, 0.95);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+.network-banner.slow {
+    background: rgba(180, 83, 9, 0.95);
+}
+
+.network-banner.hidden {
+    display: none !important;
+}
+
+.network-retry-btn {
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    border-radius: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.network-retry-btn:hover {
+    background: rgba(255, 255, 255, 0.22);
+}
+
 /* Landing Layout (Two Columns) */
 .landing-container {
     display: grid;
@@ -564,6 +605,58 @@ input[type="text"]::placeholder {
     overflow-x: auto;
     border-radius: 12px;
     border: 1px solid var(--glass-border);
+}
+
+.questions-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+    align-items: center;
+}
+
+.questions-filters input[type="search"],
+.questions-filters select {
+    flex: 1;
+    min-width: 140px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    color: #f8fafc;
+}
+
+.results-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin: 0 0 18px;
+}
+
+.results-stat {
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 12px;
+    padding: 14px 12px;
+    text-align: center;
+}
+
+.results-stat-label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.results-stat strong {
+    font-size: 1.35rem;
+    color: #7dd3fc;
+}
+
+@media (max-width: 800px) {
+    .results-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 .results-table {

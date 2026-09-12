@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SHSB - Ixtisoslashtirilgan Maktablar</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260910c">
+    <link rel="stylesheet" href="src/style.css?v=20260911d">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -16,9 +16,15 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <!-- Firebase Realtime Database -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <!-- Firebase Storage (rasmlar) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 </head>
 <body>
     <div id="toast" class="toast hidden"></div>
+    <div id="network-banner" class="network-banner hidden" role="status">
+        <span id="network-banner-text">Internet aloqasi yo‘q. Tekshiring...</span>
+        <button type="button" id="network-retry-btn" class="network-retry-btn">Qayta urinish</button>
+    </div>
 
     <!-- Language Switcher Panel -->
     <div class="lang-switcher">
@@ -387,6 +393,36 @@
                     </div>
 
                     <h3 style="margin-bottom: 15px;"><span data-i18n="dbQuestionsTitle">Bazada:</span> <span id="admin-questions-count">0</span> <span data-i18n="dbQuestionsCount">ta savol</span></h3>
+                    <div id="questions-filters" class="questions-filters">
+                        <input type="search" id="q-filter-search" placeholder="Savol matnini qidirish..." data-i18n-placeholder="qFilterSearchPh">
+                        <select id="q-filter-subject">
+                            <option value="all" data-i18n="filterAll">Barchasi</option>
+                        </select>
+                        <select id="q-filter-class">
+                            <option value="all" data-i18n="filterAll">Barchasi</option>
+                            <option value="5-A">5-A</option>
+                            <option value="5-B">5-B</option>
+                            <option value="5-V">5-V</option>
+                            <option value="6-A">6-A</option>
+                            <option value="6-B">6-B</option>
+                            <option value="7-A">7-A</option>
+                            <option value="7-B">7-B</option>
+                            <option value="8-A">8-A</option>
+                            <option value="8-B">8-B</option>
+                            <option value="9-A">9-A</option>
+                            <option value="9-B">9-B</option>
+                            <option value="10-A">10-A</option>
+                            <option value="10-B">10-B</option>
+                            <option value="11-A">11-A</option>
+                            <option value="11-B">11-B</option>
+                        </select>
+                        <select id="q-filter-cognitive">
+                            <option value="all" data-i18n="filterAll">Barchasi</option>
+                            <option value="Bilish" data-i18n="cogKnowing">Bilish</option>
+                            <option value="Qo'llash" data-i18n="cogApp">Qo'llash</option>
+                            <option value="Mulohaza qilish" data-i18n="cogReasoning">Mulohaza qilish</option>
+                        </select>
+                    </div>
                     <div class="questions-list" id="admin-questions-list">
                         <!-- Questions injected here -->
                     </div>
@@ -407,6 +443,11 @@
                             </select>
                             <button id="view-details-btn" class="primary-btn" data-i18n="btnViewDetails" style="margin: 0; padding: 8px 15px; font-size: 14px;">Batafsil ko'rish</button>
 
+                            <label for="filter-subject" data-i18n="lblFilterSubject" style="margin-left: 10px;">Fan:</label>
+                            <select id="filter-subject">
+                                <option value="all" data-i18n="filterAll">Barchasi</option>
+                            </select>
+
                             <label for="filter-quarter" data-i18n="lblFilterQuarter" style="margin-left: 10px;">Chorak:</label>
                             <select id="filter-quarter">
                                 <option value="all" data-i18n="qAll">Barcha choraklar</option>
@@ -415,6 +456,24 @@
                                 <option value="3" data-i18n="q3">3-chorak</option>
                                 <option value="4" data-i18n="q4">4-chorak</option>
                             </select>
+                        </div>
+                        <div id="results-summary" class="results-summary">
+                            <div class="results-stat">
+                                <span class="results-stat-label" data-i18n="statStudents">O‘quvchilar</span>
+                                <strong id="stat-students-count">0</strong>
+                            </div>
+                            <div class="results-stat">
+                                <span class="results-stat-label" data-i18n="statAvg">O‘rtacha</span>
+                                <strong id="stat-avg-percent">0%</strong>
+                            </div>
+                            <div class="results-stat">
+                                <span class="results-stat-label" data-i18n="statBest">Eng yuqori</span>
+                                <strong id="stat-best-percent">0%</strong>
+                            </div>
+                            <div class="results-stat">
+                                <span class="results-stat-label" data-i18n="statLow">Eng past</span>
+                                <strong id="stat-low-percent">0%</strong>
+                            </div>
                         </div>
                         <div class="results-buttons">
                             <button id="clear-results-btn" class="danger-btn" data-i18n="btnClearResults">Natijalarni tozalash</button>
@@ -843,8 +902,15 @@
         </div>
     </div>
 
-    <script src="lang.js?v=20260910b"></script>
-    <script src="script.js?v=20260910e"></script>
+    <!-- 4-bosqich: modullar (Node/Vite shart emas) -->
+    <script src="src/lib/constants.js?v=4"></script>
+    <script src="src/lib/crypto.js?v=4"></script>
+    <script src="src/lib/normalize.js?v=4"></script>
+    <script src="src/lib/filters.js?v=4"></script>
+    <script src="src/lib/scoring.js?v=4"></script>
+    <script src="src/config/firebase.js?v=4"></script>
+    <script src="src/i18n.js?v=20260911d"></script>
+    <script src="src/app/app.js?v=20260911d"></script>
 </body>
 </html>
 

@@ -1,0 +1,18 @@
+{
+  "name": "shsb-test-portal",
+  "private": true,
+  "version": "4.0.0",
+  "description": "SHSB Quiz Portal — Vite-ready (Node o‘rnatilgach)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "serve:py": "python -m http.server 5500"
+  },
+  "devDependencies": {
+    "vite": "^6.2.0",
+    "vitest": "^3.0.0"
+  }
+}

@@ -1,31 +1,23 @@
 # SHSB Test Portal — rivojlantirish yo‘l xaritasi
 
 ## 1-bosqich — Poydevor
-- [x] Loyiha ildizini tozalash (`tools/legacy/`)
-- [x] README + deploy yo‘riqnomasi
-- [x] `.gitignore`, `firebase.json`, `database.rules.json`
-- [x] Saqlash/xato xabarlarini yaxshilash
-- [x] Admin login urinishlarini cheklash
+- [x] Loyiha tozalash, README, gitignore, Firebase fayllari
 
-## 2-bosqich — Xavfsizlik (hozir)
-- [x] Firebase Authentication (Email/Password)
-- [x] Birinchi admin ro‘yxatdan o‘tish
-- [x] O‘qituvchi akkauntlari (secondary Auth app)
-- [x] RTDB rules: yozish `staff` + auth bilan
-- [x] Natijani `append` (o‘quvchi to‘liq bazani o‘chira olmaydi)
-- [x] Telegram tokenlarini faqat admin o‘qishi
-- [ ] Console’da Email/Password yoqish (**qo‘lda**)
-- [ ] `firebase deploy --only database` (**qo‘lda**)
+## 2-bosqich — Xavfsizlik
+- [x] Firebase Auth, staff rules, o‘qituvchi akkauntlari
 
-## 3-bosqich — UX va pedagogika
-- Savol banki filtrlari (fan, sinf, chorak, kognitiv)
-- Natijalarni sinf/fan bo‘yicha dashboard
-- Offline / sekin internet holati
-- Rasm uchun Firebase Storage (base64 o‘rniga)
-- PIN tekshiruvini server tomonga (Cloud Functions)
+## 3-bosqich — UX
+- [x] Savol filtrlari, natijalar dashboard, offline banner, PIN hash
+- [x] Storage ixtiyoriy (Blaze kerak — hozir base64 fallback)
 
 ## 4-bosqich — Arxitektura
-- Kodni modullarga bo‘lish (`auth`, `quiz`, `admin`, `firebase`)
-- Vite yoki shunga o‘xshash build
-- Minimal avtomatik testlar
-- CI + preview deploy
+- [x] `src/lib/` — constants, crypto, normalize, filters, scoring
+- [x] `src/config/firebase.js` — Firebase config
+- [x] `src/app/app.js` + `src/i18n.js` + `src/style.css`
+- [x] `index.html` modular skriptlarni yuklaydi
+- [x] `package.json` + `vite.config.js` (Node o‘rnatilgach)
+- [x] Unit testlar: `python tools/run_tests.py`
+- [x] README yangilandi
+- [ ] Node o‘rnatib `npm install && npm run dev` (ixtiyoriy)
+- [ ] Keyingi refactor: `app.js` ni yanada kichik fayllarga bo‘lish
+- [ ] GitHub Actions CI (ixtiyoriy)

@@ -1,6 +1,8 @@
 /**
+ * LEGACY — faol kod emas. Asosiy mantiq: src/app/app.js (+ src/lib/*).
+ * index.html endi script.js o‘rniga src/ modullarini yuklaydi.
+ *
  * shsb.test.portal - Script Logic with Docx, Telegram, Filters, Leaderboard, Canvas Cert & Audio
- * Author: Antigravity AI
  */
 
 // --- Constants & Database ---
@@ -35,12 +37,16 @@ function getGeminiApiKey() {
 function ensureSubjectQuarterMaps() {
     SUBJECTS.forEach(subj => {
         if (!subjectPinsDatabase[subj]) subjectPinsDatabase[subj] = { "1": "", "2": "", "3": "", "4": "" };
+        if (!subjectPinHashesDatabase[subj]) subjectPinHashesDatabase[subj] = { "1": "", "2": "", "3": "", "4": "" };
+        if (!subjectUnblockPinHashesDatabase[subj]) subjectUnblockPinHashesDatabase[subj] = { "1": "", "2": "", "3": "", "4": "" };
         if (!subjectDurationsDatabase[subj]) subjectDurationsDatabase[subj] = { "1": 20, "2": 20, "3": 20, "4": 20 };
         if (!subjectTestTypesDatabase[subj]) subjectTestTypesDatabase[subj] = { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" };
         if (!subjectUnblockPinsDatabase[subj]) subjectUnblockPinsDatabase[subj] = { "1": "admin123", "2": "admin123", "3": "admin123", "4": "admin123" };
         if (!subjectClassesDatabase[subj]) subjectClassesDatabase[subj] = { "1": "all", "2": "all", "3": "all", "4": "all" };
         QUARTERS.forEach(q => {
             if (subjectPinsDatabase[subj][q] === undefined) subjectPinsDatabase[subj][q] = "";
+            if (subjectPinHashesDatabase[subj][q] === undefined) subjectPinHashesDatabase[subj][q] = "";
+            if (subjectUnblockPinHashesDatabase[subj][q] === undefined) subjectUnblockPinHashesDatabase[subj][q] = "";
             if (subjectDurationsDatabase[subj][q] === undefined) subjectDurationsDatabase[subj][q] = 20;
             if (subjectTestTypesDatabase[subj][q] === undefined) subjectTestTypesDatabase[subj][q] = "BSB";
             if (subjectUnblockPinsDatabase[subj][q] === undefined) subjectUnblockPinsDatabase[subj][q] = "admin123";
@@ -55,23 +61,38 @@ ensureSubjectQuarterMaps();
     SUBJECTS.forEach((subj, index) => {
         const el = document.getElementById(PIN_INPUT_IDS[index]);
         const durEl = document.getElementById(DUR_INPUT_IDS[index]);
-        if (el) el.value = subjectPinsDatabase[subj][quarter] || "";
+        if (el) {
+            // Hashlangan PIN ochiq ko'rsatilmaydi
+            const hasHash = !!(subjectPinHashesDatabase[subj] && subjectPinHashesDatabase[subj][quarter]);
+            const plain = subjectPinsDatabase[subj][quarter] || "";
+            el.value = plain;
+            el.placeholder = hasHash && !plain
+                ? (t('pinSavedPlaceholder') || "PIN saqlangan — o‘zgartirish uchun yangisini yozing")
+                : (el.getAttribute('data-i18n-placeholder') ? el.placeholder : "PIN");
+        }
         if (durEl) durEl.value = subjectDurationsDatabase[subj][quarter] || 20;
     });
 }
 
-function saveAdminPinFields(quarter) {
+async function saveAdminPinFields(quarter) {
     
 ensureSubjectQuarterMaps();
-    SUBJECTS.forEach((subj, index) => {
+    for (let index = 0; index < SUBJECTS.length; index++) {
+        const subj = SUBJECTS[index];
         const el = document.getElementById(PIN_INPUT_IDS[index]);
         const durEl = document.getElementById(DUR_INPUT_IDS[index]);
-        if (el) subjectPinsDatabase[subj][quarter] = el.value.trim();
+        if (el) {
+            const pin = el.value.trim();
+            if (pin) await setSubjectPin(subj, quarter, pin);
+        }
         if (durEl) subjectDurationsDatabase[subj][quarter] = parseInt(durEl.value, 10) || 20;
-    });
+    }
     if (database) {
-        database.ref('subjectPinsDatabase').set(subjectPinsDatabase);
-        database.ref('subjectDurationsDatabase').set(subjectDurationsDatabase);
+        await withNetworkGuard(Promise.all([
+            database.ref('subjectPinsDatabase').set(subjectPinsDatabase),
+            database.ref('subjectPinHashesDatabase').set(subjectPinHashesDatabase),
+            database.ref('subjectDurationsDatabase').set(subjectDurationsDatabase)
+        ]));
     }
 }
 
@@ -137,17 +158,108 @@ const firebaseConfig = {
     databaseURL: "https://shsbtestportal-default-rtdb.firebaseio.com"
 };
 
-let app, database, auth, secondaryAuthApp;
+let app, database, auth, storage, secondaryAuthApp;
 let currentStaff = null; // { uid, role, subject, name, email, expireAt, active }
 let setupComplete = false;
 let staffDirectory = {}; // uid -> profile (admin only usually)
+let networkStatus = 'online'; // online | offline | slow
 
 try {
     app = firebase.initializeApp(firebaseConfig);
     database = firebase.database();
     auth = firebase.auth();
+    try { storage = firebase.storage(); } catch (se) { console.warn('Storage init', se); }
 } catch (e) {
     console.error("Firebase init error", e);
+}
+
+function updateNetworkBanner() {
+    const banner = document.getElementById('network-banner');
+    const text = document.getElementById('network-banner-text');
+    if (!banner || !text) return;
+    banner.classList.remove('slow');
+    if (networkStatus === 'offline') {
+        banner.classList.remove('hidden');
+        text.textContent = (typeof t === 'function' && t('netOffline')) || "Internet aloqasi yo‘q. Tekshiring...";
+    } else if (networkStatus === 'slow') {
+        banner.classList.remove('hidden');
+        banner.classList.add('slow');
+        text.textContent = (typeof t === 'function' && t('netSlow')) || "Aloqa sekin. Kutib turing yoki qayta urinib ko‘ring.";
+    } else {
+        banner.classList.add('hidden');
+    }
+}
+
+function setupNetworkMonitor() {
+    const setOffline = () => { networkStatus = 'offline'; updateNetworkBanner(); };
+    const setOnline = () => { networkStatus = 'online'; updateNetworkBanner(); };
+    window.addEventListener('offline', setOffline);
+    window.addEventListener('online', setOnline);
+    if (!navigator.onLine) setOffline();
+    const retryBtn = document.getElementById('network-retry-btn');
+    if (retryBtn) {
+        retryBtn.addEventListener('click', async () => {
+            networkStatus = navigator.onLine ? 'online' : 'offline';
+            updateNetworkBanner();
+            if (!navigator.onLine) {
+                showToast((typeof t === 'function' && t('netStillOffline')) || "Hali ham offline.");
+                return;
+            }
+            try {
+                networkStatus = 'slow';
+                updateNetworkBanner();
+                const start = Date.now();
+                await database.ref('.info/connected').once('value');
+                const ms = Date.now() - start;
+                networkStatus = ms > 2500 ? 'slow' : 'online';
+                updateNetworkBanner();
+                if (networkStatus === 'online') showToast((typeof t === 'function' && t('netRestored')) || "Aloqa tiklandi.");
+            } catch (e) {
+                networkStatus = 'offline';
+                updateNetworkBanner();
+            }
+        });
+    }
+    // sekin aloqani taxminiy aniqlash
+    if (database) {
+        database.ref('.info/connected').on('value', snap => {
+            if (snap.val() === false) {
+                networkStatus = 'offline';
+                updateNetworkBanner();
+            } else if (networkStatus === 'offline') {
+                networkStatus = 'online';
+                updateNetworkBanner();
+            }
+        });
+    }
+}
+
+async function withNetworkGuard(promise, slowMs = 4000) {
+    if (!navigator.onLine) {
+        networkStatus = 'offline';
+        updateNetworkBanner();
+        throw new Error('offline');
+    }
+    let timer = setTimeout(() => {
+        networkStatus = 'slow';
+        updateNetworkBanner();
+    }, slowMs);
+    try {
+        const result = await promise;
+        clearTimeout(timer);
+        if (networkStatus === 'slow') {
+            networkStatus = 'online';
+            updateNetworkBanner();
+        }
+        return result;
+    } catch (e) {
+        clearTimeout(timer);
+        if (!navigator.onLine) {
+            networkStatus = 'offline';
+            updateNetworkBanner();
+        }
+        throw e;
+    }
 }
 
 function normalizeList(val) {
@@ -227,6 +339,8 @@ let quizDuration = 20;
 let tgBotToken = "";
 let tgChatId = "";
 let subjectPinsDatabase = {};
+let subjectPinHashesDatabase = {};
+let subjectUnblockPinHashesDatabase = {};
 let subjectDurationsDatabase = {};
 let subjectTestTypesDatabase = {};
 let subjectUnblockPinsDatabase = {};
@@ -247,8 +361,10 @@ function applyPublicData(data) {
     if (data.questionsDatabase) questionsDatabase = normalizeQuestionsDb(data.questionsDatabase);
     if (data.resultsDatabase) resultsDatabase = normalizeResultsDb(data.resultsDatabase);
     if (data.quizDuration !== undefined) quizDuration = data.quizDuration;
-    if (data.subjectPinsDatabase) subjectPinsDatabase = data.subjectPinsDatabase;
-    if (data.subjectDurationsDatabase) subjectDurationsDatabase = data.subjectDurationsDatabase;
+            if (data.subjectPinsDatabase) subjectPinsDatabase = data.subjectPinsDatabase;
+            if (data.subjectPinHashesDatabase) subjectPinHashesDatabase = data.subjectPinHashesDatabase;
+            if (data.subjectUnblockPinHashesDatabase) subjectUnblockPinHashesDatabase = data.subjectUnblockPinHashesDatabase;
+            if (data.subjectDurationsDatabase) subjectDurationsDatabase = data.subjectDurationsDatabase;
     if (data.subjectTestTypesDatabase) subjectTestTypesDatabase = data.subjectTestTypesDatabase;
     if (data.subjectUnblockPinsDatabase) subjectUnblockPinsDatabase = data.subjectUnblockPinsDatabase;
     if (data.subjectClassesDatabase) subjectClassesDatabase = data.subjectClassesDatabase;
@@ -293,7 +409,8 @@ function syncFromFirebase() {
     if (!database) return;
     const publicPaths = [
         'questionsDatabase', 'resultsDatabase', 'quizDuration',
-        'subjectPinsDatabase', 'subjectDurationsDatabase', 'subjectTestTypesDatabase',
+        'subjectPinsDatabase', 'subjectPinHashesDatabase', 'subjectUnblockPinHashesDatabase',
+        'subjectDurationsDatabase', 'subjectTestTypesDatabase',
         'subjectUnblockPinsDatabase', 'subjectClassesDatabase', 'subjectQuarters',
         'adminActiveQuarter', 'showAnswersToStudent', 'isVoiceAntiCheatEnabled',
         'subjectQuestionOrdersDatabase', 'customSubjects'
@@ -372,8 +489,12 @@ function saveQuestions() {
     });
 }
 
-/** Rasmni siqib base64 qiladi (Firebase limitti uchun). */
+/** Rasmni siqib base64 yoki Blob qiladi. */
 function compressImageFile(file, maxWidth = 1000, quality = 0.72) {
+    return compressImageAs(file, maxWidth, quality, 'dataUrl');
+}
+
+function compressImageAs(file, maxWidth = 1000, quality = 0.72, asType = 'dataUrl') {
     return new Promise((resolve, reject) => {
         if (!file || !file.type.startsWith('image/')) {
             reject(new Error('Faqat rasm fayli yuklash mumkin'));
@@ -394,11 +515,16 @@ function compressImageFile(file, maxWidth = 1000, quality = 0.72) {
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, w, h);
                 const mime = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-                let dataUrl = canvas.toDataURL(mime, quality);
-                // Juda katta bo'lsa qayta siqish
-                if (dataUrl.length > 900000 && mime === 'image/jpeg') {
-                    dataUrl = canvas.toDataURL('image/jpeg', 0.55);
+                if (asType === 'blob') {
+                    canvas.toBlob(blob => {
+                        if (!blob) return reject(new Error('Rasm tayyorlanmadi'));
+                        if (blob.size > 2.5 * 1024 * 1024) return reject(new Error('Rasm juda katta. Kichikroq rasm tanlang.'));
+                        resolve(blob);
+                    }, mime === 'image/png' ? 'image/jpeg' : mime, quality);
+                    return;
                 }
+                let dataUrl = canvas.toDataURL(mime === 'image/png' ? 'image/jpeg' : mime, quality);
+                if (dataUrl.length > 900000) dataUrl = canvas.toDataURL('image/jpeg', 0.55);
                 if (dataUrl.length > 1200000) {
                     reject(new Error('Rasm juda katta. Kichikroq rasm tanlang.'));
                     return;
@@ -409,6 +535,68 @@ function compressImageFile(file, maxWidth = 1000, quality = 0.72) {
         };
         reader.readAsDataURL(file);
     });
+}
+
+async function uploadQuestionImage(file, questionId) {
+    const blob = await compressImageAs(file, 1000, 0.72, 'blob');
+    if (storage && auth && auth.currentUser) {
+        try {
+            const path = `question-images/${questionId || Date.now()}.jpg`;
+            const ref = storage.ref().child(path);
+            await withNetworkGuard(ref.put(blob, { contentType: 'image/jpeg' }));
+            return await ref.getDownloadURL();
+        } catch (e) {
+            console.warn('Storage upload failed, fallback base64', e);
+        }
+    }
+    return compressImageAs(file, 1000, 0.72, 'dataUrl');
+}
+
+async function hashPin(pin) {
+    if (!pin) return '';
+    return sha256Hex(String(pin).trim());
+}
+
+async function setSubjectPin(subj, quarter, plainPin) {
+    if (!subjectPinHashesDatabase[subj]) subjectPinHashesDatabase[subj] = { "1": "", "2": "", "3": "", "4": "" };
+    if (!subjectPinsDatabase[subj]) subjectPinsDatabase[subj] = { "1": "", "2": "", "3": "", "4": "" };
+    if (!plainPin) return;
+    subjectPinHashesDatabase[subj][quarter] = await hashPin(plainPin);
+    // Ochqich matnni bazada saqlamaymiz
+    subjectPinsDatabase[subj][quarter] = "";
+}
+
+async function setUnblockPin(subj, quarter, plainPin) {
+    if (!subjectUnblockPinHashesDatabase[subj]) subjectUnblockPinHashesDatabase[subj] = { "1": "", "2": "", "3": "", "4": "" };
+    if (!subjectUnblockPinsDatabase[subj]) subjectUnblockPinsDatabase[subj] = { "1": "", "2": "", "3": "", "4": "" };
+    const val = plainPin || 'admin123';
+    subjectUnblockPinHashesDatabase[subj][quarter] = await hashPin(val);
+    subjectUnblockPinsDatabase[subj][quarter] = "";
+}
+
+async function findQuarterByPin(subject, plainPin) {
+    if (!plainPin) return null;
+    const hash = await hashPin(plainPin);
+    const hashes = subjectPinHashesDatabase[subject] || {};
+    for (const q of QUARTERS) {
+        if (hashes[q] && hashes[q] === hash) return q;
+    }
+    // Eski ochiq PIN bilan moslik
+    const plains = subjectPinsDatabase[subject] || {};
+    for (const q of QUARTERS) {
+        if (plains[q] && plains[q] === plainPin) return q;
+    }
+    return null;
+}
+
+async function verifyUnblockPin(subject, quarter, plainPin) {
+    const hash = await hashPin(plainPin);
+    const storedHash = subjectUnblockPinHashesDatabase[subject] && subjectUnblockPinHashesDatabase[subject][quarter];
+    if (storedHash && storedHash === hash) return true;
+    const plain = subjectUnblockPinsDatabase[subject] && subjectUnblockPinsDatabase[subject][quarter];
+    if (plain && plain === plainPin) return true;
+    if (await verifyAdminPassword(plainPin)) return true;
+    return plainPin === 'admin123' && !storedHash && !plain;
 }
 function saveResults() {
     if (!database) return Promise.resolve();
@@ -454,7 +642,7 @@ function getResultsArray(filterQ) {
     return [...(resultsDatabase[filterQ] || [])];
 }
 
-function saveSettings(duration, token, chatId) {
+async function saveSettings(duration, token, chatId) {
     if (!requireStaffAuth('Sozlamalar')) return;
     const gKeyEl = document.getElementById('gemini-api-key');
     if (gKeyEl) {
@@ -465,23 +653,29 @@ function saveSettings(duration, token, chatId) {
     quizDuration = duration;
     tgBotToken = token;
     tgChatId = chatId;
-    if (database) {
-        database.ref('quizDuration').set(quizDuration);
-        if (isAdminUser()) {
-            database.ref('tgBotToken').set(tgBotToken);
-            database.ref('tgChatId').set(tgChatId);
+    try {
+        if (database) {
+            await withNetworkGuard(Promise.all([
+                database.ref('quizDuration').set(quizDuration),
+                ...(isAdminUser() ? [
+                    database.ref('tgBotToken').set(tgBotToken),
+                    database.ref('tgChatId').set(tgChatId)
+                ] : [])
+            ]));
         }
-    }
 
-    const quarterEl = document.getElementById('admin-settings-quarter');
-    const quarter = quarterEl ? quarterEl.value : adminActiveQuarter;
-    saveAdminPinFields(quarter);
-    setAdminActiveQuarter(quarter, true);
+        const quarterEl = document.getElementById('admin-settings-quarter');
+        const quarter = quarterEl ? quarterEl.value : adminActiveQuarter;
+        await saveAdminPinFields(quarter);
+        setAdminActiveQuarter(quarter, true);
 
-    const toggleEl = document.getElementById('toggle-show-answers');
-    if (toggleEl) {
-        showAnswersToStudent = toggleEl.checked;
-        if (database) database.ref('showAnswersToStudent').set(showAnswersToStudent);
+        const toggleEl = document.getElementById('toggle-show-answers');
+        if (toggleEl) {
+            showAnswersToStudent = toggleEl.checked;
+            if (database) await database.ref('showAnswersToStudent').set(showAnswersToStudent);
+        }
+    } catch (e) {
+        showToast((typeof t === 'function' && t('netSaveFail')) || "Saqlashda tarmoq xatosi.");
     }
 }
 function saveTeacherTokens() {
@@ -528,18 +722,20 @@ function seedDefaultQuestions() {
     questions = questionsDatabase[adminActiveQuarter];
 }
 
-function seedDefaultPins() {
-    
-ensureSubjectQuarterMaps();
+async function seedDefaultPins() {
+    ensureSubjectQuarterMaps();
     let hasPin = false;
     SUBJECTS.forEach(subj => {
-        if (subjectPinsDatabase[subj]?.["1"]) hasPin = true;
+        if (subjectPinsDatabase[subj]?.["1"] || subjectPinHashesDatabase[subj]?.["1"]) hasPin = true;
     });
     if (hasPin) return;
-    SUBJECTS.forEach(subj => {
-        subjectPinsDatabase[subj]["1"] = "SHSB1";
-    });
-    if (database) database.ref('subjectPinsDatabase').set(subjectPinsDatabase);
+    for (const subj of SUBJECTS) {
+        await setSubjectPin(subj, "1", "SHSB1");
+    }
+    if (database) {
+        database.ref('subjectPinsDatabase').set(subjectPinsDatabase);
+        database.ref('subjectPinHashesDatabase').set(subjectPinHashesDatabase);
+    }
 }
 
 const authScreen = document.getElementById('auth-screen');
@@ -667,6 +863,7 @@ const downloadQrBtn = document.getElementById('download-qr-btn');
 
 function init() {
     try {
+        setupNetworkMonitor();
         refreshSetupFlag();
         syncFromFirebase();
         setupAuthListener();
@@ -1183,13 +1380,13 @@ if (adminLogoutBtn) adminLogoutBtn.addEventListener('click', async () => {
     renderLeaderboard();
 });
 
-if (saveTeacherPinBtn) saveTeacherPinBtn.addEventListener('click', () => {
+if (saveTeacherPinBtn) saveTeacherPinBtn.addEventListener('click', async () => {
     if (!currentTeacherSession || !requireStaffAuth('PIN saqlash')) return;
     const pin = teacherSubjectPin.value.trim();
     const dur = parseInt(teacherSubjectDuration.value) || 20;
     const testType = teacherSubjectTestType ? teacherSubjectTestType.value : "BSB";
     const unblockPasswordInput = document.getElementById('unblockPasswordInput');
-    const unblockPin = unblockPasswordInput ? unblockPasswordInput.value.trim() : "admin123";
+    const unblockPin = unblockPasswordInput ? unblockPasswordInput.value.trim() : "";
     const testTargetClass = document.getElementById('testTargetClass');
     const targetClass = testTargetClass ? testTargetClass.value : "all";
     const subj = currentTeacherSession.subject;
@@ -1198,32 +1395,44 @@ if (saveTeacherPinBtn) saveTeacherPinBtn.addEventListener('click', () => {
     if (!subjectPinsDatabase[subj]) subjectPinsDatabase[subj] = { "1": "", "2": "", "3": "", "4": "" };
     if (!subjectDurationsDatabase[subj]) subjectDurationsDatabase[subj] = { "1": 20, "2": 20, "3": 20, "4": 20 };
     if (!subjectTestTypesDatabase[subj]) subjectTestTypesDatabase[subj] = { "1": "BSB", "2": "BSB", "3": "BSB", "4": "BSB" };
-    if (!subjectUnblockPinsDatabase[subj]) subjectUnblockPinsDatabase[subj] = { "1": "admin123", "2": "admin123", "3": "admin123", "4": "admin123" };
+    if (!subjectUnblockPinsDatabase[subj]) subjectUnblockPinsDatabase[subj] = { "1": "", "2": "", "3": "", "4": "" };
     if (!subjectClassesDatabase[subj]) subjectClassesDatabase[subj] = { "1": "all", "2": "all", "3": "all", "4": "all" };
 
-    subjectPinsDatabase[subj][qtr] = pin;
+    if (pin) await setSubjectPin(subj, qtr, pin);
+    if (unblockPin) await setUnblockPin(subj, qtr, unblockPin);
     subjectDurationsDatabase[subj][qtr] = dur;
     subjectTestTypesDatabase[subj][qtr] = testType;
-    subjectUnblockPinsDatabase[subj][qtr] = unblockPin || "admin123";
     subjectClassesDatabase[subj][qtr] = targetClass;
     subjectQuarters[subj] = qtr;
 
-    if (database) {
-        database.ref('subjectPinsDatabase').set(subjectPinsDatabase);
-        database.ref('subjectDurationsDatabase').set(subjectDurationsDatabase);
-        database.ref('subjectTestTypesDatabase').set(subjectTestTypesDatabase);
-        database.ref('subjectUnblockPinsDatabase').set(subjectUnblockPinsDatabase);
-        database.ref('subjectClassesDatabase').set(subjectClassesDatabase);
-        database.ref('subjectQuarters').set(subjectQuarters);
+    try {
+        if (database) {
+            await withNetworkGuard(Promise.all([
+                database.ref('subjectPinsDatabase').set(subjectPinsDatabase),
+                database.ref('subjectPinHashesDatabase').set(subjectPinHashesDatabase),
+                database.ref('subjectDurationsDatabase').set(subjectDurationsDatabase),
+                database.ref('subjectTestTypesDatabase').set(subjectTestTypesDatabase),
+                database.ref('subjectUnblockPinsDatabase').set(subjectUnblockPinsDatabase),
+                database.ref('subjectUnblockPinHashesDatabase').set(subjectUnblockPinHashesDatabase),
+                database.ref('subjectClassesDatabase').set(subjectClassesDatabase),
+                database.ref('subjectQuarters').set(subjectQuarters)
+            ]));
+        }
+        alert("Faningiz uchun sozlamalar muvaffaqiyatli saqlandi!");
+    } catch (e) {
+        showToast(t('netSaveFail') || "Saqlashda tarmoq xatosi.");
+        return;
     }
-
-    alert("Faningiz uchun sozlamalar muvaffaqiyatli saqlandi!");
     questions = questionsDatabase[qtr];
 
-    teacherSubjectPin.value = subjectPinsDatabase[subj][qtr] || "";
+    teacherSubjectPin.value = "";
+    teacherSubjectPin.placeholder = t('pinSavedPlaceholder') || "PIN saqlangan — o‘zgartirish uchun yangisini yozing";
     teacherSubjectDuration.value = subjectDurationsDatabase[subj][qtr] || 20;
     if (teacherSubjectTestType) teacherSubjectTestType.value = subjectTestTypesDatabase[subj][qtr] || "BSB";
-    if (unblockPasswordInput) unblockPasswordInput.value = subjectUnblockPinsDatabase[subj][qtr] || "admin123";
+    if (unblockPasswordInput) {
+        unblockPasswordInput.value = "";
+        unblockPasswordInput.placeholder = t('unblockSavedPlaceholder') || "Blokdan chiqarish paroli saqlangan";
+    }
 
     renderQuestionsList();
 });
@@ -1269,7 +1478,7 @@ Object.keys({
     });
 });
 
-if (saveSettingsBtn) saveSettingsBtn.addEventListener('click', () => {
+if (saveSettingsBtn) saveSettingsBtn.addEventListener('click', async () => {
     let dur = parseInt(testDurationInput.value);
     if (isNaN(dur) || dur < 1) {
         dur = 20;
@@ -1277,7 +1486,7 @@ if (saveSettingsBtn) saveSettingsBtn.addEventListener('click', () => {
     const token = tgBotTokenInput.value.trim();
     const chatId = tgChatIdInput.value.trim();
 
-    saveSettings(dur, token, chatId);
+    await saveSettings(dur, token, chatId);
     alert(typeof t === 'function' ? (t('msgSettingsSaved') || "Sozlamalar saqlandi!") : "Sozlamalar saqlandi!");
 });
 
@@ -1433,24 +1642,99 @@ function deleteTeacherToken(id) {
     deactivateTeacher(id);
 }
 
-function renderQuestionsList() {
-    adminQuestionsList.innerHTML = '';
-    const displayQs = currentTeacherSession
+function populateQuestionSubjectFilter() {
+    const sel = document.getElementById('q-filter-subject');
+    if (!sel) return;
+    const prev = sel.value || 'all';
+    sel.innerHTML = `<option value="all">${t('filterAll') || 'Barchasi'}</option>`;
+    const subjects = currentTeacherSession
+        ? [currentTeacherSession.subject]
+        : [...SUBJECTS];
+    subjects.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s;
+        opt.textContent = s;
+        sel.appendChild(opt);
+    });
+    if (currentTeacherSession) {
+        sel.value = currentTeacherSession.subject;
+        sel.disabled = true;
+    } else {
+        sel.disabled = false;
+        if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+    }
+}
+
+function populateResultsSubjectFilter() {
+    const sel = document.getElementById('filter-subject');
+    if (!sel) return;
+    const prev = sel.value || 'all';
+    sel.innerHTML = `<option value="all">${t('filterAll') || 'Barchasi'}</option>`;
+    const subjects = currentTeacherSession
+        ? [currentTeacherSession.subject]
+        : [...SUBJECTS];
+    subjects.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s;
+        opt.textContent = s;
+        sel.appendChild(opt);
+    });
+    if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+    if (currentTeacherSession) {
+        sel.value = currentTeacherSession.subject;
+        sel.disabled = true;
+    } else {
+        sel.disabled = false;
+    }
+}
+
+function getFilteredQuestions() {
+    let list = currentTeacherSession
         ? questions.filter(q => q.subject === currentTeacherSession.subject)
-        : questions;
+        : [...questions];
 
-    adminQuestionsCount.textContent = displayQs.length;
+    const searchEl = document.getElementById('q-filter-search');
+    const subjEl = document.getElementById('q-filter-subject');
+    const classEl = document.getElementById('q-filter-class');
+    const cogEl = document.getElementById('q-filter-cognitive');
 
-    displayQs.forEach((q, i) => {
+    const search = (searchEl && searchEl.value.trim().toLowerCase()) || '';
+    const subj = (subjEl && subjEl.value) || 'all';
+    const cls = (classEl && classEl.value) || 'all';
+    const cog = (cogEl && cogEl.value) || 'all';
+
+    if (subj !== 'all') list = list.filter(q => q.subject === subj);
+    if (cls !== 'all') list = list.filter(q => (q.targetClass || 'all') === cls || q.targetClass === 'all' || !q.targetClass);
+    if (cog !== 'all') list = list.filter(q => (q.cognitive || '') === cog);
+    if (search) list = list.filter(q => (q.question || '').toLowerCase().includes(search));
+    return list;
+}
+
+function renderQuestionsList() {
+    if (!adminQuestionsList) return;
+    populateQuestionSubjectFilter();
+    adminQuestionsList.innerHTML = '';
+    const displayQs = getFilteredQuestions();
+
+    if (adminQuestionsCount) adminQuestionsCount.textContent = displayQs.length;
+
+    if (!displayQs.length) {
+        adminQuestionsList.innerHTML = `<div class="q-item" style="justify-content:center; color: var(--text-secondary);">${t('noFilteredQuestions') || "Filter bo‘yicha savol topilmadi."}</div>`;
+        return;
+    }
+
+    displayQs.forEach((q) => {
         const realIndex = questions.indexOf(q);
         const div = document.createElement('div');
         div.className = 'q-item fade-in';
         const thumb = q.image
             ? `<img class="q-item-thumb" src="${q.image}" alt="Savol rasmi">`
             : '';
+        const cog = q.cognitive ? ` · ${q.cognitive}` : '';
+        const cls = q.targetClass && q.targetClass !== 'all' ? ` · ${q.targetClass}` : '';
         div.innerHTML = `
             <div class="q-info">
-                <div class="q-text">${realIndex + 1}. ${q.question} <span class="subject-badge">${q.subject}</span></div>
+                <div class="q-text">${realIndex + 1}. ${q.question} <span class="subject-badge">${q.subject}${cls}${cog}</span></div>
                 <div class="q-answer-check">To'g'ri: ${q.type === 'open' ? q.openAnswer : q.options[q.correct]} (${q.points} ball)</div>
                 ${thumb}
             </div>
@@ -1458,6 +1742,28 @@ function renderQuestionsList() {
         `;
         adminQuestionsList.appendChild(div);
     });
+}
+
+function updateResultsSummary(filteredResults) {
+    const countEl = document.getElementById('stat-students-count');
+    const avgEl = document.getElementById('stat-avg-percent');
+    const bestEl = document.getElementById('stat-best-percent');
+    const lowEl = document.getElementById('stat-low-percent');
+    if (!countEl) return;
+
+    const n = filteredResults.length;
+    countEl.textContent = String(n);
+    if (!n) {
+        if (avgEl) avgEl.textContent = '0%';
+        if (bestEl) bestEl.textContent = '0%';
+        if (lowEl) lowEl.textContent = '0%';
+        return;
+    }
+    const percents = filteredResults.map(r => Number(r.percentage) || 0);
+    const avg = percents.reduce((a, b) => a + b, 0) / n;
+    if (avgEl) avgEl.textContent = `${avg.toFixed(1)}%`;
+    if (bestEl) bestEl.textContent = `${Math.max(...percents).toFixed(1)}%`;
+    if (lowEl) lowEl.textContent = `${Math.min(...percents).toFixed(1)}%`;
 }
 
 if (addQBtn) addQBtn.addEventListener('click', async () => {
@@ -1490,7 +1796,7 @@ if (addQBtn) addQBtn.addEventListener('click', async () => {
     if (imageInput && imageInput.files && imageInput.files[0]) {
         try {
             showToast("Rasm yuklanmoqda...");
-            questionObj.image = await compressImageFile(imageInput.files[0]);
+            questionObj.image = await uploadQuestionImage(imageInput.files[0], questionObj.id);
         } catch (e) {
             console.error("Error reading image:", e);
             showToast(e.message || "Rasmni yuklashda xatolik yuz berdi!");
@@ -1567,15 +1873,20 @@ function populateClassFilters() {
 
 function renderResultsTable() {
     resultsTableBody.innerHTML = '';
+    populateResultsSubjectFilter();
     const filterCls = filterClass.value;
     const filterQ = filterQuarter ? filterQuarter.value : 'all';
+    const filterSubjEl = document.getElementById('filter-subject');
+    const filterSubj = filterSubjEl ? filterSubjEl.value : 'all';
 
     let filteredResults = getResultsArray(filterQ);
     if (filterCls !== 'all') filteredResults = filteredResults.filter(r => r.class === filterCls);
+    if (filterSubj !== 'all') filteredResults = filteredResults.filter(r => r.subject === filterSubj);
     if (currentTeacherSession) filteredResults = filteredResults.filter(r => r.subject === currentTeacherSession.subject);
 
     filteredResults.sort((a, b) => b.percentage - a.percentage);
     populateStudentSelect(filteredResults);
+    updateResultsSummary(filteredResults);
 
     if (filteredResults.length === 0) {
         resultsTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center;">${t('noResults') || "Hozircha natijalar mavjud emas."}</td></tr>`;
@@ -1663,8 +1974,16 @@ function showStudentDetails(result) {
 
 if (filterClass) filterClass.addEventListener('change', renderResultsTable);
 if (filterQuarter) filterQuarter.addEventListener('change', renderResultsTable);
+const filterSubject = document.getElementById('filter-subject');
+if (filterSubject) filterSubject.addEventListener('change', renderResultsTable);
 
-if (startBtn) startBtn.addEventListener('click', () => {
+['q-filter-search', 'q-filter-subject', 'q-filter-class', 'q-filter-cognitive'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener(id === 'q-filter-search' ? 'input' : 'change', () => renderQuestionsList());
+});
+
+if (startBtn) startBtn.addEventListener('click', async () => {
     studentName = studentNameInput.value.trim();
     studentClass = studentClassInput.value;
     studentSubject = studentSubjectInput.value;
@@ -1675,16 +1994,12 @@ if (startBtn) startBtn.addEventListener('click', () => {
         return;
     }
 
-    let matchedQuarter = null;
-    const subjectPinObj = subjectPinsDatabase[studentSubject];
-    if (subjectPinObj) {
-        for (let q in subjectPinObj) {
-            if (subjectPinObj[q] === pin && pin !== "") {
-                matchedQuarter = q;
-                break;
-            }
-        }
+    if (!navigator.onLine) {
+        showToast((typeof t === 'function' && t('netOffline')) || "Internet aloqasi yo‘q.");
+        return;
     }
+
+    const matchedQuarter = await findQuarterByPin(studentSubject, pin);
 
     if (!matchedQuarter) {
         alert("Noto'g'ri kod!");
@@ -1935,11 +2250,8 @@ function triggerLock() {
 if (unlockBtn) unlockBtn.addEventListener('click', async () => {
     const teacherUnlockInput = document.getElementById('teacherUnlockInput');
     const pass = teacherUnlockInput ? teacherUnlockInput.value.trim() : "";
-    let requiredPin = "admin123";
-    if (studentSubject && studentQuarter && subjectUnblockPinsDatabase[studentSubject] && subjectUnblockPinsDatabase[studentSubject][studentQuarter]) {
-        requiredPin = subjectUnblockPinsDatabase[studentSubject][studentQuarter];
-    }
-    if (pass === requiredPin || await verifyAdminPassword(pass)) {
+    const ok = await verifyUnblockPin(studentSubject, studentQuarter, pass);
+    if (ok) {
         isLocked = false;
         lockScreen.classList.add('hidden');
         

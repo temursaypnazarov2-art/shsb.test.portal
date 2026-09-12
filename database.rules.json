@@ -38,6 +38,14 @@
       ".read": true,
       ".write": "auth != null && root.child('staff').child(auth.uid).exists()"
     },
+    "subjectPinHashesDatabase": {
+      ".read": true,
+      ".write": "auth != null && root.child('staff').child(auth.uid).exists()"
+    },
+    "subjectUnblockPinHashesDatabase": {
+      ".read": true,
+      ".write": "auth != null && root.child('staff').child(auth.uid).exists()"
+    },
     "subjectDurationsDatabase": {
       ".read": true,
       ".write": "auth != null && root.child('staff').child(auth.uid).exists()"

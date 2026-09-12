@@ -6,11 +6,26 @@ Xo‘jayli tumani ixtisoslashtirilgan maktabi uchun onlayn BSB/CHSB test portali
 
 ## Tezkor ishga tushirish (lokal)
 
+Node bo‘lmasa (tavsiya):
+
 ```bash
-npx --yes serve .
+python -m http.server 5500
 ```
 
-Brauzerda ochilgan manzilni oching (odatda `http://localhost:3000`).
+Brauzerda: `http://localhost:5500`
+
+Node o‘rnatilgan bo‘lsa:
+
+```bash
+npm install
+npm run dev
+```
+
+Unit testlar (Node shart emas):
+
+```bash
+python tools/run_tests.py
+```
 
 ## 2-bosqich: Firebase Authentication (muhim)
 
@@ -53,30 +68,62 @@ Admin panel → **Sozlamalar**:
 | O‘qituvchi | Email/parol (Auth) | O‘z faniga savol/PIN |
 | Admin | Email/parol (Auth) | To‘liq boshqaruv |
 
-## Asosiy fayllar
+## Asosiy fayllar (4-bosqich)
 
-| Fayl | Vazifasi |
-|------|----------|
+| Fayl / papka | Vazifasi |
+|--------------|----------|
 | `index.html` | UI |
-| `script.js` | Mantiq + Auth |
-| `style.css` | Dizayn |
-| `lang.js` | UZ / QQ / EN |
+| `src/app/app.js` | Asosiy mantiq + Auth |
+| `src/lib/` | constants, crypto, filters, normalize, scoring |
+| `src/config/firebase.js` | Firebase config |
+| `src/i18n.js` | UZ / QQ / EN |
+| `src/style.css` | Dizayn |
+| `tests/unit.mjs` + `tools/run_tests.py` | Unit testlar |
+| `package.json` / `vite.config.js` | Vite (Node bo‘lganda) |
 | `firebase.json` | Deploy |
 | `database.rules.json` | RTDB qoidalari |
 | `ROADMAP.md` | Bosqichlar |
-| `tools/legacy/` | Eski skriptlar |
+| `script.js` / `lang.js` / `style.css` | Legacy (ishlatilmaydi) |
 
-## Xavfsizlik holati (2-bosqich)
+## 3-bosqich (UX)
+
+- Savol filtrlari + natijalar dashboard
+- Offline / sekin internet banner
+- Rasmlar: **Firebase Storage** (ishlamasa avtomatik base64)
+- PIN: bazada **hash** (ochiq matn emas). Eski ochiq PIN hali ishlaydi; yangi saqlashda hash yoziladi
+
+### Storage yoqish
+
+1. Firebase Console → **Storage** → Get started
+2. Rules faylini joylang:
+
+```bash
+firebase deploy --only storage
+firebase deploy --only database
+```
+
+Yoki Console’da `storage.rules` va yangilangan `database.rules.json` ni Publish qiling.
+
+**Muhim:** PIN’ni qayta saqlang (o‘qituvchi/admin) — shunda hash yoziladi.
+
+## 4-bosqich (arxitektura)
+
+- Kod `src/` ostida modullarga ajratildi (`window.SHSB.*`)
+- Node shart emas — oddiy HTTP server yetarli
+- Keyinroq: `npm install && npm run dev` / `npm test` (Vitest)
+
+## Xavfsizlik holati
 
 Yaxshilangan:
-- Admin/o‘qituvchi **Firebase Auth** orqali kiradi
-- Savol/sozlama yozish uchun `staff` profili kerak
-- Telegram tokenlari faqat admin o‘qiydi
-- O‘quvchi natijasi `push` (butun bazani o‘chirib yubora olmaydi)
-- Login urinishlari cheklangan
+- Admin/o‘qituvchi **Firebase Auth**
+- Savol/sozlama yozish uchun `staff`
+- Telegram faqat admin
+- Natija `push`
+- PIN hash
+- Offline banner
 
-Hali ochiq (keyingi bosqich):
-- Fan PIN’lari client’da o‘qiladi (o‘quvchi PIN tekshiruvi uchun)
+Hali cheklangan:
+- PIN tekshiruvi brauzerda (hash bilan). To‘liq server-side uchun Cloud Functions (Blaze) kerak
 - Gemini kaliti localStorage’da
 - Cloud Functions yo‘q
 
